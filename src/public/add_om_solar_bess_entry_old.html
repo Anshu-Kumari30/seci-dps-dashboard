@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OM DGR Solar BESS Data</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #f9f9f9;
+        padding: 40px;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 40px;
+        font-size: 28px;
+      }
+      .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+      }
+      form {
+        display: grid;
+        gap: 20px;
+      }
+      label {
+        font-size: 16px;
+        color: #555;
+        margin-bottom: 8px;
+        display: block;
+      }
+      input[type="date"],
+      input[type="number"],
+      input[type="checkbox"],
+      button {
+        padding: 12px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        width: 100%;
+      }
+      input[type="checkbox"] {
+        width: auto;
+        margin-right: 10px;
+      }
+      button {
+        background-color: #4caf50;
+        color: #fff;
+        cursor: pointer;
+        border: none;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+      }
+      .form-group input[type="checkbox"] {
+        width: auto;
+      }
+      .form-group input[type="checkbox"] ~ label {
+        display: inline-block;
+        font-size: 14px;
+        margin-top: 5px;
+        color: #555;
+      }
+      .input-group {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .input-group input {
+        width: 48%;
+      }
+      .form-container button {
+        margin-top: 20px;
+      }
+      .form-footer {
+        text-align: center;
+        margin-top: 40px;
+        font-size: 14px;
+        color: #777;
+      }
+      .form-footer a {
+        color: #4caf50;
+        text-decoration: none;
+      }
+      .form-footer a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>OM DGR Solar BESS Data</h1>
+    <button onclick="window.location.href='/home.html'">Back to Home</button>
+
+    <div class="form-container">
+      <form id="solar-bess-form">
+        <div class="form-group">
+          <label for="date">Date:</label>
+          <input type="date" id="date" name="date" required />
+        </div>
+
+        <div class="input-group">
+          <div class="form-group">
+            <label for="days">Days:</label>
+            <input type="number" id="days" name="days" required />
+          </div>
+
+          <div class="form-group">
+            <label for="generation">Generation (kWh):</label>
+            <input
+              type="number"
+              step="any"
+              id="generation"
+              name="generation"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="form-group">
+            <label for="radiation">Radiation (W/m²):</label>
+            <input
+              type="number"
+              step="any"
+              id="radiation"
+              name="radiation"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="bess_export">BESS Export (kWh):</label>
+            <input
+              type="number"
+              step="any"
+              id="bess_export"
+              name="bess_export"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="form-group">
+            <label for="bess_import">BESS Import (kWh):</label>
+            <input
+              type="number"
+              step="any"
+              id="bess_import"
+              name="bess_import"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="plant_availability">Plant Availability (%):</label>
+            <input
+              type="number"
+              step="any"
+              id="plant_availability"
+              name="plant_availability"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="form-group">
+            <label for="bess_availability">BESS Availability (%):</label>
+            <input
+              type="number"
+              step="any"
+              id="bess_availability"
+              name="bess_availability"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="grid_availability">Grid Availability (%):</label>
+            <input
+              type="number"
+              step="any"
+              id="grid_availability"
+              name="grid_availability"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="form-group">
+            <label for="peak_power">Peak Power (kW):</label>
+            <input
+              type="number"
+              step="any"
+              id="peak_power"
+              name="peak_power"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="cumulative_generation"
+              >Cumulative Generation (kWh):</label
+            >
+            <input
+              type="number"
+              step="any"
+              id="cumulative_generation"
+              name="cumulative_generation"
+              required
+              disabled
+            />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="form-group">
+            <label for="cumulative_bess_export"
+              >Cumulative BESS Export (kWh):</label
+            >
+            <input
+              type="number"
+              step="any"
+              id="cumulative_bess_export"
+              name="cumulative_bess_export"
+              required
+              disabled
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="cumulative_bess_import"
+              >Cumulative BESS Import (kWh):</label
+            >
+            <input
+              type="number"
+              step="any"
+              id="cumulative_bess_import"
+              name="cumulative_bess_import"
+              required
+              disabled
+            />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="form-group">
+            <label for="daily_cuf_worc">Daily CUF/Worc:</label>
+            <input
+              type="number"
+              step="any"
+              id="daily_cuf_worc"
+              name="daily_cuf_worc"
+              required
+              disabled
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="cuf_till_date">CUF Till Date (%):</label>
+            <input
+              type="number"
+              step="any"
+              id="cuf_till_date"
+              name="cuf_till_date"
+            />
+          </div>
+        </div>
+
+        <button type="submit" id="submit-button">Save</button>
+      </form>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const dept_id = params.get("dept_id");
+      const statistic_id = params.get("statistic_id");
+      const entity_id = params.get("entity_id");
+      let lastCumulativeGeneration = 0;
+      const START_DAY = 22;
+      const START_MONTH = 6; // July (0-based index)
+      let omSolarBESSAllData = [];
+      const dateInput = document.getElementById("date");
+      const daysInput = document.getElementById("days");
+      let isUpdate = false;
+      let lastCumulativeBessImport = 0;
+      let lastCumulativeBessExport = 0;
+
+      // dateInput.addEventListener("change", calculateDays);
+      dateInput.addEventListener("change", () => {
+        calculateDays();
+
+        if (!omSolarBESSAllData || omSolarBESSAllData.length === 0) return;
+
+        const selectedDate = dateInput.value;
+
+        console.log("selectedDate", selectedDate);
+        console.log("omSolarBESSAllDate", omSolarBESSAllData[0].date);
+
+        const existingEntry = omSolarBESSAllData.find(
+          (item) => toUTCDateOnly(item.date) === selectedDate
+        );
+
+        if (existingEntry) {
+          alert("data found for this date");
+          populateFormFromExistingData(existingEntry);
+          isUpdate = true;
+        } else {
+          document.getElementById("solar-bess-form").reset();
+          dateInput.value = selectedDate;
+          calculateDays();
+
+          lastCumulativeGeneration = 0;
+          document.getElementById("submit-button").textContent = "Save";
+          isUpdate = false;
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        calculateDays();
+        setDefaultYesterdayDate();
+        loadLastUpdatedData();
+        getOmSolarBESSAllData();
+      });
+
+      async function getOmSolarBESSAllData() {
+        let omSolarBESSResponse = await authFetch(
+          `/api/data/om/solar_bess/all?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`
+        );
+        let omSolarBESSDataJSON = await omSolarBESSResponse.json();
+        omSolarBESSAllData = omSolarBESSDataJSON.data;
+        console.log("omSolarBESSAllData", omSolarBESSAllData);
+      }
+
+      async function loadLastUpdatedData() {
+        try {
+          const response = await authFetch(
+            `api/data/om/solar_bess/data/summary?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+            {
+              method: "GET",
+            }
+          );
+
+          if (response.status === 204) {
+            console.log("No previous data found");
+            return;
+          }
+
+          const result = await response.json();
+          const entry = result.data;
+
+          document.getElementById("plant_availability").value = 100;
+          document.getElementById("bess_availability").value = 100;
+          document.getElementById("grid_availability").value = 100;
+          lastCumulativeGeneration = Number(entry.cumulative_generation) || 0;
+          document.getElementById("cumulative_generation").value =
+            lastCumulativeGeneration;
+          lastCumulativeBessExport = Number(entry.cumulative_bess_export) || 0;
+          document.getElementById("cumulative_bess_export").value =
+            lastCumulativeBessExport;
+          lastCumulativeBessImport = Number(entry.cumulative_bess_import) || 0;
+          document.getElementById("cumulative_bess_import").value =
+            lastCumulativeBessImport;
+          document.getElementById("daily_cuf_worc").value =
+            entry.daily_cuf_worc || "";
+          document.getElementById("cuf_till_date").value =
+            entry.cuf_till_date || "";
+
+          document.getElementById("submit-button").textContent = "Save";
+        } catch (error) {
+          console.error("Error loading last updated data:", error);
+        }
+      }
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      document
+        .getElementById("solar-bess-form")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
+
+          const date = document.getElementById("date").value;
+          const formData = new FormData(
+            document.getElementById("solar-bess-form")
+          );
+          formData.append(
+            "cumulative_generation",
+            document.getElementById("cumulative_generation").value
+          );
+          formData.append(
+            "cumulative_bess_export",
+            document.getElementById("cumulative_bess_export").value
+          );
+          formData.append(
+            "cumulative_bess_import",
+            document.getElementById("cumulative_bess_import").value
+          );
+          formData.append(
+            "daily_cuf_worc",
+            document.getElementById("daily_cuf_worc").value
+          );
+          formData.append("action", isUpdate ? "update" : "add");
+          const formValues = Object.fromEntries(formData);
+
+          const response = await authFetch(
+            `api/data/om/solar_bess/data/one/update?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(formValues),
+            }
+          );
+
+          const result = await response.json();
+          if (response.ok) {
+            alert(result.message || "Data saved successfully!");
+          } else {
+            alert(result.error || "Something went wrong.");
+          }
+        });
+
+      document.getElementById("bess_import").addEventListener("input", () => {
+        const bessImport =
+          Number(document.getElementById("bess_import").value) || 0;
+
+        const cumulativeBessImport = lastCumulativeBessImport + bessImport;
+
+        document.getElementById("cumulative_bess_import").value =
+          cumulativeBessImport;
+      });
+
+      document.getElementById("bess_export").addEventListener("input", () => {
+        const bessExport =
+          Number(document.getElementById("bess_export").value) || 0;
+
+        const cumulativeBessExport = lastCumulativeBessExport + bessExport;
+
+        document.getElementById("cumulative_bess_export").value =
+          cumulativeBessExport;
+      });
+
+      // Cumulative Generation Calculation
+      document.getElementById("generation").addEventListener("input", () => {
+        const generation =
+          Number(document.getElementById("generation").value) || 0;
+
+        const cumulative = lastCumulativeGeneration + generation;
+        document.getElementById("cumulative_generation").value = cumulative;
+
+        const dailyCUF = (generation * 100) / (1440 * 24);
+        document.getElementById("daily_cuf_worc").value = dailyCUF.toFixed(4);
+      });
+
+      function setDefaultYesterdayDate() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+
+        document.getElementById("date").value = `${yyyy}-${mm}-${dd}`;
+      }
+
+      function calculateDays() {
+        if (!dateInput.value) return;
+
+        const selectedDate = new Date(dateInput.value);
+        let year = selectedDate.getFullYear();
+
+        let startDate = new Date(year, START_MONTH, START_DAY);
+
+        if (selectedDate < startDate) {
+          startDate = new Date(year - 1, START_MONTH, START_DAY);
+        }
+
+        const diffTime = selectedDate - startDate;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        daysInput.value = diffDays;
+      }
+
+      function toInputDateFormat(isoDate) {
+        const d = new Date(isoDate);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+      }
+
+      function populateFormFromExistingData(entry) {
+        document.getElementById("days").value = entry.days ?? "";
+        document.getElementById("generation").value = entry.generation ?? "";
+        document.getElementById("radiation").value = entry.radiation ?? "";
+        document.getElementById("bess_export").value = entry.bess_export ?? "";
+        document.getElementById("bess_import").value = entry.bess_import ?? "";
+        document.getElementById("plant_availability").value =
+          entry.plant_availability ?? 100;
+        document.getElementById("bess_availability").value =
+          entry.bess_availability ?? 100;
+        document.getElementById("grid_availability").value =
+          entry.grid_availability ?? 100;
+        document.getElementById("peak_power").value = entry.peak_power ?? "";
+
+        document.getElementById("cumulative_generation").value =
+          entry.cumulative_generation ?? 0;
+        document.getElementById("cumulative_bess_export").value =
+          entry.cumulative_bess_export ?? "";
+        document.getElementById("cumulative_bess_import").value =
+          entry.cumulative_bess_import ?? "";
+        document.getElementById("daily_cuf_worc").value =
+          entry.daily_cuf_worc ?? "";
+        document.getElementById("cuf_till_date").value =
+          entry.cuf_till_date ?? "";
+
+        // IMPORTANT: update last cumulative for further calculations
+        lastCumulativeGeneration = Number(entry.cumulative_generation) || 0;
+
+        document.getElementById("submit-button").textContent = "Update";
+      }
+      function toUTCDateOnly(dateStr) {
+        const d = new Date(dateStr);
+        return new Date(
+          Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+        )
+          .toISOString()
+          .split("T")[0];
+      }
+    </script>
+  </body>
+</html>

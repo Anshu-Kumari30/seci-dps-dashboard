@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Add Department</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container mt-5">
+      <h3 class="mb-4">Add New Department</h3>
+
+      <div class="mb-3">
+        <label for="deptName" class="form-label">Department Name</label>
+        <input
+          type="text"
+          class="form-control"
+          id="deptName"
+          placeholder="Enter department name"
+          required
+        />
+      </div>
+
+      <button class="btn btn-primary" onclick="submitDepartment()">
+        Add Department
+      </button>
+      <a href="/settings.html" class="btn btn-secondary ms-2"
+        >Back to Admin Panel</a
+      >
+
+      <div id="message" class="mt-3"></div>
+    </div>
+
+    <script>
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      function submitDepartment() {
+        const deptName = document.getElementById("deptName").value.trim();
+        const messageDiv = document.getElementById("message");
+        messageDiv.innerHTML = "";
+
+        if (!deptName) {
+          messageDiv.innerHTML = `<div class="alert alert-warning">Please enter a department name.</div>`;
+          return;
+        }
+
+        authFetch("/api/data/departments/create", {
+          method: "POST",
+          body: JSON.stringify({ dept_name: deptName }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) {
+              messageDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            } else {
+              messageDiv.innerHTML = `<div class="alert alert-success">Department added successfully!</div>`;
+              document.getElementById("deptName").value = ""; // clear input
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            messageDiv.innerHTML = `<div class="alert alert-danger">Failed to add department.</div>`;
+          });
+      }
+    </script>
+  </body>
+</html>

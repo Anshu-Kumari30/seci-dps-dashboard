@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SECI Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: "Poppins", sans-serif;
+        font-size: 22px;
+      }
+      .tab-sidebar {
+        min-width: 220px;
+        border-right: 1px solid #ddd;
+        height: 100dvh;
+        position: sticky;
+        top: 0;
+      }
+      .tab-content-area {
+        flex-grow: 1;
+      }
+      .top-bar {
+        background-color: #f8f9fa;
+        padding: 15px 20px;
+        border-bottom: 1px solid #ddd;
+        font-weight: 500;
+        font-size: 1.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .tab-button {
+        text-align: left;
+        width: 100%;
+      }
+      .tab-button.active {
+        background-color: #e9ecef;
+        font-weight: bold;
+      }
+      .dashboard-area,
+      .department-area {
+        padding: 20px;
+      }
+      .chart-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: relative;
+      }
+      .chart-title {
+        font-size: 1rem;
+        margin-top: 10px;
+      }
+      .chart-center-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.2rem;
+        font-weight: bold;
+      }
+      .target-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 10px;
+      }
+      .overdue {
+        color: red;
+        font-weight: bold;
+      }
+      .upcoming {
+        color: green;
+        font-weight: bold;
+      }
+      .tab-sidebar.collapsed {
+        min-width: 70px;
+        max-width: 70px;
+      }
+      .tab-sidebar.collapsed .tab-text {
+        display: none;
+      }
+      .collapse-btn {
+        margin: 10px 0;
+      }
+      /* .selected-stat {
+        border: 2px solid #0d6efd;
+        box-shadow: 0 0 8px rgba(13, 110, 253, 0.5);
+      } */
+      .target-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      .target-table th,
+      .target-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+
+      .target-table th {
+        background-color: #f2f2f2;
+      }
+      #splashScreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column; /* Ensures vertical stacking */
+        z-index: 9999;
+      }
+
+      .splash-text {
+        font-size: 50px;
+        font-weight: bold;
+        color: #333;
+        opacity: 0;
+        transform: scale(0.8);
+        animation: splashFadeIn 1s ease forwards;
+      }
+
+      @keyframes splashFadeIn {
+        0% {
+          opacity: 0;
+          transform: scale(0.8);
+        }
+        60% {
+          opacity: 1;
+          transform: scale(1.05);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="splashScreen">
+      <img
+        src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fimg.saurenergy.com%2F2017%2F02%2FSECI.jpg&f=1&nofb=1&ipt=194f07caac58e8c968f6992dfe4cc86495a7bbdbd9a0b41825c8c6180b5c2f10"
+        alt="SECI Logo"
+        width="200"
+      />
+      <br />
+    </div>
+    <div class="d-flex">
+      <div class="tab-sidebar d-flex flex-column p-2 bg-light" id="sidebar">
+        <button class="btn btn-secondary btn-sm collapse-btn" id="collapseBtn">
+          <i class="bi bi-list"></i>
+        </button>
+        <div id="sidebarButtons" class="d-flex flex-column mt-2"></div>
+      </div>
+      <div class="tab-content-area d-flex flex-column w-100">
+        <div class="top-bar">
+          <span id="topBarTitle">SECI Dashboard > Home</span>
+          <div class="d-flex gap-3 mt-2 mt-md-0">
+            <button
+              class="btn btn-success btn-sm"
+              data-bs-toggle="modal"
+              data-bs-target="#statModal"
+            >
+              <i class="bi bi-plus-circle me-1"></i> Add Statistic
+            </button>
+            <span id="userName" class="fw-bold">Welcome, User</span>
+          </div>
+        </div>
+        <div class="dashboard-area" id="homeArea">
+          <div class="row g-3" id="chartGrid"></div>
+        </div>
+        <div class="department-area d-none" id="departmentArea">
+          <div class="d-flex flex-wrap gap-3">
+            <!-- Left side: Stats, Charts, Targets -->
+            <div class="flex-grow-1" style="min-width: 300px">
+              <div class="row g-3" id="departmentStats"></div>
+              <div class="mt-3" id="chartDetailsSection"></div>
+              <div class="mt-4" id="targetSection"></div>
+            </div>
+
+            <!-- Right side: Editable Table -->
+            <!-- Right side: Editable Table -->
+            <!-- <div id="taskTableArea" style="min-width: 300px; max-width: 400px">
+              <h4 class="mb-2">Department Task Table</h4>
+              <div id="tableContainer"></div>
+              <button
+                class="btn btn-sm btn-outline-primary mt-2"
+                id="editTableBtn"
+              >
+                <i class="bi bi-pencil"></i> Edit Table
+              </button>
+            </div> -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statistic Modal -->
+    <div class="modal fade" id="statModal" tabindex="-1">
+      <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+          <form id="statForm">
+            <div class="modal-header">
+              <h5 class="modal-title">Add Statistic</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Department</label>
+                <select class="form-select" id="departmentSelect" required>
+                  <option disabled selected>Select Department</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Statistic Name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="statName"
+                  maxlength="100"
+                  required
+                />
+              </div>
+              <div id="fieldsContainer" class="mb-3">
+                <label class="form-label">Optional Labeled Fields</label>
+                <div id="fieldsList"></div>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-secondary mt-2"
+                  onclick="addField()"
+                >
+                  Add Field
+                </button>
+                <small class="text-muted d-block mt-1"
+                  >If added, pie chart will show labeled fields instead of
+                  Current/Remaining.</small
+                >
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary" id="statSubmitBtn">
+                Add
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Target Modal -->
+    <div class="modal fade" id="targetModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="targetForm">
+            <div class="modal-header">
+              <h5 class="modal-title">Add Target</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Department</label>
+                <select class="form-select" id="targetDepartment" required>
+                  <option disabled selected>Select Department</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Target Title</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="targetTitle"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Target Date</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  id="targetDate"
+                  required
+                />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">Add Target</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      window.addEventListener("load", function () {
+        setTimeout(() => {
+          const splash = document.getElementById("splashScreen");
+          splash.style.transition = "opacity 0.5s";
+          splash.style.opacity = 0;
+          setTimeout(() => (splash.style.display = "none"), 500);
+        }, 1500); // Total splash duration (adjust as needed)
+      });
+
+      const departments = [
+        "Home",
+        "Business Development",
+        "PMC",
+        "Contracts & Procurement",
+        "Energy Mangement",
+        "Projects",
+        "RESCO",
+        "Engineering/QA",
+        "O&M",
+      ];
+      const icons = [
+        "bi-house-door",
+        "bi-briefcase",
+        "bi-currency-rupee",
+        "bi-lightning-charge",
+        "bi-diagram-3",
+        "bi-building",
+        "bi-tools",
+        "bi-shield-check",
+        "bi-gear",
+      ];
+      const vibrantColors = [
+        "#ff4d4d",
+        "#4d79ff",
+        "#28a745",
+        "#ffc107",
+        "#ff66cc",
+        "#00cccc",
+        "#ff9933",
+        "#9966ff",
+        "#00b894",
+      ];
+
+      const chartGrid = document.getElementById("chartGrid");
+      const sidebar = document.getElementById("sidebarButtons");
+      const departmentSelect = document.getElementById("departmentSelect");
+      const targetDepartment = document.getElementById("targetDepartment");
+      const departmentStats = document.getElementById("departmentStats");
+      const homeArea = document.getElementById("homeArea");
+      const deptArea = document.getElementById("departmentArea");
+      const topBarTitle = document.getElementById("topBarTitle");
+      const targetSection = document.getElementById("targetSection");
+
+      const charts = {};
+      const departmentData = {};
+      const homeSelectedStats = {};
+      const targets = {};
+      const departmentTables = {};
+
+      departments.forEach((dept, i) => {
+        sidebarButtons.innerHTML += `<button class="btn tab-button ${
+          dept === "Home" ? "active" : ""
+        } mb-2" data-tab="${dept}"><i class="bi ${
+          icons[i]
+        } me-2"></i> <span class="tab-text">${dept}</span></button>`;
+        if (dept !== "Home") {
+          departmentSelect.innerHTML += `<option>${dept}</option>`;
+          targetDepartment.innerHTML += `<option>${dept}</option>`;
+          const col = document.createElement("div");
+          col.className = "col-6 col-md-3 position-relative";
+          if (dept === "Contracts & Procurement") {
+            // alert("hello");
+            col.innerHTML = `
+                                  <div class="chart-card">
+                                    <div class="fw-bold mb-1">${dept}</div>
+                                    <canvas id="chart-${dept}" width="150" height="150"></canvas>
+                                    <div class="chart-center-label" id="label-${dept}"></div>
+                                    <div class="chart-title" id="title-${dept}">Tenders</div>
+                                  </div>`;
+          } else if (dept === "O&M") {
+            col.innerHTML = `
+                                  <div class="chart-card">
+                                    <div class="fw-bold mb-1">${dept}</div>
+                                    <canvas id="chart-${dept}" width="150" height="150"></canvas>
+                                    <div class="chart-center-label" id="label-${dept}"></div>
+                                    <div class="chart-title" id="title-${dept}">Commissioned Projects</div>
+                                  </div>`;
+          } else {
+            col.innerHTML = `
+                                  <div class="chart-card">
+                                    <div class="fw-bold mb-1">${dept}</div>
+                                    <canvas id="chart-${dept}" width="150" height="150"></canvas>
+                                    <div class="chart-center-label" id="label-${dept}"></div>
+                                    <div class="chart-title" id="title-${dept}">Capex Projects</div>
+                                  </div>`;
+          }
+
+          col.querySelector(".chart-card").addEventListener("click", () => {
+            goToDepartmentTab(dept);
+          });
+
+          chartGrid.appendChild(col);
+
+          charts[dept] = new Chart(
+            document.getElementById(`chart-${dept}`).getContext("2d"),
+            {
+              type: "doughnut",
+              data: {
+                labels: [],
+                datasets: [
+                  {
+                    data: [0, 1],
+                    backgroundColor: [vibrantColors[i], "#dee2e6"],
+                  },
+                ],
+              },
+              options: {
+                cutout: "70%",
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        const index = context.dataIndex;
+                        const label = context.chart.data.labels[index];
+                        const value =
+                          context.chart.data.datasets[0].data[index];
+                        const tooltipData =
+                          context.chart.data.datasets[0].tooltipData[index] ||
+                          [];
+
+                        const lines = [`${label}: ${value}`];
+                        console.log(tooltipData);
+                        tooltipData.forEach((item) => {
+                          lines.push(`${item.key}: ${item.value}`);
+                        });
+                        return lines;
+                      },
+                    },
+                  },
+                },
+              },
+            }
+          );
+
+          departmentData[dept] = [];
+          targets[dept] = [];
+          targets[dept].push({
+            title: "Meeting with Power Developer",
+            date: "2025-03-15",
+          });
+
+          const headcountTotal = getRandomInt(50, 500);
+          const headcountCurrent = getRandomInt(0, headcountTotal);
+          const milestonesTotal = getRandomInt(5, 20);
+          const milestonesCurrent = getRandomInt(0, milestonesTotal);
+          if (dept === "QA") {
+            departmentData[dept].push({
+              name: "Documents/PDI",
+              fields: [
+                {
+                  label: "Dhar Module",
+                  value: 200,
+                  tooltipData: [{ key: "Capacity", value: "200MW" }],
+                  tableData: [
+                    {
+                      issues: "e-RA",
+                      status: "Pending",
+                      dept: "Civil Engineering",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+              ],
+            });
+          } else if (dept === "Engineering") {
+            departmentData[dept].push({
+              name: "Drawings/PDI",
+              fields: [
+                {
+                  label: "Dhar Module",
+                  value: 200,
+                  tooltipData: [{ key: "Capacity", value: "200MW" }],
+                  tableData: [
+                    {
+                      issues: "e-RA",
+                      status: "Pending",
+                      dept: "Civil Engineering",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+              ],
+            });
+          } else if (dept === "RESCO") {
+            departmentData[dept].push({
+              name: "Schemes",
+              fields: [
+                {
+                  label: "Dhar Module",
+                  value: 200,
+                  tooltipData: [{ key: "Capacity", value: "200MW" }],
+                  tableData: [
+                    {
+                      issues: "e-RA",
+                      status: "Pending",
+                      dept: "Civil Engineering",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+              ],
+            });
+          } else if (dept === "Energy Mangement") {
+            departmentData[dept].push({
+              name: "PPA",
+              fields: [
+                {
+                  label: "Solar",
+                  value: 100,
+                  tooltipData: [{ key: "Capacity", value: "100MW" }],
+                  tableData: [],
+                },
+                {
+                  label: "Wind",
+                  value: 100,
+                  tooltipData: [{ key: "Capacity", value: "100MW" }],
+                  tableData: [],
+                },
+                {
+                  label: "Hybrid",
+                  value: 100,
+                  tooltipData: [{ key: "Capacity", value: "100MW" }],
+                  tableData: [],
+                },
+              ],
+            });
+          } else if (dept === "Business Development") {
+            departmentData[dept].push({
+              name: "Proposals",
+              fields: [
+                {
+                  label: "Dhar Module",
+                  value: 200,
+                  tooltipData: [{ key: "Capacity", value: "200MW" }],
+                  tableData: [
+                    {
+                      issues: "e-RA",
+                      status: "Pending",
+                      dept: "Civil Engineering",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+              ],
+            });
+          } else if (dept === "O&M") {
+            departmentData[dept].push({
+              name: "Commissioned Projects",
+              fields: [
+                {
+                  label: "Rajnandgaon, Chattisgarh",
+                  value: 100,
+                  tooltipData: [
+                    {
+                      key: "Capacity",
+                      value: "100MW Solar + 40MW/120MWh BESS",
+                    },
+                  ],
+                  tableData: [
+                    {
+                      issues: "Poor CUF",
+                      status: "Pending",
+                      dept: "O&M",
+                      date: "2025-07-31",
+                    },
+                  ],
+                },
+                {
+                  label: "Lakshadweep Islands",
+                  value: 1.7,
+                  tooltipData: [
+                    { key: "Capacity", value: "1.7MW Solar + 1.4MWh BESS" },
+                  ],
+                  tableData: [
+                    {
+                      issues: "Technical Bid Opening",
+                      status: "Pending",
+                      dept: "C&P",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+                {
+                  label: "DRDO, Kolar",
+                  value: 10,
+                  tooltipData: [{ key: "Capacity", value: "10MW" }],
+                  tableData: [
+                    {
+                      issues: "e-RA Module",
+                      status: "Pending",
+                      dept: "C&P",
+                      date: "2025-07-07",
+                    },
+                  ],
+                },
+                {
+                  label: "Badi Sid, Rajasthan",
+                  value: 10,
+                  tooltipData: [{ key: "Capacity", value: "10MW" }],
+                  tableData: [
+                    {
+                      issues: "NIT",
+                      status: "Pending",
+                      dept: "C&P",
+                      date: "2025-07-18",
+                    },
+                  ],
+                },
+                {
+                  label: "A&N Islands RTS",
+                  value: 1,
+                  tooltipData: [{ key: "Capacity", value: "1MW" }],
+                  tableData: [
+                    {
+                      issues: "NIT",
+                      status: "Pending",
+                      dept: "C&P",
+                      date: "2025-07-18",
+                    },
+                  ],
+                },
+              ],
+            });
+          } else if (dept === "Contracts & Procurement") {
+            departmentData[dept].push({
+              name: "Tenders",
+              fields: [
+                {
+                  label: "Dhar Module",
+                  value: 200,
+                  tooltipData: [{ key: "Capacity", value: "200MW" }],
+                  tableData: [
+                    {
+                      issues: "e-RA",
+                      status: "Pending",
+                      dept: "Civil Engineering",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+                {
+                  label: "Dhar BoS",
+                  value: 200,
+                  tooltipData: [{ key: "Capacity", value: "200MW" }],
+                  tableData: [
+                    {
+                      issues: "Technical Bid Opening",
+                      status: "Pending",
+                      dept: "C&P",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+                {
+                  label: "Radhanesda Module",
+                  value: 700,
+                  tooltipData: [{ key: "Capacity", value: "700MW" }],
+                  tableData: [
+                    {
+                      issues: "e-RA Module",
+                      status: "Pending",
+                      dept: "C&P",
+                      date: "2025-07-07",
+                    },
+                    {
+                      issues: "NIT",
+                      status: "Pending",
+                      dept: "C&P",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+                {
+                  label: "Radhanesda BoS",
+                  value: 700,
+                  tooltipData: [{ key: "Capacity", value: "700MW" }],
+                  tableData: [
+                    {
+                      issues: "NIT",
+                      status: "Pending",
+                      dept: "C&P",
+                      date: "2025-07-18",
+                    },
+                  ],
+                },
+              ],
+            });
+          } else {
+            departmentData[dept].push({
+              name: "Capex Projects",
+              fields: [
+                {
+                  label: "Leh",
+                  value: 25,
+                  tooltipData: [
+                    { key: "Capacity", value: "25MW + 50MWh" },
+                    { key: "LOA Date", value: "20-11-2024" },
+                    { key: "SCOD/Duration", value: "19-11-2024/36 months" },
+                    { key: "Extended COD", value: "-" },
+                    { key: "Land", value: "-" },
+                    { key: "% Physical Progress", value: "-" },
+                    { key: "% Financial Progress", value: "-" },
+                  ],
+                  tableData: [
+                    {
+                      issues: "DCR  cell and modules as per RfS mandate",
+                      status: "Under deliberation at EPC's end",
+                      dept: "Projects/C&P",
+                      date: "2025-07-31",
+                    },
+                  ],
+                },
+                {
+                  label: "Getalsud",
+                  value: 100,
+                  tooltipData: [
+                    { key: "Capacity", value: "100MW" },
+                    { key: "LOA Date", value: "07-05-2024" },
+                    { key: "SCOD/Duration", value: "07/12/2025, 18 months" },
+                    { key: "Extended COD", value: "28/02/2026" },
+                    { key: "Land", value: "Reservoir" },
+                    { key: "% Physical Progress", value: "-" },
+                    { key: "% Financial Progress", value: "-" },
+                  ],
+                  tableData: [
+                    {
+                      issues: "Transmission line approval",
+                      status: "Pending",
+                      dept: "Civil Engineering",
+                      date: "2025-07-20",
+                    },
+                  ],
+                },
+                {
+                  label: "Ramagiri",
+                  value: 300,
+                  tooltipData: [
+                    { key: "Capacity", value: "300MW" },
+                    { key: "LOA Date", value: "06-02-2024" },
+                    { key: "SCOD/Duration", value: "12 months" },
+                    { key: "Extended COD", value: "-" },
+                    { key: "Land", value: "1033 Acre" },
+                    { key: "% Physical Progress", value: "-" },
+                    { key: "% Financial Progress", value: "-" },
+                  ],
+                  tableData: [
+                    {
+                      issues: "PGCIL Agreement signing for ISTS bay execution",
+                      status:
+                        "Approval process delayed due to minor changes, revised e-office file under circulation",
+                      dept: "PS-Project Dept",
+                      date: "Immediate",
+                      remarks:
+                        "Work at ISTS bay can only commence after signing the agreement. Post-facto approval from management may be obtained for minor changes.",
+                    },
+                    {
+                      issues: "Power Transformer Delivery",
+                      status:
+                        "Revised drawing and MQP to be submitted by ARIPL",
+                      dept: "PS-Project Dept",
+                      date: "2025-07-09",
+                      remarks:
+                        "During CPSU visit to Gujarat, Mr. Debajyoti will visit the manufacturing facility to expedite delivery and collect documents.",
+                    },
+                    {
+                      issues:
+                        "Design Basis report and Control room foundation drawings",
+                      status: "To be submitted by M/s AmaraRaja",
+                      dept: "PS-Eng Dept.",
+                      date: "2025-07-09",
+                      remarks:
+                        "Upon approval of Design Basis, foundation drawing will be submitted.",
+                    },
+                    {
+                      issues: "Tower and equipment of Switchyard drawings",
+                      status: "Design Basis submitted, awaiting approval",
+                      dept: "PS-Eng Dept.",
+                      date: "2025-07-08",
+                      remarks:
+                        "Upon approval of Design Basis, foundation drawing will be submitted.",
+                    },
+                    {
+                      issues: "Pile marking coordinates drawing",
+                      status: "Drawing submitted on 2025-07-04",
+                      dept: "PS-Eng Dept.",
+                      date: "2025-07-07",
+                      remarks: "",
+                    },
+                    {
+                      issues:
+                        "Pile test report clearance and height of column post finalization",
+                      status: "Drawing submitted on 2025-07-05",
+                      dept: "PS-Eng Dept.",
+                      date: "2025-07-07",
+                      remarks: "",
+                    },
+                    {
+                      issues: "Contractual staff to Site",
+                      status: "File approved with HR Dept.",
+                      dept: "HR Dept.",
+                      date: "",
+                      remarks:
+                        "One Civil and Electrical Engineer (Contractual) to be deployed at site.",
+                    },
+                  ],
+                },
+                {
+                  label: "Dhar",
+                  value: 100,
+                  tooltipData: [
+                    { key: "Capacity", value: "100MW" },
+                    { key: "LOA Target", value: "-" },
+                  ],
+                  tableData: [
+                    {
+                      issues: "Bid Opening for Module",
+                      status: "Pending",
+                      dept: "Environment",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+                {
+                  label: "Radhanesda",
+                  value: 700,
+                  tooltipData: [
+                    { key: "Capacity", value: "700MW" },
+                    { key: "LOA Target", value: "-" },
+                  ],
+                  tableData: [
+                    {
+                      issues: "Bid Opening for Module",
+                      status: "Pending",
+                      dept: "Environment",
+                      date: "2025-07-04",
+                    },
+                  ],
+                },
+                {
+                  label: "NDMC",
+                  value: 300,
+                  tooltipData: [
+                    { key: "Capacity", value: "300MW" },
+                    { key: "LOA Target", value: "2022" },
+                  ],
+                  tableData: [
+                    {
+                      issues: "Project registration completion",
+                      status: "Pending",
+                      dept: "Environment",
+                      date: "2025-07-10",
+                    },
+                  ],
+                },
+              ],
+            });
+          }
+
+          departmentTables[dept] = {
+            columns: ["Task", "Status"],
+            rows: [
+              ["Complete Site Survey", "Done"],
+              ["Finalize Contract", "Pending"],
+            ],
+          };
+          homeSelectedStats[dept] = 1;
+          updateHomeChart(dept);
+        }
+      });
+
+      document.querySelectorAll(".tab-button").forEach((btn) =>
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".tab-button")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const tab = btn.dataset.tab;
+          topBarTitle.textContent = `SECI Dashboard > ${tab}`;
+          if (tab === "Home") {
+            homeArea.classList.remove("d-none");
+            deptArea.classList.add("d-none");
+            // document.getElementById("taskTableArea").style.display = "none";
+          } else {
+            homeArea.classList.add("d-none");
+            deptArea.classList.remove("d-none");
+            // document.getElementById("taskTableArea").style.display = "block";
+            renderDepartmentStats(tab);
+          }
+        })
+      );
+
+      // Helper for managing fields in modal
+      let editingStat = null; // { dept, index }
+      function clearFieldsList() {
+        document.getElementById("fieldsList").innerHTML = "";
+      }
+      function addField(
+        label = "",
+        value = "",
+        tooltipData = [],
+        tableData = []
+      ) {
+        const fieldsList = document.getElementById("fieldsList");
+        const div = document.createElement("div");
+        div.className = "card mb-3 p-3";
+        div.innerHTML = `
+              <div class="mb-2">
+                <label>Label:</label>
+                <input type="text" class="form-control field-label" placeholder="Label" value="${label.replace(
+                  /"/g,
+                  "&quot;"
+                )}">
+              </div>
+              <div class="mb-2">
+                <label>Value:</label>
+                <input type="number" min="0" class="form-control field-value" placeholder="Value" value="${value}">
+              </div>
+
+              <div class="mb-2">
+                <label>Tooltip Data:</label>
+                <div class="tooltip-list mb-2"></div>
+                <button type="button" class="btn btn-sm btn-outline-primary add-tooltip-btn mb-2">Add Tooltip Item</button>
+              </div>
+
+              <div class="mb-2">
+                <label>Table Data:</label>
+                <div class="tabledata-list mb-2"></div>
+                <button type="button" class="btn btn-sm btn-outline-primary add-tabledata-btn mb-2">Add Table Row</button>
+              </div>
+
+              <button type="button" class="btn btn-outline-danger" onclick="this.parentNode.remove()">Remove Label</button>
+            `;
+        fieldsList.appendChild(div);
+
+        // Pre-fill Tooltip Data
+        const tooltipList = div.querySelector(".tooltip-list");
+        tooltipData.forEach((td) =>
+          addTooltipItem(tooltipList, td.key, td.value)
+        );
+
+        div.querySelector(".add-tooltip-btn").onclick = () =>
+          addTooltipItem(tooltipList);
+
+        // Pre-fill Table Data
+        const tableDataList = div.querySelector(".tabledata-list");
+        tableData.forEach((td) =>
+          addTableDataRow(tableDataList, td.issues, td.status, td.dept, td.date)
+        );
+
+        div.querySelector(".add-tabledata-btn").onclick = () =>
+          addTableDataRow(tableDataList);
+      }
+      function addTooltipItem(container, key = "", value = "") {
+        const div = document.createElement("div");
+        div.className = "input-group mb-2";
+        div.innerHTML = `
+              <input type="text" class="form-control tooltip-key" placeholder="Key" value="${key.replace(
+                /"/g,
+                "&quot;"
+              )}">
+              <input type="text" class="form-control tooltip-value" placeholder="Value" value="${value.replace(
+                /"/g,
+                "&quot;"
+              )}">
+              <button type="button" class="btn btn-outline-danger" onclick="this.parentNode.remove()">&#10006;</button>
+            `;
+        container.appendChild(div);
+      }
+
+      function addTableDataRow(
+        container,
+        issues = "",
+        status = "",
+        dept = "",
+        date = ""
+      ) {
+        const div = document.createElement("div");
+        div.className = "input-group mb-2";
+        div.innerHTML = `
+              <input type="text" class="form-control td-issues" placeholder="Issues" value="${issues.replace(
+                /"/g,
+                "&quot;"
+              )}">
+              <input type="text" class="form-control td-status" placeholder="Status" value="${status.replace(
+                /"/g,
+                "&quot;"
+              )}">
+              <input type="text" class="form-control td-dept" placeholder="Department" value="${dept.replace(
+                /"/g,
+                "&quot;"
+              )}">
+              <input type="text" class="form-control td-date" placeholder="Date" value="${date.replace(
+                /"/g,
+                "&quot;"
+              )}">
+              <button type="button" class="btn btn-outline-danger" onclick="this.parentNode.remove()">&#10006;</button>
+            `;
+        container.appendChild(div);
+      }
+      function getFieldsFromModal() {
+        const fields = [];
+        document.querySelectorAll("#fieldsList .card").forEach((div) => {
+          const label = div.querySelector(".field-label").value.trim();
+          const value = parseInt(div.querySelector(".field-value").value);
+
+          const tooltipData = [];
+          div.querySelectorAll(".tooltip-list .input-group").forEach((tdiv) => {
+            const key = tdiv.querySelector(".tooltip-key").value.trim();
+            const val = tdiv.querySelector(".tooltip-value").value.trim();
+            if (key) tooltipData.push({ key, value: val });
+          });
+
+          const tableData = [];
+          div
+            .querySelectorAll(".tabledata-list .input-group")
+            .forEach((tdiv) => {
+              const issues = tdiv.querySelector(".td-issues").value.trim();
+              const status = tdiv.querySelector(".td-status").value.trim();
+              const dept = tdiv.querySelector(".td-dept").value.trim();
+              const date = tdiv.querySelector(".td-date").value.trim();
+              if (issues) tableData.push({ issues, status, dept, date });
+            });
+
+          if (label && !isNaN(value)) {
+            fields.push({ label, value, tooltipData, tableData });
+          }
+        });
+        return fields.length > 0 ? fields : null;
+      }
+      function setFieldsInModal(fields) {
+        clearFieldsList();
+        if (fields && Array.isArray(fields)) {
+          fields.forEach((f) =>
+            addField(
+              f.label,
+              f.value,
+              JSON.stringify(f.tooltipData || [], null, 2),
+              JSON.stringify(f.tableData || [], null, 2)
+            )
+          );
+        }
+      }
+      function setFieldsInModal(fields) {
+        clearFieldsList();
+        if (fields && Array.isArray(fields)) {
+          fields.forEach((f) =>
+            addField(f.label, f.value, f.tooltipData || [], f.tableData || [])
+          );
+        }
+      }
+
+      function resetStatModal() {
+        document.getElementById("statForm").reset();
+        clearFieldsList();
+        document.getElementById("departmentSelect").disabled = false;
+        document.querySelector("#statModal .modal-title").textContent =
+          "Add Statistic";
+        document.getElementById("statSubmitBtn").textContent = "Add";
+        editingStat = null;
+      }
+      document
+        .getElementById("statModal")
+        .addEventListener("hidden.bs.modal", resetStatModal);
+
+      document.getElementById("statForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const dept = departmentSelect.value;
+        const name = document.getElementById("statName").value;
+        const fields = getFieldsFromModal();
+        if (!fields || fields.length < 1)
+          return alert("Please add at least one labeled statistic.");
+        const total = fields.reduce((sum, f) => sum + f.value, 0);
+        // const fields = getFieldsFromModal();
+        // if (fields) {
+        //   // sum of field values should not exceed total
+        //   const sum = fields.reduce((a, b) => a + b.value, 0);
+        //   if (sum > total)
+        //     return alert("Sum of field values cannot exceed Total.");
+        // }
+        if (editingStat) {
+          // Edit existing
+          const { dept: editDept, index } = editingStat;
+          departmentData[editDept][index] = {
+            name,
+            total,
+            current,
+            ...(fields ? { fields } : {}),
+          };
+          updateHomeChart(editDept);
+          if (topBarTitle.textContent.endsWith(editDept))
+            renderDepartmentStats(editDept);
+        } else {
+          // Add new
+          departmentData[dept].push({
+            name,
+            total,
+            current,
+            ...(fields ? { fields } : {}),
+          });
+          if (
+            homeSelectedStats[dept] === null ||
+            typeof homeSelectedStats[dept] === "undefined"
+          )
+            homeSelectedStats[dept] = departmentData[dept].length - 1;
+          updateHomeChart(dept);
+        }
+        bootstrap.Modal.getInstance(
+          document.getElementById("statModal")
+        ).hide();
+        e.target.reset();
+      });
+
+      document.getElementById("targetForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const dept = targetDepartment.value;
+        const title = document.getElementById("targetTitle").value;
+        const date = document.getElementById("targetDate").value;
+        targets[dept].push({ title, date });
+        bootstrap.Modal.getInstance(
+          document.getElementById("targetModal")
+        ).hide();
+        e.target.reset();
+        if (topBarTitle.textContent.endsWith(dept)) renderDepartmentStats(dept);
+      });
+
+      function renderDepartmentStats(dept) {
+        document.getElementById("chartDetailsSection").innerHTML = "";
+        departmentStats.innerHTML = "";
+        departmentStats.innerHTML =
+          "<h4 class='mb-3'>Department Headcount</h4>";
+        departmentStats.innerHTML +=
+          '<div class="d-flex align-items-center"><div class="d-flex align-items-center me-4"><span class="mx-2">Total headcount:</span><span>36</span></div><div class="d-flex align-items-center me-4"><i class="bi bi-person-fill fs-4"></i><span class="mx-2">Regular:</span><span>30</span></div><div class="d-flex align-items-center me-4"><i class="bi bi-person-fill fs-4"></i><span class="mx-2">Contractual:</span><span>5</span></div><div class="d-flex align-items-center"><i class="bi bi-person-fill fs-4"></i><span class="mx-2">YP:</span><span>1</span></div></div>';
+        departmentStats.innerHTML +=
+          "<h4 class='mb-3'>Key Issues / Targets</h4><p><i>Click on the label to view issues</i></p>";
+        departmentData[dept].forEach((stat, index) => {
+          const colorIndex = departments.indexOf(dept);
+          const col = document.createElement("div");
+          col.className = "col-12 col-md-4 mx-auto mb-3";
+          // Compose chart data
+          let chartLabels, chartData, chartColors;
+          if (
+            stat.fields &&
+            Array.isArray(stat.fields) &&
+            stat.fields.length > 0
+          ) {
+            chartLabels = stat.fields.map((f) => f.label);
+            chartData = stat.fields.map((f) => f.value);
+            chartColors = chartLabels.map(
+              (_, i) => vibrantColors[(colorIndex + i) % vibrantColors.length]
+            );
+            // chartExtras = stat.fields.map((f) => f.extra || "");
+            chartColors = chartLabels.map(
+              (_, i) => vibrantColors[(colorIndex + i) % vibrantColors.length]
+            );
+            chartTooltipData = stat.fields.map((f) => f.tooltipData || []);
+            chartTableData = stat.fields.map((f) => f.tableData || []);
+          } else {
+            chartLabels = ["Current", "Remaining"];
+            chartData = [stat.current, stat.total - stat.current];
+            chartColors = [vibrantColors[colorIndex], "#dee2e6"];
+          }
+          col.innerHTML = `
+                        <div class="chart-card ${
+                          index === homeSelectedStats[dept]
+                            ? "selected-stat"
+                            : ""
+                        }">
+                          <canvas id="dept-chart-${dept}-${index}" width="150" height="150"></canvas>
+                          <div class="chart-center-label" id="dept-label-${dept}-${index}"></div>
+                          <div class="chart-title">${stat.name}</div>
+                          <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editStat('${dept}', ${index})"><i class="bi bi-pencil"></i> Edit</button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); selectForHome('${dept}', ${index});"><i class="bi bi-house"></i> Show on Home</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteStat('${dept}', ${index})"><i class="bi bi-trash"></i> Delete</button>
+                          </div>
+                        </div>
+                      `;
+          departmentStats.appendChild(col);
+          // Chart click to select for home
+          col.querySelector("canvas").onclick = () => {
+            renderDepartmentStats(dept);
+            showChartDetails(dept, index);
+          };
+          const ctx = document
+            .getElementById(`dept-chart-${dept}-${index}`)
+            .getContext("2d");
+          if (stat.fields && stat.fields.length > 0 && index === 0) {
+            const firstField = stat.fields[0];
+            showTableForLabel(
+              dept,
+              stat.name,
+              firstField.label,
+              firstField.tableData || []
+            );
+          }
+
+          const chartInstance = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+              labels: chartLabels,
+              datasets: [
+                {
+                  data: chartData,
+                  backgroundColor: chartColors,
+                  tooltipData: chartTooltipData,
+                  tableData: chartTableData,
+                },
+              ],
+            },
+            options: {
+              cutout: "70%",
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: function (context) {
+                      const index = context.dataIndex;
+                      const label = context.chart.data.labels[index];
+                      const value = context.chart.data.datasets[0].data[index];
+                      const tooltipDataArray =
+                        context.chart.data.datasets[0].tooltipData || [];
+                      const tooltipData = tooltipDataArray[index] || [];
+
+                      const lines = [];
+                      tooltipData.forEach((item) => {
+                        lines.push(`${item.key}: ${item.value}`);
+                      });
+                      return lines;
+                    },
+                  },
+                },
+              },
+            },
+          });
+          document.getElementById(`dept-chart-${dept}-${index}`).onclick =
+            function (evt) {
+              const points = chartInstance.getElementsAtEventForMode(
+                evt,
+                "nearest",
+                { intersect: true },
+                true
+              );
+              if (points.length) {
+                const clickedIndex = points[0].index;
+                const clickedLabel = chartInstance.data.labels[clickedIndex];
+                const clickedTableData =
+                  chartInstance.data.datasets[0].tableData[clickedIndex] || [];
+
+                document
+                  .getElementById("chartDetailsSection")
+                  .scrollIntoView({ behavior: "smooth", block: "start" });
+
+                const dropdown = document.getElementById(
+                  `projectDropdown-${dept}`
+                );
+                if (dropdown) {
+                  dropdown.value = clickedLabel;
+                  dropdown.dispatchEvent(new Event("change"));
+                }
+              }
+            };
+
+          // Center label: total if fields, else current/total
+          let total = stat.fields.reduce((sum, f) => sum + f.value, 0);
+
+          // Department chart center label
+          if (dept === "Energy Mangement") {
+            document.getElementById(
+              `dept-label-${dept}-${index}`
+            ).innerHTML = `${total}<br>MW`;
+          } else if (dept === "Contracts & Procurement") {
+            total /= 2;
+            document.getElementById(
+              `dept-label-${dept}-${index}`
+            ).innerHTML = `${total}MW<br>tenders floated`;
+          } else {
+            document.getElementById(
+              `dept-label-${dept}-${index}`
+            ).innerHTML = `${total}<br>MW`;
+          }
+        });
+        const dropdownId = `projectDropdown-${dept}`;
+        const detailsId = `projectDetails-${dept}`;
+        const issuesId = `projectIssues-${dept}`;
+
+        const dropdownOptions = stat.fields
+          .map((f) => `<option value="${f.label}">${f.label}</option>`)
+          .join("");
+
+        const projectTabHTML = `
+        <div class="mt-3">
+          <label for="${dropdownId}" class="form-label">Select Project:</label>
+          <select class="form-select form-select-sm" id="${dropdownId}">
+            ${dropdownOptions}
+          </select>
+
+          <ul class="nav nav-tabs mt-3" id="tabs-${dept}" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#${detailsId}" type="button" role="tab">Details</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#${issuesId}" type="button" role="tab">Issues</button>
+            </li>
+          </ul>
+
+          <div class="tab-content mt-2">
+            <div class="tab-pane fade show active" id="${detailsId}" role="tabpanel"></div>
+            <div class="tab-pane fade" id="${issuesId}" role="tabpanel"></div>
+          </div>
+        </div>
+      `;
+        departmentStats.innerHTML += projectTabHTML;
+      }
+
+      function goToDepartmentTab(departmentName) {
+        document.querySelectorAll(".tab-button").forEach((tab) => {
+          if (tab.dataset.tab === departmentName) {
+            tab.click();
+          }
+        });
+      }
+      function showTableForLabel(dept, statName, label, tableData = []) {
+        const section = document.getElementById("chartDetailsSection");
+
+        const stat = departmentData[dept].find((s) => s.name === statName);
+        if (!stat || !stat.fields) return;
+
+        // Build dropdown
+        let html = `
+          <div class="mb-2">
+            <select class="form-select" id="projectDropdown-${dept}">
+        `;
+
+        stat.fields.forEach((f) => {
+          html += `<option value="${f.label}" ${
+            f.label === label ? "selected" : ""
+          }>${f.label}</option>`;
+        });
+
+        html += `</select></div>`;
+
+        // Tabs UI
+        html += `
+  <ul class="nav nav-tabs w-100 flex-nowrap overflow-auto mt-2" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-pane-contract-documents" type="button" role="tab">
+        Contract Documents
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pane-dpr" type="button" role="tab">
+        Daily Progress Report
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pane-mpr" type="button" role="tab">
+        Monthly Progress Report
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pane-contractor" type="button" role="tab">
+        Correspondences with Contractor
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pane-stakeholders" type="button" role="tab">
+        Correspondences with other stakeholders
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pane-tariff" type="button" role="tab">
+        Tariff Petition
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content p-2 border border-top-0 rounded-bottom">
+    <div class="tab-pane fade show active" id="tab-pane-contract-documents" role="tabpanel"></div>
+    <div class="tab-pane fade" id="tab-pane-dpr" role="tabpanel"></div>
+    <div class="tab-pane fade" id="tab-pane-mpr" role="tabpanel"></div>
+    <div class="tab-pane fade" id="tab-pane-contractor" role="tabpanel"></div>
+    <div class="tab-pane fade" id="tab-pane-stakeholders" role="tabpanel"></div>
+    <div class="tab-pane fade" id="tab-pane-tariff" role="tabpanel"></div>
+  </div>
+`;
+
+        section.innerHTML = html;
+
+        // Fill tabs with selected field data
+        function renderTabsForProject(label) {
+          const field = stat.fields.find((f) => f.label === label);
+          if (!field) return;
+
+          // --- Contract Documents ---
+          const contractDocumentsTab = document.getElementById(
+            "tab-pane-contract-documents"
+          );
+          if (field.tableData && field.tableData.length > 0) {
+            let contractDocumentsTable = `
+            <table class="target-table mb-0">
+              <thead>
+                <tr>
+                  <th>S.No.</th>
+                  <th>Document Name</th>
+                  <th>Uploaded On</th>
+                  <th>View Document</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>Important Document</td>
+                  <td>2025-07-31</td>
+                  <td><a href="/" target="_blank">Click here to View Document</a></td>
+                </tr>
+              </tbody>
+            </table>
+          `;
+            contractDocumentsTab.innerHTML = contractDocumentsTable;
+          } else {
+            contractDocumentsTab.innerHTML = `<em>No contract documents available</em>`;
+          }
+
+          // --- Daily Progress Report ---
+          const dprTab = document.getElementById("tab-pane-dpr");
+          dprTab.innerHTML = `
+          <table class="target-table mb-0">
+            <thead>
+              <tr>
+                <th>S.No.</th>
+                <th>Dated</th>
+                <th>View Document</th>
+                <th>Uploaded On</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>2025-07-31</td>
+                <td><a href="/" target="_blank">Click here to View Document</a></td>
+                <td>Important Document</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+
+          // --- Monthly Progress Report ---
+          const mprTab = document.getElementById("tab-pane-mpr");
+          mprTab.innerHTML = `
+          <table class="target-table mb-0">
+            <thead>
+              <tr>
+                <th>S.No.</th>
+                <th>Dated</th>
+                <th>View Document</th>
+                <th>Uploaded On</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>2025-07-31</td>
+                <td><a href="/" target="_blank">Click here to View Document</a></td>
+                <td>Important Document</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+
+          // --- Correspondences with Contractor ---
+          const contractorTab = document.getElementById("tab-pane-contractor");
+          contractorTab.innerHTML = `
+          <table class="target-table mb-0">
+            <thead>
+              <tr>
+                <th>S.No.</th>
+                <th>Subject</th>
+                <th>Dated</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Uploaded On</th>
+                <th>View Document</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>Request for Revised Timeline</td>
+                <td>2025-06-15</td>
+                <td>ABC Constructions Ltd.</td>
+                <td>SECI Project Division</td>
+                <td>2025-07-01</td>
+                <td><a href="/" target="_blank">Click here to View Document</a></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+          // --- Correspondences with other stakeholders ---
+          const stakeholdersTab = document.getElementById(
+            "tab-pane-stakeholders"
+          );
+          stakeholdersTab.innerHTML = `
+          <table class="target-table mb-0">
+            <thead>
+              <tr>
+                <th>S.No.</th>
+                <th>Subject</th>
+                <th>Dated</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Uploaded On</th>
+                <th>View Document</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>Request for Revised Timeline</td>
+                <td>2025-06-15</td>
+                <td>ABC Constructions Ltd.</td>
+                <td>SECI Project Division</td>
+                <td>2025-07-01</td>
+                <td><a href="/" target="_blank">Click here to View Document</a></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+
+          // --- Tariff Petition ---
+          const tariffTab = document.getElementById("tab-pane-tariff");
+          tariffTab.innerHTML = `<em>Tariff petition not uploaded</em>`;
+        }
+
+        // Initial load
+        renderTabsForProject(label);
+
+        // Dropdown change event
+        document
+          .getElementById(`projectDropdown-${dept}`)
+          .addEventListener("change", (e) => {
+            renderTabsForProject(e.target.value);
+          });
+      }
+      function renderDepartmentTable(dept) {
+        const tableData = departmentTables[dept];
+        if (!tableData) return;
+
+        let html = `<table class="target-table"><thead><tr>`;
+        tableData.columns.forEach((col) => {
+          html += `<th>${col}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+        tableData.rows.forEach((row) => {
+          html += `<tr>`;
+          row.forEach((cell) => {
+            html += `<td>${cell}</td>`;
+          });
+          html += `</tr>`;
+        });
+        html += `</tbody></table>`;
+
+        // document.getElementById("tableContainer").innerHTML = html;
+      }
+
+      function editTable(dept) {
+        const tableData = departmentTables[dept];
+        const cols = prompt(
+          "Enter column names separated by commas:",
+          tableData.columns.join(",")
+        );
+        if (cols === null) return;
+        tableData.columns = cols.split(",").map((c) => c.trim());
+
+        const rows = prompt(
+          "Enter rows as semi-colon separated lines. Each row comma separated values:\nExample:\nTask1,Done;Task2,Pending",
+          tableData.rows.map((r) => r.join(",")).join(";")
+        );
+        if (rows === null) return;
+        tableData.rows = rows
+          .split(";")
+          .map((r) => r.split(",").map((c) => c.trim()));
+
+        renderDepartmentTable(dept);
+      }
+
+      function showChartDetails(dept, index) {
+        const stat = departmentData[dept][index];
+        const detailsSection = document.getElementById("chartDetailsSection");
+
+        let html = `
+                                <h4>Details for: ${stat.name}</h4>
+                                <ul class="list-group mb-3">
+                                  <li class="list-group-item"><strong>Total:</strong> ${stat.fields.reduce(
+                                    (sum, f) => sum + f.value,
+                                    0
+                                  )}</li>
+                                `;
+
+        if (stat.fields && stat.fields.length > 0) {
+          html += `<li class="list-group-item"><strong>Breakdown:</strong><ul>`;
+          stat.fields.forEach((f) => {
+            html += `<li>${f.label}: ${f.value}</li>`;
+          });
+          html += `</ul></li>`;
+        }
+
+        html += `</ul>`;
+
+        detailsSection.innerHTML = html;
+      }
+      function getTargetStatus(targetDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const target = new Date(targetDate);
+        target.setHours(0, 0, 0, 0);
+        const diffTime = target - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+          return {
+            text: `Overdue by ${Math.abs(diffDays)} days`,
+            class: "overdue",
+          };
+        } else if (diffDays === 0) {
+          return { text: "Due Today", class: "upcoming" };
+        } else {
+          return { text: "Upcoming", class: "upcoming" };
+        }
+      }
+
+      function selectForHome(dept, index) {
+        homeSelectedStats[dept] = index;
+        updateHomeChart(dept);
+      }
+      function updateHomeChart(dept) {
+        const chart = charts[dept];
+        if (!departmentData[dept] || departmentData[dept].length === 0) return;
+
+        let index = homeSelectedStats[dept];
+        if (typeof index !== "number" || index >= departmentData[dept].length) {
+          index = 0; // fallback to first available stat
+          homeSelectedStats[dept] = 0;
+        }
+
+        const stat = departmentData[dept][index];
+        if (!stat || !stat.fields) return;
+
+        chart.data.labels = stat.fields.map((f) => f.label);
+        chart.data.datasets[0].extras = stat.fields.map((f) => f.extra || []);
+        chart.data.datasets[0].data = stat.fields.map((f) => f.value);
+        chart.data.datasets[0].backgroundColor = stat.fields.map(
+          (_, i) =>
+            vibrantColors[
+              (departments.indexOf(dept) + i) % vibrantColors.length
+            ]
+        );
+
+        let total = stat.fields.reduce((sum, f) => sum + f.value, 0);
+        // Home chart center label
+        if (dept === "Energy Mangement") {
+          document.getElementById(`label-${dept}`).innerHTML = `${total}<br>MW`;
+        } else if (dept === "Contracts & Procurement") {
+          total /= 2; // Special case for Contracts & Procurement
+          document.getElementById(
+            `label-${dept}`
+          ).innerHTML = `${total}MW<br>tenders floated`;
+        } else {
+          document.getElementById(`label-${dept}`).textContent = total;
+          document.getElementById(`label-${dept}`).innerHTML = `${total}<br>MW`;
+        }
+        document.getElementById(`title-${dept}`).textContent = stat.name;
+        chart.update();
+      }
+      function editStat(dept, index) {
+        const stat = departmentData[dept][index];
+        editingStat = { dept, index };
+        document.getElementById("departmentSelect").value = dept;
+        document.getElementById("departmentSelect").disabled = true;
+        document.getElementById("statName").value = stat.name;
+        setFieldsInModal(stat.fields);
+        document.querySelector("#statModal .modal-title").textContent =
+          "Edit Statistic";
+        document.getElementById("statSubmitBtn").textContent = "Save";
+        const modal = new bootstrap.Modal(document.getElementById("statModal"));
+        modal.show();
+      }
+
+      function deleteStat(dept, index) {
+        if (!confirm("Are you sure you want to delete this statistic?")) return;
+        departmentData[dept].splice(index, 1);
+        // Adjust homeSelectedStats if needed
+        if (homeSelectedStats[dept] === index) {
+          homeSelectedStats[dept] = departmentData[dept].length > 0 ? 0 : null;
+        } else if (homeSelectedStats[dept] > index) {
+          homeSelectedStats[dept]--;
+        }
+        updateHomeChart(dept);
+        renderDepartmentStats(dept);
+      }
+
+      function editDepartmentStat(dept, index) {
+        const regular =
+          parseInt(document.getElementById(`regular-${dept}-${index}`).value) ||
+          0;
+        const contractual =
+          parseInt(
+            document.getElementById(`contractual-${dept}-${index}`).value
+          ) || 0;
+        const yp =
+          parseInt(document.getElementById(`yp-${dept}-${index}`).value) || 0;
+
+        // Update the department data
+        departmentData[dept][index].regular = regular;
+        departmentData[dept][index].contractual = contractual;
+        departmentData[dept][index].yp = yp;
+
+        alert(
+          `Updated statistics for ${dept}: Regular=${regular}, Contractual=${contractual}, YP=${yp}`
+        );
+      }
+      function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+      document.getElementById("collapseBtn").addEventListener("click", () => {
+        document.getElementById("sidebar").classList.toggle("collapsed");
+      });
+
+      // Make addField globally accessible for modal
+      window.addField = addField;
+      window.editStat = editStat;
+      window.deleteStat = deleteStat;
+    </script>
+  </body>
+</html>

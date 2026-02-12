@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Correspondences</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .tab-content {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0">View Correspondences</h2>
+      <a href="/home.html" class="btn btn-secondary">Back to Home</a>
+    </div>
+
+    <!-- <div class="mb-3">
+      <label for="statisticDropdown" class="form-label">Select Statistic</label>
+      <select id="statisticDropdown" class="form-select"></select>
+    </div> -->
+
+    <div class="mb-3">
+      <h4 id="statisticTitle" class="mb-1"></h4>
+      <h5 id="entityTitle" class="text-muted"></h5>
+    </div>
+
+    <ul class="nav nav-tabs" id="dynamicTabs" role="tablist"></ul>
+    <div class="tab-content" id="dynamicTabContent"></div>
+
+    <script src="./js/main.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const params = new URLSearchParams(window.location.search);
+        const dept_id = params.get("dept_id");
+        const statistic_id = params.get("statistic_id");
+        const entity_id = params.get("entity_id");
+        const statisticDropdown = document.getElementById("statisticDropdown");
+
+        Promise.all([
+          authFetch(`/api/data/statistics/${dept_id}`),
+          authFetch(`/api/data/entities/${dept_id}/${statistic_id}`),
+        ])
+          .then(([statsRes, entitiesRes]) =>
+            Promise.all([statsRes.json(), entitiesRes.json()])
+          )
+          .then(([stats, entities]) => {
+            const stat = stats.find((s) => s.statistic_id == statistic_id);
+            const entity = entities.find((e) => e.entity_id == entity_id);
+
+            document.getElementById("statisticTitle").innerText =
+              stat?.statistic_name || "Statistic";
+            document.getElementById("entityTitle").innerText =
+              entity?.entity_name || "Entity";
+
+            loadTabsForStatistic(statistic_id, entity_id);
+          });
+
+        statisticDropdown.addEventListener("change", (e) => {
+          loadTabsForStatistic(e.target.value);
+        });
+
+        function loadTabsForStatistic(statistic_id) {
+          authFetch(
+            `/api/data/documents/grouped/${dept_id}/${statistic_id}/${entity_id}`
+          )
+            .then((res) => res.json())
+            .then((data) => {
+              console.log(data);
+              populateTabs(data, dept_id, statistic_id, entity_id);
+            });
+        }
+
+        function populateTabs(data, dept_id, statistic_id, entity_id) {
+          const tabList = document.getElementById("dynamicTabs");
+          const tabContent = document.getElementById("dynamicTabContent");
+
+          tabList.innerHTML = "";
+          tabContent.innerHTML = "";
+
+          const types = [
+            { id: "cdoc", label: "Contract Documents", source: "documents" },
+            { id: "dpr", label: "Daily Progress Report", source: "documents" },
+            {
+              id: "mpr",
+              label: "Monthly Progress Report",
+              source: "documents",
+            },
+            { id: "tp", label: "Tariff Petition", source: "documents" },
+            {
+              id: "cc",
+              label: "Correspondences with Contractors",
+              source: "correspondences",
+              filter: "contractor",
+            },
+            {
+              id: "sc",
+              label: "Correspondences with other Stakeholders",
+              source: "correspondences",
+              filter: "other",
+            },
+            {
+              id: "is",
+              label: "Key Issues",
+              source: "issues",
+            },
+          ];
+
+          types.forEach((type, index) => {
+            const tabId = `tab-${type.id}`;
+            const isActive = index === 0 ? "active" : "";
+            const isShow = index === 0 ? "show active" : "";
+
+            const tabButton = document.createElement("li");
+            tabButton.className = "nav-item";
+            tabButton.innerHTML = `
+      <button class="nav-link ${isActive}" id="${tabId}-tab" data-bs-toggle="tab" data-bs-target="#${tabId}" type="button" role="tab">
+        ${type.label}
+      </button>`;
+            tabList.appendChild(tabButton);
+
+            const pane = document.createElement("div");
+            pane.className = `tab-pane fade ${isShow}`;
+            pane.id = tabId;
+            pane.role = "tabpanel";
+
+            let items = [];
+            if (type.source === "documents") {
+              items = (data.documents || []).filter(
+                (doc) =>
+                  doc.doc_type === type.id &&
+                  doc.statistic_id == statistic_id &&
+                  doc.entity_id == entity_id
+              );
+            } else if (type.source === "correspondences") {
+              items = (data.correspondences || []).filter(
+                (c) =>
+                  c.correspondence_type === type.filter &&
+                  c.statistic_id == statistic_id &&
+                  c.entity_id == entity_id
+              );
+            } else if (type.source === "issues") {
+              items = (data.issues || []).filter(
+                (issue) =>
+                  issue.statistic_id == statistic_id &&
+                  issue.entity_id == entity_id
+              );
+            }
+
+            // Add "+ Add ..." button
+            const addButton = document.createElement("button");
+            addButton.className = "btn btn-sm btn-success mb-2";
+            addButton.innerText = `+ Add ${type.label}`;
+            addButton.onclick = () => {
+              if (type.label === "Daily Progress Report") {
+                window.location.href = `/add_dpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Monthly Progress Report") {
+                window.location.href = `/add_mpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Contract Documents") {
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Correspondences with Contractors") {
+                window.location.href = `/add_correspondence_contractor.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (
+                type.label === "Correspondences with other Stakeholders"
+              ) {
+                window.location.href = `/add_correspondence_other.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Key Issues") {
+                window.location.href = `/add_issues.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else {
+                alert("Coming Soon...");
+              }
+            };
+
+            pane.appendChild(addButton);
+
+            // Add the data table
+            const table = buildDocumentTable(items, type.id);
+            table.className = "table table-bordered";
+            pane.appendChild(table);
+            tabContent.appendChild(pane);
+          });
+        }
+
+        function buildDocumentTable(items, type) {
+          const table = document.createElement("table");
+          table.className = "table table-bordered";
+          const thead = document.createElement("thead");
+          const tbody = document.createElement("tbody");
+
+          let columns = "";
+          if (type === "is") {
+            columns = `
+            <tr>
+              <th class="sortable">S. No.</th>
+              <th class="sortable">Issue Description</th>
+              <th class="sortable">Issue Pertaining To</th>
+              <th class="sortable">Issue Date</th>
+              <th>View Issue Document</th>
+              <th class="sortable">Uploaded On</th>
+              <th>action</th>
+            </tr>`;
+          } else if (["dpr", "mpr", "cdoc", "tp"].includes(type)) {
+            columns = `
+              <tr>
+              <th class="sortable">S. No.</th>
+              <th class="sortable">Document Name</th>
+              <th class="sortable">Dated</th>
+              <th>View Document</th>
+              <th class="sortable">Uploaded On</th>
+              <th></th>
+              </tr>`;
+          } else {
+            columns = `
+              <tr>
+  <th class="sortable">S. No.</th>
+  <th class="sortable">Subject</th>
+  <th class="sortable">Dated</th>
+  <th class="sortable">From</th>
+  <th class="sortable">To</th>
+  <th class="sortable">Uploaded On</th>
+  <th>View</th>
+  <th></th>
+</tr>
+            `;
+          }
+
+          thead.innerHTML = columns;
+
+          let index = 1;
+          items.forEach((item) => {
+            const tr = document.createElement("tr");
+
+            if (type === "is") {
+              tr.innerHTML = `
+              <td>${index}</td>
+              <td>${item.issue_description}</td>
+              <td>${item.issue_pertaining_to}</td>
+<td data-sort-value="${item.issue_date}">
+  ${formatToISTDate(item.issue_date)}
+</td>              <td>
+                ${
+                  item.issue_doc_path
+                    ? `<a href="${item.issue_doc_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
+                    : `<button class="btn btn-sm btn-secondary" disabled>No Document</button>`
+                }
+              </td>
+<td data-sort-value="${item.createdAt}">
+  ${formatToISTDate(item.createdAt)}
+</td>              <td><button class="btn btn-danger btn-sm" data-is-id="${
+                item.issue_id
+              }" onclick="deleteIssue(event)">Delete</button></td>`;
+            } else if (["dpr", "mpr", "cdoc", "tp"].includes(type)) {
+              tr.innerHTML = `
+              <td>${index}</td>
+              <td>${item.doc_name}</td>
+              <td data-sort-value="${item.doc_date}">
+  ${formatToISTDate(item.doc_date)}
+</td>
+
+              <td><a href="${
+                item.doc_path
+              }" target="_blank" class="btn btn-sm btn-outline-primary">View</a></td>
+<td data-sort-value="${item.createdAt}">
+  ${formatToISTDate(item.createdAt)}
+</td>              <td><button class="btn btn-danger btn-sm" data-doc-id="${
+                item.doc_id
+              }" onclick="deleteDocument(event)">Delete</button></td>`;
+            } else {
+              tr.innerHTML = `
+        <td>${index}</td>
+        <td>${item.subject || ""}</td>
+<td data-sort-value="${item.correspondence_date}">
+  ${formatToISTDate(item.correspondence_date)}
+</td>        <td>${item.from || ""}</td>
+        <td>${item.to || ""}</td>
+<td data-sort-value="${item.createdAt}">
+  ${formatToISTDate(item.createdAt)}
+</td>        <td><a href="${
+                item.doc_path
+              }" target="_blank" class="btn btn-sm btn-outline-primary">View</a></td>
+        <td><button class="btn btn-danger btn-sm" data-corr-id="${
+          item.correspondence_id
+        }" onclick="deleteCorrespondence(event)">Delete</button></td>`;
+            }
+
+            tbody.appendChild(tr);
+            index++;
+          });
+
+          table.appendChild(thead);
+          table.appendChild(tbody);
+          return table;
+        }
+      });
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      function formatToISTDate(dateString) {
+        const date = new Date(dateString);
+
+        // Convert to IST (UTC+5:30)
+        const istOffset = 5.5 * 60 * 60000; // in milliseconds
+        const istDate = new Date(date.getTime() + istOffset);
+
+        const day = String(istDate.getUTCDate()).padStart(2, "0");
+        const month = String(istDate.getUTCMonth() + 1).padStart(2, "0"); // Months are 0-based
+        const year = istDate.getUTCFullYear();
+
+        return `${day}/${month}/${year}`;
+      }
+
+      function deleteIssue(event) {
+        const button = event.target;
+        const issue_id = button.getAttribute("data-is-id");
+
+        if (!confirm("Are you sure you want to delete this issue")) return;
+
+        authFetch(`/api/data/issues/${issue_id}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to delete issue.");
+            button.closest("tr")?.remove();
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Error deleting issue.");
+          });
+      }
+
+      function deleteCorrespondence(event) {
+        const button = event.target;
+        const correspondence_id = button.getAttribute("data-corr-id");
+
+        console.log(correspondence_id);
+
+        if (!confirm("Are you sure you want to delete this correspondence?"))
+          return;
+
+        authFetch(`/api/data/correspondences/${correspondence_id}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to delete document.");
+            button.closest("tr")?.remove();
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Error deleting document.");
+          });
+      }
+
+      function deleteDocument(event) {
+        const button = event.target;
+        const doc_id = button.getAttribute("data-doc-id");
+
+        if (!confirm("Are you sure you want to delete this document?")) return;
+
+        authFetch(`/api/data/documents/${doc_id}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to delete document.");
+            button.closest("tr")?.remove();
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Error deleting document.");
+          });
+      }
+    </script>
+
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/0.8.0/Sortable.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

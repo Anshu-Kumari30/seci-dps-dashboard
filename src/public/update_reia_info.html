@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Update REIA Document</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding: 20px;
+      }
+      form {
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      label {
+        font-size: 14px;
+        margin-bottom: 8px;
+        display: block;
+      }
+      input[type="file"],
+      input[type="date"] {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background-color: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Update REIA Document</h1>
+    <form id="updateForm">
+      <div>
+        <label for="reia_doc_type">REIA Document Type</label>
+        <input type="text" id="reia_doc_type" name="reia_doc_type" disabled />
+      </div>
+
+      <div class="mb-3">
+        <label for="docFile" class="form-label">Upload Document</label>
+        <small class="form-text text-muted">
+          Maximum file size allowed: <strong>50 MB</strong>.
+        </small>
+        <input
+          type="file"
+          class="form-control"
+          id="docFile"
+          name="doc_file"
+          required
+        />
+      </div>
+
+      <div>
+        <label for="last_updated_on">Last Updated On</label>
+        <input
+          type="date"
+          id="last_updated_on"
+          name="last_updated_on"
+          required
+        />
+      </div>
+
+      <button type="submit">Update Document</button>
+    </form>
+
+    <script>
+      // Get query parameter from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const reia_doc_type = urlParams.get("reia_doc_type");
+
+      // Set the reia_doc_type input field value
+      if (reia_doc_type) {
+        document.getElementById("reia_doc_type").value = reia_doc_type;
+      }
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      // Handle form submission
+      document
+        .getElementById("updateForm")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const formData = new FormData();
+          const fileInput = document.getElementById("docFile");
+          const dateInput = document.getElementById("last_updated_on");
+          const reiaDocTypeInput = document.getElementById("reia_doc_type");
+
+          formData.append("reia_doc_type", reiaDocTypeInput.value);
+          formData.append("doc_file", fileInput.files[0]);
+          formData.append("last_updated_on", dateInput.value);
+
+          console.log(formData);
+          try {
+            authFetch("/api/data/reia/documents/update", {
+              method: "POST",
+              body: formData,
+            }).then(() => {
+              alert("Document updated successfully!");
+              window.location.href = "/home.html";
+            });
+          } catch (error) {
+            console.error("Error during the update request:", error);
+            alert("An error occurred while updating the document.");
+          }
+        });
+    </script>
+  </body>
+</html>

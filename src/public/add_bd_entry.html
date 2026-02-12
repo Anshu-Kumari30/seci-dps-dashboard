@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Business Development Entry</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .form-container {
+        max-width: 700px;
+        margin: 0 auto;
+        margin-top: 40px;
+      }
+    </style>
+  </head>
+  <body class="p-4">
+    <div class="form-container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Add Business Development Entry</h2>
+        <a href="/business_development_external.html" class="btn btn-secondary"
+          >Back</a
+        >
+      </div>
+
+      <form id="bdForm">
+        <div class="mb-3">
+          <label for="business_partner" class="form-label"
+            >Business Partner</label
+          >
+          <input
+            type="text"
+            class="form-control"
+            id="business_partner"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="location" class="form-label">Location</label>
+          <input type="text" class="form-control" id="location" required />
+        </div>
+
+        <div class="mb-3">
+          <label for="action_plan" class="form-label">Action Plan</label>
+          <input type="text" class="form-control" id="action_plan" required />
+        </div>
+
+        <div class="mb-3">
+          <label for="action_pending_with" class="form-label"
+            >Action Pending With</label
+          >
+          <input
+            type="text"
+            class="form-control"
+            id="action_pending_with"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="anticipated_capacity" class="form-label"
+            >Anticipated Capacity</label
+          >
+          <input
+            type="text"
+            class="form-control"
+            id="anticipated_capacity"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="target" class="form-label">Target</label>
+          <input type="text" class="form-control" id="target" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+
+    <script>
+      document
+        .getElementById("bdForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const data = {
+            business_partner: document
+              .getElementById("business_partner")
+              .value.trim(),
+            location: document.getElementById("location").value.trim(),
+            action_plan: document.getElementById("action_plan").value.trim(),
+            action_pending_with: document
+              .getElementById("action_pending_with")
+              .value.trim(),
+            anticipated_capacity: document
+              .getElementById("anticipated_capacity")
+              .value.trim(),
+            target: document.getElementById("target").value.trim(),
+          };
+
+          authFetch("/api/data/bd/entry/add", {
+            method: "POST",
+            body: JSON.stringify(data),
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("Failed to add BD entry.");
+              alert("Business Development entry added successfully.");
+              window.location.href = "/business_development_external.html";
+            })
+            .catch((err) => {
+              console.error(err);
+              alert("Error adding Business Development entry.");
+            });
+        });
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Add User</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container mt-5">
+      <h3 class="mb-4">Add New User</h3>
+      <!-- ⚠️ Password Warning -->
+      <div class="alert alert-warning" role="alert">
+        The user will be created with a default password based on their role.
+        Make sure to inform them to change it after first login.
+      </div>
+
+      <div class="mb-3">
+        <label for="name" class="form-label">Full Name</label>
+        <input
+          type="text"
+          class="form-control"
+          id="name"
+          placeholder="Enter full name"
+          required
+        />
+      </div>
+
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input
+          type="email"
+          class="form-control"
+          id="email"
+          placeholder="Enter email"
+          required
+        />
+      </div>
+
+      <div class="mb-3">
+        <label for="role" class="form-label">Role</label>
+        <select class="form-select" id="role" required>
+          <option value="">-- Select Role --</option>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+
+      <button class="btn btn-primary" onclick="submitUser()">Add User</button>
+      <a href="/settings.html" class="btn btn-secondary ms-2"
+        >Back to Admin Panel</a
+      >
+
+      <div id="message" class="mt-4"></div>
+    </div>
+
+    <script>
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      function submitUser() {
+        const name = document.getElementById("name").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const role = document.getElementById("role").value;
+        const messageDiv = document.getElementById("message");
+        messageDiv.innerHTML = "";
+
+        if (!name || !email || !role) {
+          messageDiv.innerHTML = `<div class="alert alert-warning">All fields are required.</div>`;
+          return;
+        }
+
+        authFetch("/api/auth/users/add", {
+          method: "POST",
+          body: JSON.stringify({ name, email, role }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) {
+              messageDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            } else {
+              messageDiv.innerHTML = `<div class="alert alert-success">User added successfully!</div>`;
+              document.getElementById("name").value = "";
+              document.getElementById("email").value = "";
+              document.getElementById("role").value = "";
+            }
+          })
+          .catch((err) => {
+            console.error("Error adding user:", err);
+            messageDiv.innerHTML = `<div class="alert alert-danger">An error occurred while adding the user.</div>`;
+          });
+      }
+    </script>
+  </body>
+</html>

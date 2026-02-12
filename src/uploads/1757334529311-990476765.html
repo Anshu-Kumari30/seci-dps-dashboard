@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Other Correspondence</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    />
+  </head>
+  <body>
+    <div class="container mt-5">
+      <h1 class="mb-4">Add Other Correspondence</h1>
+      <form id="addOtherCorrespondenceForm">
+        <div class="mb-3">
+          <label for="subject" class="form-label">Subject</label>
+          <input
+            type="text"
+            class="form-control"
+            id="subject"
+            name="subject"
+            placeholder="Enter subject"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="from" class="form-label">From</label>
+          <input
+            class="form-control"
+            id="from"
+            name="from"
+            placeholder="sender@example.com"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="to" class="form-label">To</label>
+          <input
+            class="form-control"
+            id="to"
+            name="to"
+            placeholder="recipient@example.com"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="correspondence_date" class="form-label">Correspondence Date</label>
+          <input
+            type="date"
+            class="form-control"
+            id="correspondence_date"
+            name="correspondence_date"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="docFile" class="form-label">Upload Correspondence Document</label>
+          <small class="form-text text-muted">
+            Maximum file size allowed: <strong>50 MB</strong>.
+          </small>
+          <input
+            type="file"
+            class="form-control"
+            id="docFile"
+            name="doc_file"
+            required
+          />
+        </div>
+
+        <input type="hidden" id="deptId" name="dept_id" />
+        <input type="hidden" id="statisticId" name="statistic_id" />
+        <input type="hidden" id="entityId" name="entity_id" />
+        <input type="hidden" id="correspondenceType" name="correspondence_type" value="other" />
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const deptId = urlParams.get("dept_id");
+      const statisticId = urlParams.get("statistic_id");
+      const entityId = urlParams.get("entity_id")
+
+      document.getElementById("deptId").value = deptId;
+      document.getElementById("statisticId").value = statisticId;
+      document.getElementById("entityId").value = entityId;
+
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      document
+        .getElementById("addOtherCorrespondenceForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+
+          try {
+         
+            const response = await authFetch("/api/data/correspondences/add", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error("Failed to add other correspondence.");
+            }
+
+            alert("Other correspondence added successfully!");
+            window.location.href =  `/external.html?dept_id=${deptId}&statistic_id=${statisticId}&entity_id=${entityId}`;
+          } catch (err) {
+            console.error(err);
+            alert("Error adding other correspondence.");
+          }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

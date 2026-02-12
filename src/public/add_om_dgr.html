@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Add DGR Record</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="p-4">
+    <div class="container">
+      <h2 class="mb-4">Add Daily Generation Report (DGR)</h2>
+
+      <form id="addDGRForm" novalidate>
+        <div class="mb-3">
+          <label for="date" class="form-label"
+            >Date <span class="text-danger">*</span></label
+          >
+          <input
+            type="date"
+            id="date"
+            name="days"
+            class="form-control"
+            placeholder="Enter day of month (1-31)"
+            min="1"
+            max="31"
+            required
+          />
+          <div class="form-text">Date for this record.</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="generation" class="form-label"
+            >Generation (MU) <span class="text-danger">*</span></label
+          >
+          <input
+            type="number"
+            step="0.01"
+            id="generation"
+            name="generation"
+            class="form-control"
+            placeholder="Enter generation in MU"
+            required
+          />
+          <div class="form-text">Power generated in million units (MU).</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="error_correction" class="form-label"
+            >Error Correction <span class="text-danger">*</span></label
+          >
+          <input
+            type="number"
+            step="0.01"
+            id="error_correction"
+            name="error_correction"
+            class="form-control"
+            placeholder="Enter error correction value"
+            required
+          />
+          <div class="form-text">Correction applied to generation data.</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="radiation" class="form-label"
+            >Radiation <span class="text-danger">*</span></label
+          >
+          <input
+            type="number"
+            step="0.01"
+            id="radiation"
+            name="radiation"
+            class="form-control"
+            placeholder="Enter radiation value"
+            required
+          />
+          <div class="form-text">
+            Solar radiation level (units as per your system).
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="machine_availability" class="form-label"
+            >Machine Availability (%) <span class="text-danger">*</span></label
+          >
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            id="machine_availability"
+            name="machine_availability"
+            class="form-control"
+            placeholder="Enter machine availability percentage"
+            required
+          />
+          <div class="form-text">
+            Percentage availability of machines (0-100%).
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="grid_availability" class="form-label"
+            >Grid Availability (%) <span class="text-danger">*</span></label
+          >
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            id="grid_availability"
+            name="grid_availability"
+            class="form-control"
+            placeholder="Enter grid availability percentage"
+            required
+          />
+          <div class="form-text">
+            Percentage availability of the grid (0-100%).
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="cumulative_generation" class="form-label"
+            >Cumulative Generation (MU)
+            <span class="text-danger">*</span></label
+          >
+          <input
+            type="number"
+            step="0.01"
+            id="cumulative_generation"
+            name="cumulative_generation"
+            class="form-control"
+            placeholder="Enter cumulative generation till date"
+            required
+          />
+          <div class="form-text">Total generation till this date in MU.</div>
+        </div>
+
+        <!-- <div class="mb-3">
+          <label for="cuf_till_date" class="form-label"
+            >CUF Till Date (%) <span class="text-danger">*</span></label
+          >
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            id="cuf_till_date"
+            name="cuf_till_date"
+            class="form-control"
+            placeholder="Enter CUF percentage till date"
+            required
+          />
+          <div class="form-text">
+            Capacity Utilization Factor percentage till date.
+          </div>
+        </div> -->
+
+        <button type="submit" class="btn btn-primary me-2">Submit</button>
+        <button type="button" id="backBtn" class="btn btn-secondary">
+          Back
+        </button>
+      </form>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // Parse required params
+        const params = new URLSearchParams(window.location.search);
+        const dept_id = params.get("dept_id");
+        const statistic_id = params.get("statistic_id");
+        const entity_id = params.get("entity_id");
+
+        if (!dept_id || !statistic_id || !entity_id) {
+          alert("Missing required parameters in URL. Cannot proceed.");
+          return;
+        }
+
+        const form = document.getElementById("addDGRForm");
+        const backBtn = document.getElementById("backBtn");
+
+        backBtn.addEventListener("click", () => {
+          window.location.href = `om_external.html?dept_id=${encodeURIComponent(
+            dept_id
+          )}&statistic_id=${encodeURIComponent(
+            statistic_id
+          )}&entity_id=${encodeURIComponent(entity_id)}`;
+        });
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+          }
+
+          const data = {
+            dept_id,
+            statistic_id,
+            entity_id,
+            date: new Date(form.date.value),
+            generation: Number(form.generation.value),
+            error_correction: Number(form.error_correction.value),
+            radiation: Number(form.radiation.value),
+            machine_availability: Number(form.machine_availability.value),
+            grid_availability: Number(form.grid_availability.value),
+            cumulative_generation: Number(form.cumulative_generation.value),
+            is_active: true,
+          };
+
+          try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(
+              `/api/data/om/new/${dept_id}/${statistic_id}/${entity_id}`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(data),
+              }
+            );
+
+            if (res.status === 201) {
+              alert("DGR record created successfully.");
+              window.location.href = `om_external.html?dept_id=${encodeURIComponent(
+                dept_id
+              )}&statistic_id=${encodeURIComponent(
+                statistic_id
+              )}&entity_id=${encodeURIComponent(entity_id)}`;
+            } else {
+              const errorData = await res.json();
+              alert(
+                "Error: " + (errorData.message || "Failed to create record.")
+              );
+            }
+          } catch (err) {
+            console.error("Error submitting form:", err);
+            alert("Unexpected error occurred. Check console.");
+          }
+        });
+      });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contracts & Procurement</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .table-container {
+        margin-top: 30px;
+      }
+    </style>
+  </head>
+  <body class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0">Contracts & Procurement</h2>
+      <div>
+        <a href="/home.html" class="btn btn-secondary me-2">Back to Home</a>
+        <a href="/add_contract_entry.html" class="btn btn-primary">Add Entry</a>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+          <tr>
+            <th>S. No.</th>
+            <th>Project Name</th>
+            <th>Capacity (MW)</th>
+            <th>Tender Type</th>
+            <th>Tender Status</th>
+            <th>Target Date</th>
+            <th>Created At</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="contractsTableBody">
+          <!-- Rows will be populated here -->
+        </tbody>
+      </table>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const params = new URLSearchParams(window.location.search);
+        const dept_id = params.get("dept_id");
+        const statistic_id = params.get("statistic_id");
+        const entity_id = params.get("entity_id");
+
+        authFetch(`/api/data/contracts/all`)
+          .then((res) => res.json())
+          .then((resObject) => {
+            populateContractsTable(resObject.data);
+          })
+          .catch((err) => {
+            console.error("Error loading data:", err);
+            alert("Failed to load contracts data.");
+          });
+
+        function populateContractsTable(items) {
+          const tbody = document.getElementById("contractsTableBody");
+          tbody.innerHTML = "";
+
+          if (!Array.isArray(items) || items.length === 0) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td colspan="8" class="text-center text-muted">
+                No contract or procurement data available.
+              </td>
+            `;
+            tbody.appendChild(tr);
+            return;
+          }
+
+          items.forEach((item, index) => {
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+              <td>${index + 1}</td>
+              <td>${item.project_name || "-"}</td>
+              <td>${item.capacity || "-"}</td>
+              <td>${item.tender || "-"}</td>
+              <td>${item.activity || "-"}</td>
+              <td>${formatToISTDate(item.target_date)}</td>
+              <td>${formatToISTDate(item.createdAt)}</td>
+              <td>
+                <button class="btn btn-sm btn-danger" onclick="deleteEntry('${
+                  item.entry_id
+                }', this)">
+                  Delete
+                </button>
+              </td>
+            `;
+
+            tbody.appendChild(tr);
+          });
+        }
+
+        window.deleteEntry = function (entry_id, buttonElement) {
+          if (!confirm("Are you sure you want to delete this entry?")) return;
+
+          authFetch(`api/data/contracts/remove/${entry_id}`, {
+            method: "DELETE",
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("Failed to delete entry.");
+              // Remove the row from the table
+              const row = buttonElement.closest("tr");
+              row?.remove();
+            })
+            .catch((err) => {
+              console.error(err);
+              alert("Error deleting entry.");
+            });
+        };
+
+        function authFetch(url, options = {}) {
+          const token = localStorage.getItem("token");
+          const defaultHeaders = {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          };
+
+          return fetch(url, {
+            ...options,
+            headers: {
+              ...defaultHeaders,
+              ...(options.headers || {}),
+            },
+          }).then((res) => {
+            if (res.status === 401) {
+              alert("Session expired. Redirecting to login...");
+              localStorage.clear();
+              window.location.href = "/";
+              throw new Error("Unauthorized");
+            }
+            return res;
+          });
+        }
+
+        function formatToISTDate(dateString) {
+          if (!dateString) return "-";
+          const date = new Date(dateString);
+          const istOffset = 5.5 * 60 * 60000;
+          const istDate = new Date(date.getTime() + istOffset);
+          const day = String(istDate.getUTCDate()).padStart(2, "0");
+          const month = String(istDate.getUTCMonth() + 1).padStart(2, "0");
+          const year = istDate.getUTCFullYear();
+          return `${day}/${month}/${year}`;
+        }
+      });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
