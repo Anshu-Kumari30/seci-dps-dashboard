@@ -10,29 +10,235 @@
     />
     <link rel="stylesheet" href="css/style.css" />
     <style>
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 40px 20px;
+      }
+
+      .container-main {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header-section {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .header-section h2 {
+        color: #667eea;
+        margin: 0 0 10px 0;
+        font-weight: 700;
+      }
+
+      .header-section h4 {
+        color: #333;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .header-section h5 {
+        color: #666;
+        font-size: 0.95rem;
+        font-weight: 400;
+        margin: 5px 0 0 0;
+      }
+
+      .back-btn-container {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 20px;
+      }
+
+      .back-btn {
+        background-color: #667eea;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .back-btn:hover {
+        background-color: #764ba2;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .tabs-container {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .nav-tabs {
+        border-bottom: 2px solid #e0e0e0;
+        flex-wrap: wrap;
+      }
+
+      .nav-tabs .nav-link {
+        color: #666;
+        font-weight: 600;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 12px 20px;
+        margin-right: 5px;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.3s ease;
+      }
+
+      .nav-tabs .nav-link:hover {
+        color: #667eea;
+        background-color: #f5f5f5;
+      }
+
+      .nav-tabs .nav-link.active {
+        color: #667eea;
+        background-color: transparent;
+        border-bottom-color: #667eea;
+      }
+
       .tab-content {
         margin-top: 20px;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+      }
+
+      .btn-success {
+        background-color: #48bb78;
+        border-color: #48bb78;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+      }
+
+      .btn-success:hover {
+        background-color: #38a169;
+        border-color: #38a169;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+      }
+
+      .table {
+        margin-top: 20px;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .table thead {
+        background-color: #667eea;
+        color: white;
+      }
+
+      .table thead th {
+        border: none;
+        font-weight: 600;
+        padding: 15px;
+        text-align: left;
+      }
+
+      .table tbody tr {
+        border-bottom: 1px solid #e0e0e0;
+        transition: all 0.2s ease;
+      }
+
+      .table tbody tr:hover {
+        background-color: #f9f9f9;
+      }
+
+      .table tbody td {
+        padding: 12px 15px;
+        vertical-align: middle;
+      }
+
+      .btn-danger {
+        background-color: #f56565;
+        border-color: #f56565;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+      }
+
+      .btn-danger:hover {
+        background-color: #e53e3e;
+        border-color: #e53e3e;
+        transform: translateY(-2px);
+      }
+
+      .btn-outline-primary {
+        color: #667eea;
+        border-color: #667eea;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+      }
+
+      .btn-outline-primary:hover {
+        background-color: #667eea;
+        border-color: #667eea;
+        color: white;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+      }
+
+      .empty-state p {
+        font-size: 1.1rem;
+        margin: 0;
+      }
+
+      @media (max-width: 768px) {
+        .nav-tabs {
+          flex-wrap: wrap;
+        }
+
+        .nav-tabs .nav-link {
+          padding: 10px 15px;
+          font-size: 0.9rem;
+        }
+
+        .header-section {
+          padding: 20px;
+        }
+
+        .tabs-container {
+          padding: 15px;
+        }
       }
     </style>
   </head>
-  <body class="p-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="mb-0">View Correspondences</h2>
-      <a href="/home.html" class="btn btn-secondary">Back to Home</a>
+  <body>
+    <div class="container-main">
+      <div class="back-btn-container">
+        <a href="/home.html" class="back-btn">← Back to Home</a>
+      </div>
+
+      <div class="header-section">
+        <h2>Energy Management Data</h2>
+        <h4 id="statisticTitle" class="mb-1"></h4>
+        <h5 id="entityTitle" class="text-muted"></h5>
+      </div>
+
+      <div class="tabs-container">
+        <ul class="nav nav-tabs" id="dynamicTabs" role="tablist"></ul>
+        <div class="tab-content" id="dynamicTabContent"></div>
+      </div>
     </div>
-
-    <!-- <div class="mb-3">
-      <label for="statisticDropdown" class="form-label">Select Statistic</label>
-      <select id="statisticDropdown" class="form-select"></select>
-    </div> -->
-
-    <div class="mb-3">
-      <h4 id="statisticTitle" class="mb-1"></h4>
-      <h5 id="entityTitle" class="text-muted"></h5>
-    </div>
-
-    <ul class="nav nav-tabs" id="dynamicTabs" role="tablist"></ul>
-    <div class="tab-content" id="dynamicTabContent"></div>
 
     <script src="./js/main.js"></script>
     <script>
@@ -89,7 +295,7 @@
             { id: "sp", label: "Sale and Purchase", source: "documents" },
             { id: "discom", label: "DISCOM Payment and Outstanding Dues", source: "documents" },
             { id: "ro", label: "Regulatory Order", source: "documents" },
-            { id: "swd", label: "State-wise Data", source: "documents" },
+            { id: "swd", label: "State-wise Data", source: "stateWiseData" },
           ];
 
           types.forEach((type, index) => {
@@ -112,12 +318,16 @@
 
             let items = [];
             if (type.source === "documents") {
-              items = (data.documents || []).filter(
-                (doc) =>
-                  doc.doc_type === type.id &&
+              items = (data.documents || []).filter((doc) => {
+                const typeMatch = type.docTypes
+                  ? type.docTypes.includes(doc.doc_type)
+                  : doc.doc_type === type.id;
+                return (
+                  typeMatch &&
                   doc.statistic_id == statistic_id &&
                   doc.entity_id == entity_id
-              );
+                );
+              });
             } else if (type.source === "correspondences") {
               items = (data.correspondences || []).filter(
                 (c) =>
@@ -131,6 +341,12 @@
                   issue.statistic_id == statistic_id &&
                   issue.entity_id == entity_id
               );
+            } else if (type.source === "stateWiseData") {
+              items = (data.stateWiseData || []).filter(
+                (swd) =>
+                  swd.statistic_id == statistic_id &&
+                  swd.entity_id == entity_id
+              );
             }
 
             // Add "+ Add ..." button
@@ -138,7 +354,11 @@
             addButton.className = "btn btn-sm btn-success mb-2";
             addButton.innerText = `+ Add ${type.label}`;
             addButton.onclick = () => {
-              if (type.id === "dpr") {
+              if (type.source === "documents") {
+                const docType = type.docTypeForAdd || (type.docTypes && type.docTypes[0]) || type.id;
+                const title = encodeURIComponent(type.titleForAdd || type.label);
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=${docType}&title=${title}`;
+              } else if (type.id === "dpr") {
                 window.location.href = `/add_dpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
               } else if (type.id === "mpr") {
                 window.location.href = `/add_mpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
@@ -148,9 +368,8 @@
                 window.location.href = `/add_correspondence_other.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
               } else if (type.id === "is") {
                 window.location.href = `/add_issues.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
-              } else if (["cdoc", "tp", "dp", "sp", "discom", "ro", "swd"].includes(type.id)) {
-                // Document types that use add_contract_document.html
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=${type.id}&title=${encodeURIComponent(type.label)}`;
+              } else if (type.id === "swd") {
+                window.location.href = `/add_state_wise_data.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
               } else {
                 alert("Coming Soon...");
               }
@@ -159,7 +378,7 @@
             pane.appendChild(addButton);
 
             // Add the data table
-            const table = buildDocumentTable(items, type.id);
+            const table = buildDocumentTable(items, type);
             table.className = "table table-bordered";
             pane.appendChild(table);
             tabContent.appendChild(pane);
@@ -173,7 +392,7 @@
           const tbody = document.createElement("tbody");
 
           let columns = "";
-          if (type === "is") {
+          if (type.id === "is" || type.source === "issues") {
             columns = `
             <tr>
               <th class="sortable">S. No.</th>
@@ -184,7 +403,18 @@
               <th class="sortable">Uploaded On</th>
               <th>action</th>
             </tr>`;
-          } else if (["dpr", "mpr", "cdoc", "tp"].includes(type)) {
+          } else if (type.id === "swd") {
+            columns = `
+              <tr>
+              <th class="sortable">S. No.</th>
+              <th class="sortable">Name</th>
+              <th class="sortable">PSA Signed (MW)</th>
+              <th class="sortable">Commissioned (MW)</th>
+              <th class="sortable">Regulations / Policy</th>
+              <th class="sortable">Uploaded On</th>
+              <th>Action</th>
+              </tr>`;
+          } else if (type.source === "documents") {
             columns = `
               <tr>
               <th class="sortable">S. No.</th>
@@ -215,7 +445,7 @@
           items.forEach((item) => {
             const tr = document.createElement("tr");
 
-            if (type === "is") {
+            if (type.id === "is" || type.source === "issues") {
               tr.innerHTML = `
               <td>${index}</td>
               <td>${item.issue_description}</td>
@@ -234,7 +464,19 @@
 </td>              <td><button class="btn btn-danger btn-sm" data-is-id="${
                 item.issue_id
               }" onclick="deleteIssue(event)">Delete</button></td>`;
-            } else if (["dpr", "mpr", "cdoc", "tp"].includes(type)) {
+            } else if (type.id === "swd") {
+              tr.innerHTML = `
+              <td>${index}</td>
+              <td>${item.name}</td>
+              <td>${parseFloat(item.psa_signed_mw).toFixed(2)}</td>
+              <td>${parseFloat(item.commissioned_mw).toFixed(2)}</td>
+              <td>${item.regulations_policy || '-'}</td>
+<td data-sort-value="${item.createdAt}">
+  ${formatToISTDate(item.createdAt)}
+</td>              <td><button class="btn btn-danger btn-sm" data-swd-id="${
+                item.swd_id
+              }" onclick="deleteStateWiseData(event)">Delete</button></td>`;
+            } else if (type.source === "documents") {
               tr.innerHTML = `
               <td>${index}</td>
               <td>${item.doc_name}</td>
@@ -373,6 +615,25 @@
           .catch((err) => {
             console.error(err);
             alert("Error deleting document.");
+          });
+      }
+
+      function deleteStateWiseData(event) {
+        const button = event.target;
+        const swd_id = button.getAttribute("data-swd-id");
+
+        if (!confirm("Are you sure you want to delete this state-wise data?")) return;
+
+        authFetch(`/api/data/state-wise-data/${swd_id}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to delete state-wise data.");
+            button.closest("tr")?.remove();
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Error deleting state-wise data.");
           });
       }
     </script>

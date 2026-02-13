@@ -444,4 +444,33 @@ router.get(
   dataController.getAllIssuesAndActions,
 );
 
+// State-wise Data routes
+router.get(
+  "/state-wise-data/:dept_id/:statistic_id/:entity_id",
+  verifyToken,
+  auditLogger("Fetched state-wise data"),
+  dataController.getStateWiseData,
+);
+
+router.post(
+  "/state-wise-data/:dept_id/:statistic_id/:entity_id",
+  verifyToken,
+  auditLogger("Added state-wise data"),
+  dataController.addStateWiseData,
+);
+
+router.put(
+  "/state-wise-data/:swd_id",
+  verifyToken,
+  auditLogger("Updated state-wise data"),
+  dataController.updateStateWiseData,
+);
+
+router.delete(
+  "/state-wise-data/:swd_id",
+  verifyToken,
+  auditLogger("Deleted state-wise data"),
+  dataController.deleteStateWiseData,
+);
+
 module.exports = router;

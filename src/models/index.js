@@ -42,6 +42,7 @@ const models = {
     DataTypes,
   ),
   EntityIssues: require("./entity_issues")(sequelize, DataTypes),
+  StateWiseData: require("./state_wise_data")(sequelize, DataTypes),
   User: require("./user")(sequelize, DataTypes),
   UserEditAccess: require("./user_edit_access")(sequelize, DataTypes),
   UserLogs: require("./user_logs")(sequelize, DataTypes),

@@ -84,31 +84,39 @@
           tabList.innerHTML = "";
           tabContent.innerHTML = "";
 
+          // Replaced tabs: show grouped document categories
           const types = [
-            { id: "cdoc", label: "Contract Documents", source: "documents" },
-            { id: "dpr", label: "Daily Progress Report", source: "documents" },
             {
-              id: "mpr",
-              label: "Monthly Progress Report",
+              id: "dp_sp",
+              label: "Developer Payment Sale and Developer Payment Purchase",
               source: "documents",
-            },
-            { id: "tp", label: "Tariff Petition", source: "documents" },
-            {
-              id: "cc",
-              label: "Correspondences with Contractors",
-              source: "correspondences",
-              filter: "contractor",
+              docTypes: ["dp", "sp"],
+              docTypeForAdd: "dp",
+              titleForAdd: "Developer Payment",
             },
             {
-              id: "sc",
-              label: "Correspondences with other Stakeholders",
-              source: "correspondences",
-              filter: "other",
+              id: "discom",
+              label: "DISCOM Payment and Outstanding Dues",
+              source: "documents",
+              docTypes: ["discom"],
+              docTypeForAdd: "discom",
+              titleForAdd: "DISCOM Payment and Outstanding Dues",
             },
             {
-              id: "is",
-              label: "Key Issues",
-              source: "issues",
+              id: "ro",
+              label: "Regulatory Order",
+              source: "documents",
+              docTypes: ["ro"],
+              docTypeForAdd: "ro",
+              titleForAdd: "Regulatory Order",
+            },
+            {
+              id: "swd",
+              label: "State-wise Data",
+              source: "documents",
+              docTypes: ["swd"],
+              docTypeForAdd: "swd",
+              titleForAdd: "State-wise Data",
             },
           ];
 
@@ -132,12 +140,16 @@
 
             let items = [];
             if (type.source === "documents") {
-              items = (data.documents || []).filter(
-                (doc) =>
-                  doc.doc_type === type.id &&
+              items = (data.documents || []).filter((doc) => {
+                const typeMatch = type.docTypes
+                  ? type.docTypes.includes(doc.doc_type)
+                  : doc.doc_type === type.id;
+                return (
+                  typeMatch &&
                   doc.statistic_id == statistic_id &&
                   doc.entity_id == entity_id
-              );
+                );
+              });
             } else if (type.source === "correspondences") {
               items = (data.correspondences || []).filter(
                 (c) =>
@@ -158,29 +170,13 @@
             addButton.className = "btn btn-sm btn-success mb-2";
             addButton.innerText = `+ Add ${type.label}`;
             addButton.onclick = () => {
-              if (type.label === "Daily Progress Report") {
-                window.location.href = `/add_dpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
-              } else if (type.label === "Monthly Progress Report") {
-                window.location.href = `/add_mpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
-              } else if (type.label === "Contract Documents") {
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=cdoc&title=Contract Document`;
-              } else if (type.label === "Developer Payment") {
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=dp&title=Developer Payment`;
-              } else if (type.label === "Sale and Purchase") {
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=sp&title=Sale and Purchase`;
-              } else if (type.label === "DISCOM Payment and Outstanding Dues") {
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=discom&title=DISCOM Payment and Outstanding Dues`;
-              } else if (type.label === "Regulatory Order") {
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=ro&title=Regulatory Order`;
-              } else if (type.label === "State-wise Data") {
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=swd&title=State-wise Data`;
-              } else if (type.label === "Tariff Petition") {
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=tp&title=Tariff Petition`;
+              if (type.source === "documents") {
+                const docType = type.docTypeForAdd || (type.docTypes && type.docTypes[0]) || type.id;
+                const title = encodeURIComponent(type.titleForAdd || type.label);
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=${docType}&title=${title}`;
               } else if (type.label === "Correspondences with Contractors") {
                 window.location.href = `/add_correspondence_contractor.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
-              } else if (
-                type.label === "Correspondences with other Stakeholders"
-              ) {
+              } else if (type.label === "Correspondences with other Stakeholders") {
                 window.location.href = `/add_correspondence_other.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
               } else if (type.label === "Key Issues") {
                 window.location.href = `/add_issues.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
@@ -192,13 +188,12 @@
             pane.appendChild(addButton);
 
             // Add the data table
-            const table = buildDocumentTable(items, type.id);
+            const table = buildDocumentTable(items, type);
             table.className = "table table-bordered";
             pane.appendChild(table);
             tabContent.appendChild(pane);
           });
         }
-
         function buildDocumentTable(items, type) {
           const table = document.createElement("table");
           table.className = "table table-bordered";
@@ -206,7 +201,7 @@
           const tbody = document.createElement("tbody");
 
           let columns = "";
-          if (type === "is") {
+          if (type.id === "is" || type.source === "issues") {
             columns = `
             <tr>
               <th class="sortable">S. No.</th>
@@ -217,7 +212,7 @@
               <th class="sortable">Uploaded On</th>
               <th>action</th>
             </tr>`;
-          } else if (["dpr", "mpr", "cdoc", "tp"].includes(type)) {
+          } else if (type.source === "documents") {
             columns = `
               <tr>
               <th class="sortable">S. No.</th>
@@ -248,7 +243,7 @@
           items.forEach((item) => {
             const tr = document.createElement("tr");
 
-            if (type === "is") {
+            if (type.id === "is" || type.source === "issues") {
               tr.innerHTML = `
               <td>${index}</td>
               <td>${item.issue_description}</td>
@@ -267,7 +262,7 @@
 </td>              <td><button class="btn btn-danger btn-sm" data-is-id="${
                 item.issue_id
               }" onclick="deleteIssue(event)">Delete</button></td>`;
-            } else if (["dpr", "mpr", "cdoc", "tp"].includes(type)) {
+            } else if (type.source === "documents") {
               tr.innerHTML = `
               <td>${index}</td>
               <td>${item.doc_name}</td>
