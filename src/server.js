@@ -118,7 +118,6 @@ function startExpressServer() {
     }),
   );
 
-  handleShutdown();
   const end = startTimer("Starting Express");
 
   app.use("/api/data/audit", require("./routes/audit_routes"));

@@ -39,6 +39,17 @@ const addDocument = async (req, res) => {
       req.body;
     const filePath = req.file ? req.file.path : null;
 
+    // Debug logging
+    console.log("✅ Document upload received:");
+    console.log("  dept_id:", dept_id);
+    console.log("  statistic_id:", statistic_id);
+    console.log("  entity_id:", entity_id);
+    console.log("  doc_name:", doc_name);
+    console.log("  doc_type:", doc_type, "Type:", typeof doc_type);
+    console.log("  doc_date:", doc_date);
+    console.log("  filePath:", filePath);
+    console.log("  Full req.body:", req.body);
+
     if (!filePath) {
       return res.status(400).json({ error: "No file uploaded" });
     }
@@ -47,22 +58,44 @@ const addDocument = async (req, res) => {
       // generate a random doc_name
     }
 
-    // console.log(`HELLOOO: ${entity_id}`)
+    // Validate doc_type against allowed enum values
+    const validDocTypes = ["mpr", "dpr", "cdoc", "tp", "dp", "sp", "discom", "ro", "swd"];
+    
+    if (!doc_type) {
+      console.error("❌ doc_type is missing or null");
+      return res.status(400).json({ 
+        error: `Document type is required. Allowed types: ${validDocTypes.join(", ")}` 
+      });
+    }
+
+    const docTypeString = String(doc_type).toLowerCase().trim();
+    console.log("  Normalized doc_type:", docTypeString);
+
+    if (!validDocTypes.includes(docTypeString)) {
+      console.error(`❌ Invalid doc_type: "${docTypeString}". Valid types:`, validDocTypes);
+      return res.status(400).json({ 
+        error: `Invalid document type "${docTypeString}". Allowed: ${validDocTypes.join(", ")}` 
+      });
+    }
+
+    console.log("✅ Validation passed, creating document...");
 
     const doc = await EntityDocs.create({
       dept_id: dept_id,
       statistic_id: statistic_id,
       entity_id: entity_id,
       doc_name: doc_name,
-      doc_type: doc_type,
+      doc_type: docTypeString,
       doc_path: filePath,
       doc_date: doc_date,
     });
 
+    console.log("✅ Document created successfully:", doc.doc_id);
     res.json(doc);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to add document" });
+    console.error("❌ Error adding document:", err.message);
+    console.error("Full error:", err);
+    res.status(500).json({ error: err.message || "Failed to add document" });
   }
 };
 

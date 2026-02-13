@@ -110,6 +110,11 @@
               label: "Key Issues",
               source: "issues",
             },
+            { id: "dp", label: "Developer Payment", source: "documents" },
+            { id: "sp", label: "Sale and Purchase", source: "documents" },
+            { id: "discom", label: "DISCOM Payment and Outstanding Dues", source: "documents" },
+            { id: "ro", label: "Regulatory Order", source: "documents" },
+            { id: "swd", label: "State-wise Data", source: "documents" },
           ];
 
           types.forEach((type, index) => {
@@ -163,7 +168,19 @@
               } else if (type.label === "Monthly Progress Report") {
                 window.location.href = `/add_mpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
               } else if (type.label === "Contract Documents") {
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=cdoc&title=Contract Document`;
+              } else if (type.label === "Developer Payment") {
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=dp&title=Developer Payment`;
+              } else if (type.label === "Sale and Purchase") {
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=sp&title=Sale and Purchase`;
+              } else if (type.label === "DISCOM Payment and Outstanding Dues") {
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=discom&title=DISCOM Payment and Outstanding Dues`;
+              } else if (type.label === "Regulatory Order") {
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=ro&title=Regulatory Order`;
+              } else if (type.label === "State-wise Data") {
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=swd&title=State-wise Data`;
+              } else if (type.label === "Tariff Petition") {
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=tp&title=Tariff Petition`;
               } else if (type.label === "Correspondences with Contractors") {
                 window.location.href = `/add_correspondence_contractor.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
               } else if (
