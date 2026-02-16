@@ -10,98 +10,77 @@
     />
     <style>
       * {
+        box-sizing: border-box;
         margin: 0;
         padding: 0;
-        box-sizing: border-box;
       }
 
       body {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        background: linear-gradient(135deg, #f4f6f9 0%, #e8ecf1 100%);
+        padding: 20px;
         min-height: 100vh;
-        padding: 30px 20px;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: #333;
       }
 
-      .card {
-        border: none;
-        border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-        overflow: hidden;
-      }
-
-      .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 40px 30px;
-      }
-
-      .header-wrapper {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 20px;
-      }
-
-      .header-content h1 {
-        font-size: 32px;
+      h1 {
+        text-align: center;
+        margin-bottom: 10px;
+        color: #0b5ed7;
         font-weight: 700;
-        margin: 0;
-        letter-spacing: -0.5px;
+        font-size: 28px;
       }
 
-      .back-btn {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        padding: 10px 18px;
-        border-radius: 8px;
-        font-weight: 500;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        white-space: nowrap;
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 16px;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
       }
 
-      .back-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-        border-color: rgba(255, 255, 255, 0.5);
-        color: white;
-      }
-
-      .card-body {
-        padding: 40px;
+      .form-container {
+        max-width: 650px;
+        margin: auto;
+        background: #ffffff;
+        padding: 35px 40px;
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
       }
 
       .form-group {
-        margin-bottom: 30px;
+        margin-bottom: 25px;
       }
 
       .form-label {
         font-weight: 600;
-        color: #2d3748;
-        margin-bottom: 10px;
-        font-size: 15px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+      }
+
+      .required::after {
+        content: " *";
+        color: #dc3545;
       }
 
       .form-control {
-        border: 2px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-size: 14px;
-        transition: all 0.3s ease;
-        background: #f8fafc;
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        border: 1px solid #cfd4da;
+        border-radius: 6px;
+        transition: all 0.3s;
       }
 
       .form-control:focus {
-        border-color: #667eea;
-        background: white;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
-      }
-
-      .form-control::placeholder {
-        color: #a0aec0;
+        outline: none;
+        border-color: #0b5ed7;
+        box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.15);
       }
 
       .file-upload-wrapper {
@@ -109,39 +88,38 @@
       }
 
       .file-upload-area {
-        border: 3px dashed #cbd5e1;
-        border-radius: 12px;
-        padding: 50px 30px;
+        border: 2px dashed #0b5ed7;
+        border-radius: 8px;
+        padding: 40px 20px;
         text-align: center;
-        background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+        background: #f8f9fa;
         transition: all 0.3s ease;
         cursor: pointer;
         position: relative;
       }
 
       .file-upload-area:hover {
-        border-color: #667eea;
-        background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+        border-color: #0b5ed7;
+        background: #f0f4ff;
         transform: translateY(-2px);
       }
 
       .file-upload-area.dragover {
-        border-color: #667eea;
-        background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        border-color: #0b5ed7;
+        background: #f0f4ff;
+        box-shadow: 0 6px 20px rgba(11, 94, 215, 0.2);
       }
 
       .upload-icon {
         width: 50px;
         height: 50px;
         margin: 0 auto 15px;
-        color: #667eea;
-        opacity: 0.8;
+        color: #0b5ed7;
       }
 
       .file-upload-area p {
         margin: 0;
-        color: #2d3748;
+        color: #333;
       }
 
       .upload-title {
@@ -152,7 +130,7 @@
 
       .upload-subtitle {
         font-size: 13px;
-        color: #718096;
+        color: #666;
       }
 
       .file-input {
@@ -161,23 +139,23 @@
 
       .file-info {
         margin-top: 12px;
-        color: #667eea;
+        color: #0b5ed7;
         font-weight: 500;
         font-size: 14px;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 8px;
       }
 
       .file-info.error {
-        color: #e53e3e;
+        color: #dc3545;
       }
 
       .checkmark {
         width: 18px;
         height: 18px;
-        background: #667eea;
+        background: #0b5ed7;
         color: white;
         border-radius: 50%;
         display: flex;
@@ -185,32 +163,34 @@
         justify-content: center;
         font-weight: bold;
         font-size: 12px;
+        flex-shrink: 0;
       }
 
       .form-actions {
         display: flex;
         gap: 12px;
-        margin-top: 40px;
+        margin-top: 30px;
+        justify-content: center;
       }
 
       .btn-submit {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(to right, #0b5ed7, #0a58ca);
         color: white;
         border: none;
-        padding: 14px 40px;
-        border-radius: 8px;
+        padding: 12px 32px;
+        border-radius: 6px;
         font-weight: 600;
         font-size: 15px;
-        transition: all 0.3s ease;
-        flex: 1;
+        transition: all 0.3s;
         cursor: pointer;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        box-shadow: 0 4px 6px rgba(11, 94, 215, 0.2);
+        min-width: 140px;
       }
 
       .btn-submit:hover {
+        background: linear-gradient(to right, #0a58ca, #0950b8);
+        box-shadow: 0 6px 12px rgba(11, 94, 215, 0.3);
         transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
       }
 
       .btn-submit:active {
@@ -223,48 +203,52 @@
         transform: none;
       }
 
+      .back-btn {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #0b5ed7;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      .back-btn:hover {
+        color: #0a58ca;
+        text-decoration: underline;
+      }
+
       @media (max-width: 768px) {
-        .card-header {
-          padding: 30px 20px;
+        body {
+          padding: 15px;
         }
 
-        .header-wrapper {
-          flex-direction: column;
-          align-items: flex-start;
+        .form-container {
+          padding: 25px 20px;
         }
 
-        .header-content h1 {
+        h1 {
           font-size: 24px;
         }
 
-        .back-btn {
-          width: 100%;
-          text-align: center;
-        }
-
-        .card-body {
-          padding: 30px 20px;
-        }
-
         .file-upload-area {
-          padding: 40px 20px;
+          padding: 30px 15px;
+        }
+
+        .btn-submit {
+          padding: 10px 24px;
+          font-size: 14px;
         }
       }
     </style>
   </head>
   <body>
-    <div class="container" style="max-width: 650px;">
-      <div class="card">
-        <div class="card-header">
-          <div class="header-wrapper">
-            <div class="header-content">
-              <h1 id="pageTitle">Add Document</h1>
-            </div>
-            <a href="#" id="backBtn" class="back-btn">← Back</a>
-          </div>
-        </div>
-        <div class="card-body">
-          <form id="addContractDocumentForm">
+    <h1 id="pageTitle">Add Document</h1>
+    <p class="subtitle" id="pageSubtitle">Enter document details and upload file</p>
+
+    <div class="form-container">
+      <a href="#" id="backBtn" class="back-btn">← Back</a>
+      
+      <form id="addContractDocumentForm">
             <div class="form-group">
               <label for="docName" class="form-label">Document Name</label>
               <input
@@ -320,8 +304,6 @@
               </button>
             </div>
           </form>
-        </div>
-      </div>
     </div>
 
     <script>
@@ -344,6 +326,7 @@
       // Update page title and heading
       document.title = `Add ${title}`;
       document.getElementById("pageTitle").textContent = `Add ${title}`;
+      document.getElementById("pageSubtitle").textContent = `Enter ${title.toLowerCase()} details and upload file`;
       document.getElementById("submitBtn").textContent = `✓ Submit ${title}`;
 
       // Set back button href

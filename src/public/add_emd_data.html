@@ -411,8 +411,7 @@
               <th class="sortable">PSA Signed (MW)</th>
               <th class="sortable">Commissioned (MW)</th>
               <th class="sortable">Regulations / Policy</th>
-              <th class="sortable">Uploaded On</th>
-              <th>Action</th>
+              <th class="sortable">Report</th>
               </tr>`;
           } else if (type.source === "documents") {
             columns = `
@@ -468,14 +467,16 @@
               tr.innerHTML = `
               <td>${index}</td>
               <td>${item.name}</td>
-              <td>${parseFloat(item.psa_signed_mw).toFixed(2)}</td>
-              <td>${parseFloat(item.commissioned_mw).toFixed(2)}</td>
+              <td>${(item.psa_signed_mw !== undefined && item.psa_signed_mw !== null) ? parseFloat(item.psa_signed_mw).toFixed(2) : '-'}</td>
+              <td>${(item.commissioned_mw !== undefined && item.commissioned_mw !== null) ? parseFloat(item.commissioned_mw).toFixed(2) : '-'}</td>
               <td>${item.regulations_policy || '-'}</td>
-<td data-sort-value="${item.createdAt}">
-  ${formatToISTDate(item.createdAt)}
-</td>              <td><button class="btn btn-danger btn-sm" data-swd-id="${
-                item.swd_id
-              }" onclick="deleteStateWiseData(event)">Delete</button></td>`;
+              <td>$
+                ${
+                  item.report_path
+                    ? `<a href="${item.report_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
+                    : `<button class="btn btn-sm btn-secondary" disabled>No Report</button>`
+                }
+              </td>`;
             } else if (type.source === "documents") {
               tr.innerHTML = `
               <td>${index}</td>
@@ -611,7 +612,7 @@
           .then((res) => {
             if (!res.ok) throw new Error("Failed to delete document.");
             button.closest("tr")?.remove();
-          })
+          }) 
           .catch((err) => {
             console.error(err);
             alert("Error deleting document.");

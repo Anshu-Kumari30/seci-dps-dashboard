@@ -676,4 +676,21 @@ router.post(
   uploadOMSolarFromExcel
 );
 
+// Generic file upload endpoint: returns stored path for a single file
+router.post(
+  "/upload-file",
+  verifyToken,
+  upload.single("file"),
+  (req, res) => {
+    try {
+      const filePath = req.file ? req.file.path : null;
+      if (!filePath) return res.status(400).json({ error: "No file uploaded" });
+      return res.json({ path: filePath });
+    } catch (err) {
+      console.error("Error in upload-file:", err);
+      return res.status(500).json({ error: "File upload failed" });
+    }
+  }
+);
+
 module.exports = router;

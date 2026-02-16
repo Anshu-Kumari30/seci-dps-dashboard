@@ -87,12 +87,20 @@
           // Replaced tabs: show grouped document categories
           const types = [
             {
-              id: "dp_sp",
-              label: "Developer Payment Sale and Developer Payment Purchase",
+              id: "dp",
+              label: "Developer Payment",
               source: "documents",
-              docTypes: ["dp", "sp"],
+              docTypes: ["dp"],
               docTypeForAdd: "dp",
               titleForAdd: "Developer Payment",
+            },
+            {
+              id: "sp",
+              label: "Sale and Purchase",
+              source: "documents",
+              docTypes: ["sp"],
+              docTypeForAdd: "sp",
+              titleForAdd: "Sale and Purchase",
             },
             {
               id: "discom",
@@ -170,7 +178,9 @@
             addButton.className = "btn btn-sm btn-success mb-2";
             addButton.innerText = `+ Add ${type.label}`;
             addButton.onclick = () => {
-              if (type.source === "documents") {
+              if (type.id === "swd") {
+                window.location.href = `/add_state_wise_data.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.source === "documents") {
                 const docType = type.docTypeForAdd || (type.docTypes && type.docTypes[0]) || type.id;
                 const title = encodeURIComponent(type.titleForAdd || type.label);
                 window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=${docType}&title=${title}`;
@@ -212,6 +222,16 @@
               <th class="sortable">Uploaded On</th>
               <th>action</th>
             </tr>`;
+          } else if (type.id === "swd") {
+            columns = `
+              <tr>
+              <th class="sortable">S. No.</th>
+              <th class="sortable">Name</th>
+              <th class="sortable">PSA Signed (MW)</th>
+              <th class="sortable">Commissioned (MW)</th>
+              <th class="sortable">Regulations / Policy</th>
+              <th class="sortable">Report</th>
+              </tr>`;
           } else if (type.source === "documents") {
             columns = `
               <tr>
@@ -262,6 +282,20 @@
 </td>              <td><button class="btn btn-danger btn-sm" data-is-id="${
                 item.issue_id
               }" onclick="deleteIssue(event)">Delete</button></td>`;
+            } else if (type.id === "swd") {
+              tr.innerHTML = `
+              <td>${index}</td>
+              <td>${item.name}</td>
+              <td>${(item.psa_signed_mw !== undefined && item.psa_signed_mw !== null) ? parseFloat(item.psa_signed_mw).toFixed(2) : '-'}</td>
+              <td>${(item.commissioned_mw !== undefined && item.commissioned_mw !== null) ? parseFloat(item.commissioned_mw).toFixed(2) : '-'}</td>
+              <td>${item.regulations_policy || '-'}</td>
+              <td>$
+                ${
+                  item.report_path
+                    ? `<a href="${item.report_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
+                    : `<button class="btn btn-sm btn-secondary" disabled>No Report</button>`
+                }
+              </td>`;
             } else if (type.source === "documents") {
               tr.innerHTML = `
               <td>${index}</td>
