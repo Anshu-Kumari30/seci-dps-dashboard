@@ -288,8 +288,14 @@
               <td>${item.name}</td>
               <td>${(item.psa_signed_mw !== undefined && item.psa_signed_mw !== null) ? parseFloat(item.psa_signed_mw).toFixed(2) : '-'}</td>
               <td>${(item.commissioned_mw !== undefined && item.commissioned_mw !== null) ? parseFloat(item.commissioned_mw).toFixed(2) : '-'}</td>
-              <td>${item.regulations_policy || '-'}</td>
-              <td>$
+              <td>
+                ${
+                  item.regulations_policy
+                    ? `<a href="${item.regulations_policy}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
+                    : `<button class="btn btn-sm btn-secondary" disabled>No Policy</button>`
+                }
+              </td>
+              <td>
                 ${
                   item.report_path
                     ? `<a href="${item.report_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`

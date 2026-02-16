@@ -469,8 +469,14 @@
               <td>${item.name}</td>
               <td>${(item.psa_signed_mw !== undefined && item.psa_signed_mw !== null) ? parseFloat(item.psa_signed_mw).toFixed(2) : '-'}</td>
               <td>${(item.commissioned_mw !== undefined && item.commissioned_mw !== null) ? parseFloat(item.commissioned_mw).toFixed(2) : '-'}</td>
-              <td>${item.regulations_policy || '-'}</td>
-              <td>$
+              <td>
+                ${
+                  item.regulations_policy
+                    ? `<a href="${item.regulations_policy}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
+                    : `<button class="btn btn-sm btn-secondary" disabled>No Policy</button>`
+                }
+              </td>
+              <td>
                 ${
                   item.report_path
                     ? `<a href="${item.report_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
@@ -485,7 +491,9 @@
   ${formatToISTDate(item.doc_date)}
 </td>
 
-              <td><a href="${
+
+
+              <td><a href="{
                 item.doc_path
               }" target="_blank" class="btn btn-sm btn-outline-primary">View</a></td>
 <td data-sort-value="${item.createdAt}">
@@ -609,7 +617,7 @@
         authFetch(`/api/data/documents/${doc_id}`, {
           method: "DELETE",
         })
-          .then((res) => {
+          .then((res) => { 
             if (!res.ok) throw new Error("Failed to delete document.");
             button.closest("tr")?.remove();
           }) 
