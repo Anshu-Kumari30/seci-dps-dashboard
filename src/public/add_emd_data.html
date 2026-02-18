@@ -13,211 +13,144 @@
       body {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
-        padding: 40px 20px;
+        padding: 30px 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       }
-
       .container-main {
-        max-width: 1200px;
-        margin: 0 auto;
+        max-width: 1000px;
+        margin: auto;
       }
-
       .header-section {
-        background: rgba(255, 255, 255, 0.95);
-        padding: 30px;
-        border-radius: 12px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        background: #fff;
+        padding: 40px 30px;
+        border-radius: 16px;
+        margin-bottom: 32px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
       }
-
       .header-section h2 {
-        color: #667eea;
-        margin: 0 0 10px 0;
+        color: #2d3748;
+        font-size: 32px;
         font-weight: 700;
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
       }
-
       .header-section h4 {
         color: #333;
         font-weight: 600;
         margin: 0;
       }
-
       .header-section h5 {
         color: #666;
-        font-size: 0.95rem;
+        font-size: 1rem;
         font-weight: 400;
         margin: 5px 0 0 0;
       }
-
       .back-btn-container {
         display: flex;
         justify-content: flex-end;
         margin-bottom: 20px;
       }
-
       .back-btn {
-        background-color: #667eea;
+        background: rgba(255, 255, 255, 0.2);
         color: white;
-        padding: 10px 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 10px 18px;
         border-radius: 8px;
+        font-weight: 500;
         text-decoration: none;
-        font-weight: 600;
         transition: all 0.3s ease;
+        white-space: nowrap;
       }
-
       .back-btn:hover {
-        background-color: #764ba2;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: white;
       }
-
-      .tabs-container {
-        background: rgba(255, 255, 255, 0.95);
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      .form-container {
+        max-width: 900px;
+        margin: auto;
+        background: #fff;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
       }
-
-      .nav-tabs {
-        border-bottom: 2px solid #e0e0e0;
-        flex-wrap: wrap;
+      form {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px 30px;
       }
-
-      .nav-tabs .nav-link {
-        color: #666;
+      .form-section {
+        grid-column: span 2;
+        margin-top: 10px;
+        margin-bottom: 5px;
+        padding-bottom: 8px;
+        border-bottom: 3px solid #667eea;
+        color: #2d3748;
+        font-weight: 700;
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .form-group {
+        margin-bottom: 24px;
+        display: flex;
+        flex-direction: column;
+      }
+      label {
         font-weight: 600;
-        border: none;
-        border-bottom: 3px solid transparent;
-        padding: 12px 20px;
-        margin-right: 5px;
-        border-radius: 8px 8px 0 0;
+        font-size: 14px;
+        color: #2d3748;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+      }
+      .required::after {
+        content: " *";
+        color: #dc3545;
+      }
+      .form-control {
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 14px;
         transition: all 0.3s ease;
+        background: #f8fafc;
+        color: #2d3748;
+        margin-bottom: 4px;
+        box-shadow: none;
       }
-
-      .nav-tabs .nav-link:hover {
-        color: #667eea;
-        background-color: #f5f5f5;
-      }
-
-      .nav-tabs .nav-link.active {
-        color: #667eea;
-        background-color: transparent;
-        border-bottom-color: #667eea;
-      }
-
-      .tab-content {
-        margin-top: 20px;
+      .form-control:focus {
+        border-color: #667eea;
         background: white;
-        padding: 20px;
-        border-radius: 8px;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
       }
-
+      textarea.form-control {
+        resize: vertical;
+      }
       .btn-success {
-        background-color: #48bb78;
-        border-color: #48bb78;
+        background-color: #1976d2;
+        border-color: #1976d2;
         font-weight: 600;
-        padding: 8px 16px;
-        border-radius: 6px;
-        transition: all 0.3s ease;
-      }
-
-      .btn-success:hover {
-        background-color: #38a169;
-        border-color: #38a169;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
-      }
-
-      .table {
-        margin-top: 20px;
-        border-collapse: separate;
-        border-spacing: 0;
+        padding: 10px 24px;
         border-radius: 8px;
-        overflow: hidden;
-      }
-
-      .table thead {
-        background-color: #667eea;
-        color: white;
-      }
-
-      .table thead th {
-        border: none;
-        font-weight: 600;
-        padding: 15px;
-        text-align: left;
-      }
-
-      .table tbody tr {
-        border-bottom: 1px solid #e0e0e0;
-        transition: all 0.2s ease;
-      }
-
-      .table tbody tr:hover {
-        background-color: #f9f9f9;
-      }
-
-      .table tbody td {
-        padding: 12px 15px;
-        vertical-align: middle;
-      }
-
-      .btn-danger {
-        background-color: #f56565;
-        border-color: #f56565;
-        font-weight: 600;
-        padding: 6px 12px;
-        border-radius: 6px;
+        font-size: 1rem;
         transition: all 0.3s ease;
       }
-
-      .btn-danger:hover {
-        background-color: #e53e3e;
-        border-color: #e53e3e;
+      .btn-success:hover {
+        background-color: #1565c0;
+        border-color: #1565c0;
         transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(25, 118, 210, 0.15);
       }
-
-      .btn-outline-primary {
-        color: #667eea;
-        border-color: #667eea;
-        font-weight: 600;
-        padding: 6px 12px;
-        border-radius: 6px;
-        transition: all 0.3s ease;
-      }
-
-      .btn-outline-primary:hover {
-        background-color: #667eea;
-        border-color: #667eea;
-        color: white;
-      }
-
-      .empty-state {
-        text-align: center;
-        padding: 40px 20px;
-        color: #999;
-      }
-
-      .empty-state p {
-        font-size: 1.1rem;
-        margin: 0;
-      }
-
       @media (max-width: 768px) {
-        .nav-tabs {
-          flex-wrap: wrap;
+        .form-container {
+          padding: 18px 8px;
         }
-
-        .nav-tabs .nav-link {
-          padding: 10px 15px;
-          font-size: 0.9rem;
+        form {
+          grid-template-columns: 1fr;
         }
-
-        .header-section {
-          padding: 20px;
-        }
-
-        .tabs-container {
-          padding: 15px;
+        .form-section {
+          font-size: 16px;
         }
       }
     </style>
@@ -229,12 +162,85 @@
       </div>
 
       <div class="header-section">
-        <h2>Energy Management Data</h2>
+      //This page is intentionally left blank to remove Energy Management Data page. -->
         <h4 id="statisticTitle" class="mb-1"></h4>
         <h5 id="entityTitle" class="text-muted"></h5>
       </div>
 
       <div class="tabs-container">
+        <div class="form-container mt-4 mb-4">
+          <form id="energy-management-form">
+            <div class="form-section">Date & Duration</div>
+            <div class="form-group">
+              <label for="date" class="required">Date</label>
+              <input type="date" id="date" name="date" required class="form-control" />
+            </div>
+            <div class="form-group">
+              <label for="days">Days (Auto-calculated)</label>
+              <input type="number" id="days" name="days" readonly class="form-control" />
+            </div>
+            <div class="form-section">State-wise Data</div>
+            <div class="form-group">
+              <label for="discom_name" class="required">Discom Name</label>
+              <input type="text" id="discom_name" name="discom_name" required class="form-control" />
+            </div>
+            <div class="form-group">
+              <label for="state" class="required">State</label>
+              <select id="state" name="state" required class="form-control">
+                <option value="">Select State</option>
+                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                <option value="Assam">Assam</option>
+                <option value="Bihar">Bihar</option>
+                <option value="Chhattisgarh">Chhattisgarh</option>
+                <option value="Goa">Goa</option>
+                <option value="Gujarat">Gujarat</option>
+                <option value="Haryana">Haryana</option>
+                <option value="Himachal Pradesh">Himachal Pradesh</option>
+                <option value="Jharkhand">Jharkhand</option>
+                <option value="Karnataka">Karnataka</option>
+                <option value="Kerala">Kerala</option>
+                <option value="Madhya Pradesh">Madhya Pradesh</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Manipur">Manipur</option>
+                <option value="Meghalaya">Meghalaya</option>
+                <option value="Mizoram">Mizoram</option>
+                <option value="Nagaland">Nagaland</option>
+                <option value="Odisha">Odisha</option>
+                <option value="Punjab">Punjab</option>
+                <option value="Rajasthan">Rajasthan</option>
+                <option value="Sikkim">Sikkim</option>
+                <option value="Tamil Nadu">Tamil Nadu</option>
+                <option value="Telangana">Telangana</option>
+                <option value="Tripura">Tripura</option>
+                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                <option value="Uttarakhand">Uttarakhand</option>
+                <option value="West Bengal">West Bengal</option>
+              </select>
+            </div>
+            <div class="form-section">Energy Metrics</div>
+            <div class="form-group">
+              <label for="energy_generated" class="required">Energy Generated (MWh)</label>
+              <input type="number" id="energy_generated" name="energy_generated" required class="form-control" />
+            </div>
+            <div class="form-group">
+              <label for="energy_imported">Energy Imported (MWh)</label>
+              <input type="number" id="energy_imported" name="energy_imported" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label for="energy_exported">Energy Exported (MWh)</label>
+              <input type="number" id="energy_exported" name="energy_exported" class="form-control" />
+            </div>
+            <div class="form-section">Remarks</div>
+            <div class="form-group">
+              <label for="remarks">Remarks</label>
+              <textarea id="remarks" name="remarks" rows="2" class="form-control"></textarea>
+            </div>
+            <div class="form-group" style="grid-column: span 2; margin-top: 20px;">
+              <button type="submit" class="btn btn-success">Submit</button>
+            </div>
+          </form>
+        </div>
         <ul class="nav nav-tabs" id="dynamicTabs" role="tablist"></ul>
         <div class="tab-content" id="dynamicTabContent"></div>
       </div>
@@ -465,24 +471,24 @@
               }" onclick="deleteIssue(event)">Delete</button></td>`;
             } else if (type.id === "swd") {
               tr.innerHTML = `
-              <td>${index}</td>
-              <td>${item.name}</td>
-              <td>${(item.psa_signed_mw !== undefined && item.psa_signed_mw !== null) ? parseFloat(item.psa_signed_mw).toFixed(2) : '-'}</td>
-              <td>${(item.commissioned_mw !== undefined && item.commissioned_mw !== null) ? parseFloat(item.commissioned_mw).toFixed(2) : '-'}</td>
-              <td>
-                ${
-                  item.regulations_policy
-                    ? `<a href="${item.regulations_policy}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
-                    : `<button class="btn btn-sm btn-secondary" disabled>No Policy</button>`
-                }
-              </td>
-              <td>
-                ${
-                  item.report_path
-                    ? `<a href="${item.report_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
-                    : `<button class="btn btn-sm btn-secondary" disabled>No Report</button>`
-                }
-              </td>`;
+                <td>${index}</td>
+                <td>${item.name}</td>
+                <td>${(item.psa_signed_mw !== undefined && item.psa_signed_mw !== null) ? parseFloat(item.psa_signed_mw).toFixed(2) : '-'}</td>
+                <td>${(item.commissioned_mw !== undefined && item.commissioned_mw !== null) ? parseFloat(item.commissioned_mw).toFixed(2) : '-'}</td>
+                <td>
+                  ${
+                    Array.isArray(item.regulations_policy) && item.regulations_policy.length > 0
+                      ? item.regulations_policy.map((url, idx) => `<a href="${url}" target="_blank" class="btn btn-sm btn-outline-primary mb-1">View ${idx+1}</a>`).join(' ')
+                      : (item.regulations_policy ? `<a href="${item.regulations_policy}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>` : `<button class="btn btn-sm btn-secondary" disabled>No Policy</button>`)
+                  }
+                </td>
+                <td>
+                  ${
+                    item.report_path
+                      ? `<a href="${item.report_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>`
+                      : `<button class="btn btn-sm btn-secondary" disabled>No Report</button>`
+                  }
+                </td>`;
             } else if (type.source === "documents") {
               tr.innerHTML = `
               <td>${index}</td>
