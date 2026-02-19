@@ -452,6 +452,13 @@ router.get(
   dataController.getStateWiseData,
 );
 
+router.get(
+  "/state-wise-data/one/:swd_id",
+  verifyToken,
+  auditLogger("Fetched state-wise data entry"),
+  dataController.getStateWiseDataById,
+);
+
 router.post(
   "/state-wise-data/:dept_id/:statistic_id/:entity_id",
   verifyToken,

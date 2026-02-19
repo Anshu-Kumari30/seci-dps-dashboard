@@ -3,307 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Add Document</title>
+    <title>Add Contract Document</title>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
     />
-    <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-
-      body {
-        font-family: "Segoe UI", Roboto, Arial, sans-serif;
-        background: linear-gradient(135deg, #f4f6f9 0%, #e8ecf1 100%);
-        padding: 20px;
-        min-height: 100vh;
-        color: #333;
-      }
-
-      h1 {
-        text-align: center;
-        margin-bottom: 10px;
-        color: #0b5ed7;
-        font-weight: 700;
-        font-size: 28px;
-      }
-
-      .subtitle {
-        text-align: center;
-        color: #666;
-        margin-bottom: 30px;
-        font-size: 16px;
-        max-width: 600px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-
-      .form-container {
-        max-width: 650px;
-        margin: auto;
-        background: #ffffff;
-        padding: 35px 40px;
-        border-radius: 12px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-      }
-
-      .form-group {
-        margin-bottom: 25px;
-      }
-
-      .form-label {
-        font-weight: 600;
-        font-size: 14px;
-        color: #333;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-      }
-
-      .required::after {
-        content: " *";
-        color: #dc3545;
-      }
-
-      .form-control {
-        width: 100%;
-        padding: 12px;
-        font-size: 15px;
-        border: 1px solid #cfd4da;
-        border-radius: 6px;
-        transition: all 0.3s;
-      }
-
-      .form-control:focus {
-        outline: none;
-        border-color: #0b5ed7;
-        box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.15);
-      }
-
-      .file-upload-wrapper {
-        margin-bottom: 20px;
-      }
-
-      .file-upload-area {
-        border: 2px dashed #0b5ed7;
-        border-radius: 8px;
-        padding: 40px 20px;
-        text-align: center;
-        background: #f8f9fa;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        position: relative;
-      }
-
-      .file-upload-area:hover {
-        border-color: #0b5ed7;
-        background: #f0f4ff;
-        transform: translateY(-2px);
-      }
-
-      .file-upload-area.dragover {
-        border-color: #0b5ed7;
-        background: #f0f4ff;
-        box-shadow: 0 6px 20px rgba(11, 94, 215, 0.2);
-      }
-
-      .upload-icon {
-        width: 50px;
-        height: 50px;
-        margin: 0 auto 15px;
-        color: #0b5ed7;
-      }
-
-      .file-upload-area p {
-        margin: 0;
-        color: #333;
-      }
-
-      .upload-title {
-        font-weight: 600;
-        font-size: 16px;
-        margin: 15px 0 8px;
-      }
-
-      .upload-subtitle {
-        font-size: 13px;
-        color: #666;
-      }
-
-      .file-input {
-        display: none;
-      }
-
-      .file-info {
-        margin-top: 12px;
-        color: #0b5ed7;
-        font-weight: 500;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 8px;
-      }
-
-      .file-info.error {
-        color: #dc3545;
-      }
-
-      .checkmark {
-        width: 18px;
-        height: 18px;
-        background: #0b5ed7;
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 12px;
-        flex-shrink: 0;
-      }
-
-      .form-actions {
-        display: flex;
-        gap: 12px;
-        margin-top: 30px;
-        justify-content: center;
-      }
-
-      .btn-submit {
-        background: linear-gradient(to right, #0b5ed7, #0a58ca);
-        color: white;
-        border: none;
-        padding: 12px 32px;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 15px;
-        transition: all 0.3s;
-        cursor: pointer;
-        box-shadow: 0 4px 6px rgba(11, 94, 215, 0.2);
-        min-width: 140px;
-      }
-
-      .btn-submit:hover {
-        background: linear-gradient(to right, #0a58ca, #0950b8);
-        box-shadow: 0 6px 12px rgba(11, 94, 215, 0.3);
-        transform: translateY(-2px);
-      }
-
-      .btn-submit:active {
-        transform: translateY(0);
-      }
-
-      .btn-submit:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
-      }
-
-      .back-btn {
-        display: inline-block;
-        margin-bottom: 20px;
-        color: #0b5ed7;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s;
-      }
-
-      .back-btn:hover {
-        color: #0a58ca;
-        text-decoration: underline;
-      }
-
-      @media (max-width: 768px) {
-        body {
-          padding: 15px;
-        }
-
-        .form-container {
-          padding: 25px 20px;
-        }
-
-        h1 {
-          font-size: 24px;
-        }
-
-        .file-upload-area {
-          padding: 30px 15px;
-        }
-
-        .btn-submit {
-          padding: 10px 24px;
-          font-size: 14px;
-        }
-      }
-    </style>
   </head>
   <body>
-    <h1 id="pageTitle">Add Document</h1>
-    <p class="subtitle" id="pageSubtitle">Enter document details and upload file</p>
-
-    <div class="form-container">
-      <a href="#" id="backBtn" class="back-btn">← Back</a>
-      
+    <div class="top-bar d-flex justify-content-between align-items-center px-4 py-2 border-bottom bg-light">
+      <div class="d-flex align-items-center gap-3">
+        <img src="https://www.seci.co.in/frontend/assets/images/seci-logo.png" alt="SECI Logo" style="height:40px;width:auto" />
+        <div class="breadcrumb-label">Projects Dashboard &gt; Projects</div>
+      </div>
+      <div id="topRight" class="d-flex align-items-center gap-3">
+        <span id="userName" class="small-text-muted">Welcome, User</span>
+      </div>
+    </div>
+    <div class="container mt-5">
+      <h1 class="mb-4">Add Contract Document</h1>
       <form id="addContractDocumentForm">
-            <div class="form-group">
-              <label for="docName" class="form-label">Document Name</label>
-              <input
-                type="text"
-                class="form-control"
-                id="docName"
-                name="doc_name"
-                placeholder="Enter document name"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="docDate" class="form-label">Document Date</label>
-              <input
-                type="date"
-                class="form-control"
-                id="docDate"
-                name="doc_date"
-                required
-              />
-            </div>
-
-            <div class="form-group file-upload-wrapper">
-              <label class="form-label">Upload Document</label>
-              <div class="file-upload-area" id="fileUploadArea">
-                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <p class="upload-title">Click to upload or drag and drop</p>
-                <p class="upload-subtitle">PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG (Max 50 MB)</p>
-                <input
-                  type="file"
-                  class="file-input"
-                  id="docFile"
-                  name="doc_file"
-                  required
-                />
-              </div>
-              <div id="fileName" class="file-info"></div>
-            </div>
-
-            <input type="hidden" id="deptId" name="dept_id" />
-            <input type="hidden" id="statisticId" name="statistic_id" />
-            <input type="hidden" id="entityId" name="entity_id" />
-            <input type="hidden" id="docType" name="doc_type" />
-
-            <div class="form-actions">
-              <button type="submit" class="btn-submit" id="submitBtn">
-                ✓ Submit Document
-              </button>
-            </div>
-          </form>
+        <div class="mb-3">
+          <label for="docName" class="form-label">Document Name</label>
+          <input
+            type="text"
+            class="form-control"
+            id="docName"
+            name="doc_name"
+            placeholder="Enter document name"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="docFile" class="form-label">Document Date</label>
+          <input
+            type="date"
+            class="form-control"
+            id="docDate"
+            name="doc_date"
+            required
+          />
+        <div class="mb-3">
+          <label for="docFile" class="form-label">Upload Document</label>
+          <small class="form-text text-muted">
+            Maximum file size allowed: <strong>50 MB</strong>.
+          </small>
+          <input
+            type="file"
+            class="form-control"
+            id="docFile"
+            name="doc_file"
+            required
+          />
+        </div>
+        <input type="hidden" id="deptId" name="dept_id" />
+        <input type="hidden" id="statisticId" name="statistic_id" />
+        <input type="hidden" id="entityId" name="entity_id" />
+        <input
+          type="hidden"
+          id="docType"
+          name="doc_type"
+          value="cdoc"
+        />
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
     </div>
 
     <script>
@@ -312,77 +74,12 @@
       const deptId = urlParams.get("dept_id");
       const statisticId = urlParams.get("statistic_id");
       const entityId = urlParams.get("entity_id");
-      let docType = urlParams.get("doc_type") || "cdoc";
-      let title = urlParams.get("title") || "Document";
-
-      // SAFETY FIX: If docType is empty/null/undefined, default to "cdoc"
-      if (!docType || docType === "null" || docType === "undefined" || docType.trim() === "") {
-        console.warn("⚠️ doc_type was empty, defaulting to 'cdoc'");
-        docType = "cdoc";
-      }
-
-      console.log("✅ Page initialized with:", { deptId, statisticId, entityId, docType, title });
-
-      // Update page title and heading
-      document.title = `Add ${title}`;
-      document.getElementById("pageTitle").textContent = `Add ${title}`;
-      document.getElementById("pageSubtitle").textContent = `Enter ${title.toLowerCase()} details and upload file`;
-      document.getElementById("submitBtn").textContent = `✓ Submit ${title}`;
-
-      // Set back button href
-      document.getElementById("backBtn").href = `/external.html?dept_id=${deptId}&statistic_id=${statisticId}&entity_id=${entityId}`;
 
       // Populate hidden fields
       document.getElementById("deptId").value = deptId;
       document.getElementById("statisticId").value = statisticId;
       document.getElementById("entityId").value = entityId;
-      document.getElementById("docType").value = docType;
-
-      console.log("✅ Hidden fields populated:", {
-        deptId: document.getElementById("deptId").value,
-        statisticId: document.getElementById("statisticId").value,
-        entityId: document.getElementById("entityId").value,
-        docType: document.getElementById("docType").value,
-      });
-
-      // File upload area functionality
-      const fileUploadArea = document.getElementById("fileUploadArea");
-      const fileInput = document.getElementById("docFile");
-      const fileName = document.getElementById("fileName");
-
-      fileUploadArea.addEventListener("click", () => fileInput.click());
-
-      fileUploadArea.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        fileUploadArea.classList.add("dragover");
-      });
-
-      fileUploadArea.addEventListener("dragleave", () => {
-        fileUploadArea.classList.remove("dragover");
-      });
-
-      fileUploadArea.addEventListener("drop", (e) => {
-        e.preventDefault();
-        fileUploadArea.classList.remove("dragover");
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-          fileInput.files = files;
-          updateFileName();
-        }
-      });
-
-      fileInput.addEventListener("change", updateFileName);
-
-      function updateFileName() {
-        if (fileInput.files.length > 0) {
-          const file = fileInput.files[0];
-          const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-          fileName.innerHTML = `<span class="checkmark">✓</span> ${file.name} (${sizeMB} MB)`;
-          fileName.classList.remove("error");
-        } else {
-          fileName.textContent = "";
-        }
-      }
+      document.getElementById("docType").value = "cdoc";
 
       function authFetch(url, options = {}) {
         const token = localStorage.getItem("token");
@@ -413,74 +110,7 @@
         .addEventListener("submit", async function (e) {
           e.preventDefault();
 
-          const submitBtn = document.getElementById("submitBtn");
-
-          // Debug logging
-          console.log("🔵 Form submitted");
-          console.log("  deptId:", deptId);
-          console.log("  statisticId:", statisticId);
-          console.log("  entityId:", entityId);
-          console.log("  docType:", docType);
-          console.log("  title:", title);
-
-          // Validate required fields
-          if (!deptId || !statisticId || !entityId) {
-            alert("Error: Missing required parameters (dept_id, statistic_id, or entity_id)");
-            return;
-          }
-
-          // Validate doc_type
-          const validDocTypes = ["mpr", "dpr", "cdoc", "tp", "dp", "sp", "discom", "ro", "swd"];
-          
-          // Try to infer doc_type from title if it's missing
-          let finalDocType = docType;
-          if (!finalDocType || finalDocType === "cdoc") {
-            const titleToTypeMap = {
-              "Developer Payment": "dp",
-              "Sale and Purchase": "sp",
-              "DISCOM Payment": "discom",
-              "Regulatory Order": "ro",
-              "State-wise Data": "swd",
-              "Tariff Petition": "tp",
-              "Contract Document": "cdoc",
-              "Daily Progress Report": "dpr",
-              "Monthly Progress Report": "mpr"
-            };
-            
-            for (const [titleKey, typeValue] of Object.entries(titleToTypeMap)) {
-              if (title && title.includes(titleKey)) {
-                finalDocType = typeValue;
-                console.log("🔵 Inferred doc_type from title:", finalDocType);
-                break;
-              }
-            }
-          }
-
-          if (!finalDocType || !validDocTypes.includes(finalDocType.toLowerCase())) {
-            console.error("❌ Invalid doc_type:", finalDocType, "Valid types:", validDocTypes);
-            alert(`Error: Invalid document type: ${finalDocType}\nAllowed types: ${validDocTypes.join(", ")}`);
-            return;
-          }
-
-          console.log("✅ doc_type validation passed:", finalDocType);
-
-          submitBtn.disabled = true;
-          submitBtn.textContent = "⏳ Uploading...";
-
           const formData = new FormData(this);
-          
-          // IMPORTANT: Override the doc_type with the validated finalDocType
-          formData.set("doc_type", finalDocType);
-          
-          // Debug: Log FormData contents
-          console.log("🔵 FormData contents after validation:");
-          for (let pair of formData.entries()) {
-            if (pair[0] !== "doc_file") {
-              console.log(`  ${pair[0]}: ${pair[1]}`);
-            } else {
-              console.log(`  ${pair[0]}: [File] ${pair[1].name}`);
-            }
-          }
 
           try {
             const response = await authFetch("/api/data/documents", {
@@ -488,21 +118,16 @@
               body: formData,
             });
 
-            const data = await response.json();
-
-            console.log("📨 Server response:", { ok: response.ok, status: response.status, data });
-
+            console.log(formData);
             if (!response.ok) {
-              throw new Error(data.error || "Failed to add document.");
+              throw new Error("Failed to add Contract Document document.");
             }
 
-            alert(`${title} added successfully!`);
+            alert("Contract Document document added successfully!");
             window.location.href = `/external.html?dept_id=${deptId}&statistic_id=${statisticId}&entity_id=${entityId}`;
           } catch (err) {
-            console.error("❌ Detailed error:", err);
-            alert(`Error adding ${title}:\n\n${err.message}`);
-            submitBtn.disabled = false;
-            submitBtn.textContent = `✓ Submit ${title}`;
+            console.error(err);
+            alert("Error adding Contract Document document.");
           }
         });
     </script>

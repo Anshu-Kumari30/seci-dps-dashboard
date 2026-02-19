@@ -39,6 +39,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      state: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
       psa_signed_mw: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,
@@ -66,8 +70,15 @@ module.exports = (sequelize, DataTypes) => {
     {
       timestamps: true,
       freezeTableName: true,
+      indexes: [
+        {
+          name: "idx_swd_id",
+          fields: ["swd_id"],
+        },
+      ],
     }
   );
 
   return StateWiseData;
+
 };

@@ -984,8 +984,9 @@
                     } else if (dept_name == "Business Development") {
                       window.location.href =
                         "/business_development_external.html";
-                    } else if (dept_name === "Energy Management") {
-                      window.location.href = `/add_emd_data.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+                    } else if (typeof dept_name === "string" && dept_name.toLowerCase().includes("energy")) {
+                      // match any department name containing 'energy' (tolerant to minor typos)
+                      window.location.href = `/external_emd.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
                     } else {
                       // "_self" makes it open in the same tab
                       window.open(

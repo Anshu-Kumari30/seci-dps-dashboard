@@ -16,7 +16,7 @@
         padding: 30px 20px;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       }
-      .container-main {
+      .container-main { 
         max-width: 1000px;
         margin: auto;
       }
@@ -363,7 +363,7 @@
               if (type.source === "documents") {
                 const docType = type.docTypeForAdd || (type.docTypes && type.docTypes[0]) || type.id;
                 const title = encodeURIComponent(type.titleForAdd || type.label);
-                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=${docType}&title=${title}`;
+                window.location.href = `/emd_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&doc_type=${docType}&title=${title}`;
               } else if (type.id === "dpr") {
                 window.location.href = `/add_dpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
               } else if (type.id === "mpr") {

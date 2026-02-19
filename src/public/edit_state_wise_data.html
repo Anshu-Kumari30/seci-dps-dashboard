@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit State-wise Data</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #f4f6f9 0%, #e8ecf1 100%);
+      padding: 20px;
+      min-height: 100vh;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 25px;
+      color: #0b5ed7;
+      font-weight: 700;
+      font-size: 28px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .form-container {
+      max-width: 1000px;
+      margin: auto;
+      background: #ffffff;
+      padding: 35px 40px;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    }
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px 30px;
+    }
+    .form-section {
+      grid-column: span 2;
+      margin-top: 10px;
+      margin-bottom: 5px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #0b5ed7;
+      color: #0b5ed7;
+      font-weight: 600;
+      font-size: 18px;
+    }
+    .form-group { display: flex; flex-direction: column; }
+    label { font-weight: 600; font-size: 14px; color: #333; margin-bottom: 8px; display: flex; align-items: center; }
+    .required::after { content: " *"; color: #dc3545; }
+    input, select {
+      width: 100%; padding: 12px; font-size: 15px; border: 1px solid #cfd4da; border-radius: 6px; transition: all 0.3s;
+      background: #f8f9fa; color: #333; margin-bottom: 4px;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: #0b5ed7; box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.15);
+    }
+    .full-width { grid-column: span 2; }
+    .form-actions { display: flex; gap: 12px; margin-top: 30px; justify-content: center; }
+    button {
+      padding: 12px 32px; font-size: 15px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer;
+      transition: all 0.3s; min-width: 160px;
+    }
+    .btn-submit {
+      background: linear-gradient(to right, #0b5ed7, #0a58ca); color: #fff; box-shadow: 0 4px 6px rgba(11, 94, 215, 0.2);
+    }
+    .btn-submit:hover { background: linear-gradient(to right, #0a58ca, #0950b8); box-shadow: 0 6px 12px rgba(11, 94, 215, 0.3); transform: translateY(-2px); }
+    .btn-cancel {
+      background: linear-gradient(to right, #6c757d, #5c636a); color: #fff; box-shadow: 0 4px 6px rgba(108, 117, 125, 0.2);
+    }
+    .btn-cancel:hover { background: linear-gradient(to right, #5c636a, #495057); box-shadow: 0 6px 12px rgba(108, 117, 125, 0.3); transform: translateY(-2px); }
+
+    .file-upload-wrapper { margin-bottom: 10px; }
+    .file-upload-area {
+      border: 3px dashed #cbd5e1; border-radius: 12px; padding: 28px 22px; text-align: center;
+      background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); transition: all 0.3s ease; cursor: pointer; position: relative;
+    }
+    .file-upload-area:hover { border-color: #0b5ed7; background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); transform: translateY(-2px); }
+    .file-upload-area.dragover { border-color: #0b5ed7; background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); box-shadow: 0 10px 30px rgba(11, 94, 215, 0.2); }
+    .upload-icon { width: 44px; height: 44px; margin: 0 auto 10px; color: #0b5ed7; opacity: 0.8; }
+    .upload-title { font-weight: 600; font-size: 15px; margin: 10px 0 6px; }
+    .upload-subtitle { font-size: 13px; color: #718096; }
+    .file-input { display: none; }
+    .file-info { margin-top: 10px; color: #0b5ed7; font-weight: 500; font-size: 13px; }
+    .existing-files { margin-top: 8px; font-size: 13px; color: #333; }
+    .existing-files a { text-decoration: none; }
+    .muted { color: #666; font-size: 12px; margin-top: 6px; }
+
+    @media (max-width: 768px) {
+      form { grid-template-columns: 1fr; }
+      .form-container { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h1>Edit State-wise Data</h1>
+    <div class="subtitle">
+      Update the fields and replace files if needed. Replacing Regulations/Policy will overwrite existing policy files; replacing Report will overwrite the existing report file.
+    </div>
+
+    <form id="editStateWiseDataForm">
+      <div class="form-section">Basic Information</div>
+      <div class="form-group">
+        <label for="name" class="required">Discom Name</label>
+        <input type="text" id="name" name="name" required />
+      </div>
+      <div class="form-group">
+        <label for="state" class="required">State</label>
+        <select id="state" name="state" required>
+          <option value="">Select State</option>
+          <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Delhi</option>
+        </select>
+      </div>
+
+      <div class="form-section">Capacity Details</div>
+      <div class="form-group">
+        <label for="psa_signed_mw" class="required">PSA Signed (MW)</label>
+        <input type="number" step="0.01" id="psa_signed_mw" name="psa_signed_mw" required />
+      </div>
+      <div class="form-group">
+        <label for="commissioned_mw" class="required">Commissioned (MW)</label>
+        <input type="number" step="0.01" id="commissioned_mw" name="commissioned_mw" required />
+      </div>
+
+      <div class="form-section">Documents</div>
+      <div class="form-group">
+        <label for="regulationsFile">Regulations / Policy (Replace)</label>
+        <small class="form-text">PDF, DOC, DOCX allowed (Max 50 MB). Multiple files allowed.</small>
+        <div class="file-upload-wrapper">
+          <div class="file-upload-area" id="regulationsUploadArea">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p class="upload-title">Upload new Regulations / Policy</p>
+            <p class="upload-subtitle">Click to upload or drag and drop</p>
+            <input type="file" class="file-input" id="regulationsFile" accept=".pdf,.doc,.docx,.txt" multiple />
+          </div>
+          <div id="regulationsFileName" class="file-info"></div>
+          <div id="existingRegulations" class="existing-files"></div>
+          <div class="muted">If you upload new policy files, they will replace the existing policy files.</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="reportFile">Report (Replace)</label>
+        <small class="form-text">PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG (Max 50 MB). Single file only.</small>
+        <div class="file-upload-wrapper">
+          <div class="file-upload-area" id="reportUploadArea">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p class="upload-title">Upload new Report</p>
+            <p class="upload-subtitle">Click to upload or drag and drop</p>
+            <input type="file" class="file-input" id="reportFile" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.png" />
+          </div>
+          <div id="reportFileName" class="file-info"></div>
+          <div id="existingReport" class="existing-files"></div>
+          <div class="muted">If you upload a new report file, it will replace the existing report.</div>
+        </div>
+      </div>
+
+      <div class="form-actions full-width">
+        <button type="submit" class="btn-submit" id="submitBtn">Save Changes</button>
+        <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const swdId = urlParams.get("swd_id");
+    const deptId = urlParams.get("dept_id");
+    const statisticId = urlParams.get("statistic_id");
+    const entityId = urlParams.get("entity_id");
+
+    function authFetch(url, options = {}) {
+      const token = localStorage.getItem("token");
+      const defaultHeaders = { Authorization: `Bearer ${token}` };
+      return fetch(url, {
+        ...options,
+        headers: { ...defaultHeaders, ...(options.headers || {}) },
+      }).then((res) => {
+        if (res.status === 401) {
+          alert("Session expired. Redirecting to login...");
+          localStorage.clear();
+          window.location.href = "/";
+          throw new Error("Unauthorized");
+        }
+        return res;
+      });
+    }
+
+    function setupFileUploadArea(uploadAreaId, fileInputId, fileNameId) {
+      const uploadArea = document.getElementById(uploadAreaId);
+      const fileInput = document.getElementById(fileInputId);
+      const fileName = document.getElementById(fileNameId);
+      uploadArea.addEventListener("click", () => fileInput.click());
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault(); uploadArea.classList.add("dragover");
+      });
+      uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("dragover"));
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault(); uploadArea.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) { fileInput.files = files; updateFileName(fileInput, fileName); }
+      });
+      fileInput.addEventListener("change", () => updateFileName(fileInput, fileName));
+    }
+
+    function updateFileName(fileInput, fileNameDiv) {
+      if (fileInput.files.length > 0) {
+        let filesInfo = [];
+        for (let i = 0; i < fileInput.files.length; i++) {
+          const file = fileInput.files[i];
+          const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+          filesInfo.push(`${file.name} (${sizeMB} MB)`);
+        }
+        fileNameDiv.textContent = filesInfo.join(", ");
+      } else {
+        fileNameDiv.textContent = "";
+      }
+    }
+
+    function parseRegulationsPolicy(val) {
+      if (!val) return [];
+      if (Array.isArray(val)) return val.filter(Boolean);
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) return parsed.filter(Boolean);
+          } catch (e) {}
+        }
+        return [val];
+      }
+      return [];
+    }
+
+    function goBack() {
+      if (deptId && statisticId && entityId) {
+        window.location.href = `/external_emd.html?dept_id=${encodeURIComponent(deptId)}&statistic_id=${encodeURIComponent(statisticId)}&entity_id=${encodeURIComponent(entityId)}`;
+      } else {
+        window.location.href = "/home.html";
+      }
+    }
+
+    document.getElementById("cancelBtn").addEventListener("click", goBack);
+    setupFileUploadArea("regulationsUploadArea", "regulationsFile", "regulationsFileName");
+    setupFileUploadArea("reportUploadArea", "reportFile", "reportFileName");
+
+    async function loadExisting() {
+      if (!swdId) {
+        alert("Missing swd_id.");
+        goBack();
+        return;
+      }
+
+      const res = await authFetch(`/api/data/state-wise-data/one/${encodeURIComponent(swdId)}`);
+      if (!res.ok) {
+        alert("Could not load state-wise row.");
+        goBack();
+        return;
+      }
+      const json = await res.json();
+      const item = json.data;
+
+      document.getElementById("name").value = item.name || "";
+      document.getElementById("state").value = item.state || "";
+      document.getElementById("psa_signed_mw").value = item.psa_signed_mw ?? "";
+      document.getElementById("commissioned_mw").value = item.commissioned_mw ?? "";
+
+      const regs = parseRegulationsPolicy(item.regulations_policy);
+      const existingRegsEl = document.getElementById("existingRegulations");
+      existingRegsEl.innerHTML = regs.length
+        ? `Existing: ${regs.map((u, i) => `<a href="${u}" target="_blank">View ${i + 1}</a>`).join(" | ")}`
+        : `<span class="muted">Existing: No Policy</span>`;
+
+      const existingReportEl = document.getElementById("existingReport");
+      existingReportEl.innerHTML = item.report_path
+        ? `Existing: <a href="${item.report_path}" target="_blank">View</a>`
+        : `<span class="muted">Existing: No Report</span>`;
+    }
+
+    async function uploadSingle(file) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const resp = await authFetch(`/api/data/documents/upload-file`, { method: "POST", body: fd });
+      if (!resp.ok) throw new Error("File upload failed");
+      const json = await resp.json();
+      return json.path;
+    }
+
+    document.getElementById("editStateWiseDataForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById("submitBtn");
+
+      const name = document.getElementById("name").value.trim();
+      const state = document.getElementById("state").value.trim();
+      const psa_signed_mw = document.getElementById("psa_signed_mw").value;
+      const commissioned_mw = document.getElementById("commissioned_mw").value;
+
+      if (!name) return alert("Discom Name is required.");
+      if (!state) return alert("State is required.");
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Saving...";
+
+        // Replace files only if new files are provided
+        const regulationsFiles = document.getElementById("regulationsFile").files;
+        const reportFile = document.getElementById("reportFile").files[0];
+
+        let regulations_policy; // undefined means keep existing
+        let report_path; // undefined means keep existing
+
+        if (regulationsFiles && regulationsFiles.length > 0) {
+          const paths = [];
+          for (let i = 0; i < regulationsFiles.length; i++) {
+            paths.push(await uploadSingle(regulationsFiles[i]));
+          }
+          regulations_policy = paths.length > 1 ? JSON.stringify(paths) : (paths[0] || null);
+        }
+
+        if (reportFile) {
+          report_path = await uploadSingle(reportFile);
+        }
+
+        const payload = {
+          name,
+          state,
+          psa_signed_mw: parseFloat(psa_signed_mw),
+          commissioned_mw: parseFloat(commissioned_mw),
+        };
+        if (regulations_policy !== undefined) payload.regulations_policy = regulations_policy;
+        if (report_path !== undefined) payload.report_path = report_path;
+
+        const resp = await authFetch(`/api/data/state-wise-data/${encodeURIComponent(swdId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.message || "Failed to update state-wise row.");
+        }
+
+        alert("State-wise data updated successfully!");
+        goBack();
+      } catch (err) {
+        console.error(err);
+        alert("Error updating state-wise data: " + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Save Changes";
+      }
+    });
+
+    loadExisting().catch((e) => {
+      console.error(e);
+      alert("Failed to load state-wise row.");
+      goBack();
+    });
+  </script>
+</body>
+</html>
+

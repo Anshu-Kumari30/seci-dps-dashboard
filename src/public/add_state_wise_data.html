@@ -244,13 +244,25 @@
     document.getElementById("addStateWiseDataForm").addEventListener("submit", async function (e) {
       e.preventDefault();
       const submitBtn = document.getElementById("submitBtn");
-      const name = document.getElementById("name").value;
-      const state = document.getElementById("state").value;
+      const name = document.getElementById("name").value.trim();
+      const state = document.getElementById("state").value.trim();
       const psa_signed_mw = document.getElementById("psa_signed_mw").value;
       const commissioned_mw = document.getElementById("commissioned_mw").value;
+      
       // Validate required IDs
       if (!deptId || !statisticId || !entityId) {
         alert("Error: Missing department, statistic, or entity ID. Please access this form from the correct workflow or contact admin.");
+        return;
+      }
+      
+      // Validate required fields
+      if (!name) {
+        alert("Error: Discom Name is required.");
+        return;
+      }
+      
+      if (!state) {
+        alert("Error: State is required. Please select a state from the dropdown.");
         return;
       }
       try {
@@ -295,10 +307,10 @@
         );
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.message || "Failed to add state-wise data.");
+          throw new Error(error.message || error.error || "Failed to add state-wise data.");
         }
         alert("State-wise data added successfully!");
-        window.location.href = `/external.html?dept_id=${deptId}&statistic_id=${statisticId}&entity_id=${entityId}`;
+        window.location.href = `/external_emd.html?dept_id=${deptId}&statistic_id=${statisticId}&entity_id=${entityId}`;
       } catch (err) {
         console.error(err);
         submitBtn.disabled = false;
