@@ -118,6 +118,7 @@ function startExpressServer() {
     }),
   );
 
+  handleShutdown();
   const end = startTimer("Starting Express");
 
   app.use("/api/data/audit", require("./routes/audit_routes"));
@@ -146,6 +147,21 @@ function startExpressServer() {
   });
 }
 
+// Graceful shutdown
+function handleShutdown() {
+  process.on("SIGINT", async () => {
+    logger.info("Gracefully shutting down...");
+
+    try {
+      await sequelize.close();
+      logger.info("DB connection closed.");
+    } catch (err) {
+      logger.error("Shutdown error", err);
+    }
+
+    process.exit(0);
+  });
+}
 
 // 🟢 Main startup sequence
 (async () => {

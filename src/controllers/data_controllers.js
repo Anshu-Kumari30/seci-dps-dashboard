@@ -17,7 +17,6 @@ const {
   OMDGRSolarBESS,
   OMDGRSolar,
   OmProjectTypeIssuesActions,
-  StateWiseData,
 } = require("../models").models;
 
 const { Sequelize, Op } = require("sequelize");
@@ -407,9 +406,9 @@ exports.getGroupedDocumentsByStatistic = async (req, res) => {
     });
 
     if (!statisticExists)
-      return res.json({ documents: [], correspondences: [], issues: [], stateWiseData: [] });
+      return res.json({ documents: [], correspondences: [] });
 
-    const [docs, corrs, issues, stateWiseData] = await Promise.all([
+    const [docs, corrs, issues] = await Promise.all([
       EntityDocs.findAll({
         where: {
           dept_id,
@@ -434,33 +433,12 @@ exports.getGroupedDocumentsByStatistic = async (req, res) => {
           is_active: true,
         },
       }),
-      StateWiseData.findAll({
-        where: {
-          dept_id,
-          statistic_id,
-          entity_id,
-          is_active: true,
-        },
-      }),
     ]);
 
-    // Merge stateWiseData into documents array with doc_type: 'swd'
-    const swdDocs = stateWiseData.map((swd) => {
-      // Handle both Sequelize models and plain objects
-      const swdData = swd.toJSON ? swd.toJSON() : (swd.dataValues || swd);
-      return {
-        ...swdData,
-        doc_type: 'swd',
-      };
-    });
-
-    console.log('State-wise data fetched:', swdDocs.length, 'records');
-
     res.json({
-      documents: [...docs, ...swdDocs],
+      documents: docs,
       correspondences: corrs,
       issues: issues,
-      stateWiseData: stateWiseData,
     });
   } catch (err) {
     console.error("Error in getGroupedDocumentsByStatistic:", err);
@@ -1442,7 +1420,6 @@ exports.getEntriesFromContractsTable = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 
 exports.deleteEntryFromContractsTable = async (req, res) => {
   const { entry_id } = req.params;
@@ -2605,187 +2582,3 @@ exports.getAllIssuesAndActions = async (req, res) => {
     });
   }
 };
-
-// ========== STATE-WISE DATA ==========
-exports.getStateWiseData = async (req, res) => {
-  try {
-    const { dept_id, statistic_id, entity_id } = req.params;
-
-    const data = await StateWiseData.findAll({
-      where: {
-        dept_id,
-        statistic_id,
-        entity_id,
-        is_active: true,
-      },
-      order: [["name", "ASC"]],
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "State-wise data fetched successfully",
-      data: data,
-    });
-  } catch (error) {
-    console.error("Error fetching state-wise data:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch state-wise data",
-      error: error.message,
-    });
-  }
-};
-
-exports.getStateWiseDataById = async (req, res) => {
-  try {
-    const { swd_id } = req.params;
-
-    const swd = await StateWiseData.findByPk(swd_id);
-
-    if (!swd || swd.is_active === false) {
-      return res.status(404).json({
-        success: false,
-        message: "State-wise data entry not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "State-wise data entry fetched successfully",
-      data: swd,
-    });
-  } catch (error) {
-    console.error("Error fetching state-wise data by id:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch state-wise data entry",
-      error: error.message,
-    });
-  }
-};
-
-exports.addStateWiseData = async (req, res) => {
-  try {
-    const { dept_id, statistic_id, entity_id } = req.params;
-    const { name, state, psa_signed_mw, commissioned_mw, regulations_policy, report_path } = req.body;
-
-    // Validate required fields
-    if (!name || name.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Name is required",
-      });
-    }
-
-    if (!state || state.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "State is required",
-      });
-    }
-
-    const swd = await StateWiseData.create({
-      dept_id,
-      statistic_id,
-      entity_id,
-      name: name.trim(),
-      state: state.trim(),
-      psa_signed_mw: psa_signed_mw || 0,
-      commissioned_mw: commissioned_mw || 0,
-      regulations_policy: regulations_policy || null,
-      report_path: report_path || null,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "State-wise data entry created successfully",
-      data: swd,
-    });
-  } catch (error) {
-    console.error("Error creating state-wise data:", error);
-    // Provide more detailed error message
-    let errorMessage = "Failed to create state-wise data";
-    if (error.name === "SequelizeValidationError") {
-      errorMessage = `Validation error: ${error.errors.map(e => e.message).join(", ")}`;
-    } else if (error.name === "SequelizeForeignKeyConstraintError") {
-      errorMessage = "Invalid department, statistic, or entity ID";
-    } else if (error.name === "SequelizeUniqueConstraintError") {
-      errorMessage = "A record with this combination already exists";
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    return res.status(500).json({
-      success: false,
-      message: errorMessage,
-      error: error.message,
-    });
-  }
-};
-
-exports.updateStateWiseData = async (req, res) => {
-  try {
-    const { swd_id } = req.params;
-    const { name, state, psa_signed_mw, commissioned_mw, regulations_policy, report_path } = req.body;
-
-    const swd = await StateWiseData.findByPk(swd_id);
-
-    if (!swd) {
-      return res.status(404).json({
-        success: false,
-        message: "State-wise data entry not found",
-      });
-    }
-
-    await swd.update({
-      name: name || swd.name,
-      state: state || swd.state,
-      psa_signed_mw: psa_signed_mw !== undefined ? psa_signed_mw : swd.psa_signed_mw,
-      commissioned_mw: commissioned_mw !== undefined ? commissioned_mw : swd.commissioned_mw,
-      regulations_policy: regulations_policy !== undefined ? regulations_policy : swd.regulations_policy,
-      report_path: report_path !== undefined ? report_path : swd.report_path,
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "State-wise data entry updated successfully",
-      data: swd,
-    });
-  } catch (error) {
-    console.error("Error updating state-wise data:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update state-wise data",
-      error: error.message,
-    });
-  }
-};
-
-exports.deleteStateWiseData = async (req, res) => {
-  try {
-    const { swd_id } = req.params;
-
-    const swd = await StateWiseData.findByPk(swd_id);
-
-    if (!swd) {
-      return res.status(404).json({
-        success: false,
-        message: "State-wise data entry not found",
-      });
-    }
-
-    await swd.update({ is_active: false });
-
-    return res.status(200).json({
-      success: true,
-      message: "State-wise data entry deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting state-wise data:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to delete state-wise data",
-      error: error.message,
-    });
-  }
-};
-

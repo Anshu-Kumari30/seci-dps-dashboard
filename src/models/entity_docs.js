@@ -51,7 +51,7 @@ module.exports = (sequelize, DataTypes) => {
       },
 
       doc_type: {
-        type: DataTypes.ENUM("mpr", "dpr", "cdoc", "tp", "dp", "sp", "discom", "ro", "swd"),
+        type: DataTypes.ENUM("mpr", "dpr", "cdoc"),
         allowNull: false,
       },
       is_active: {

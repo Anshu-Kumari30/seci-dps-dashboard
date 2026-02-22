@@ -6,7 +6,7 @@ const auditLogger = require("../middleware/audit_logger");
 
 // get all milestones for a specific entry
 router.get(
-  "/bd/milestone/one/:bd_entry_id", 
+  "/bd/milestone/one/:bd_entry_id",
   verifyToken,
   auditLogger("Viewed milestones for a Business Development entry"),
   dataController.getMilestonesByBusinessDevelopmentEntry,
@@ -442,42 +442,6 @@ router.get(
   // verifyToken,
   auditLogger("Get All Key Issues and Action Plan"),
   dataController.getAllIssuesAndActions,
-);
-
-// State-wise Data routes
-router.get(
-  "/state-wise-data/:dept_id/:statistic_id/:entity_id",
-  verifyToken,
-  auditLogger("Fetched state-wise data"),
-  dataController.getStateWiseData,
-);
-
-router.get(
-  "/state-wise-data/one/:swd_id",
-  verifyToken,
-  auditLogger("Fetched state-wise data entry"),
-  dataController.getStateWiseDataById,
-);
-
-router.post(
-  "/state-wise-data/:dept_id/:statistic_id/:entity_id",
-  verifyToken,
-  auditLogger("Added state-wise data"),
-  dataController.addStateWiseData,
-);
-
-router.put(
-  "/state-wise-data/:swd_id",
-  verifyToken,
-  auditLogger("Updated state-wise data"),
-  dataController.updateStateWiseData,
-);
-
-router.delete(
-  "/state-wise-data/:swd_id",
-  verifyToken,
-  auditLogger("Deleted state-wise data"),
-  dataController.deleteStateWiseData,
 );
 
 module.exports = router;

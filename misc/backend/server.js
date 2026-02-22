@@ -1,58 +1,16 @@
+const { execSync } = require("child_process");
 const express = require("express");
 const path = require("path");
-const { performance } = require("perf_hooks");
-const {
-  insertTestData,
-  testAllApis,
-  insertOMSolarBESSDummyData,
-} = require("./util");
-const config = require("./config");
-const logger = require("./logger");
-
-console.log("config.DB_USER", config.DB_USER);
-console.log("config.DB_PASS", config.DB_PASS);
-console.log("config.DB_HOST", config.DB_HOST);
-console.log("config.DB_PORT", config.DB_PORT);
-
-process.on("uncaughtException", (err) => {
-  logger.error("UNCAUGHT EXCEPTION", err);
-});
-
-process.on("unhandledRejection", (err) => {
-  logger.error("UNHANDLED REJECTION", err);
-});
-
-// MySQL config
-const DB_PORT = config.DB_PORT;
-const SERVER_PORT = config.SERVER_PORT;
-const DB_USER = config.DB_USER;
-const DB_PASS = config.DB_PASS;
-const DB_HOST = config.DB_HOST;
-
 const { sequelize, models } = require("./models");
+const { performance } = require("perf_hooks");
+const { insertTestData } = require("./util");
 
-const mysql = require("mysql2/promise");
-const { log } = require("console");
+require("dotenv").config(); // Load environment variables from .env
 
-// Ensure database exists
-async function ensureDatabaseExists() {
-  const connection = await mysql.createConnection({
-    host: DB_HOST,
-    user: DB_USER,
-    password: DB_PASS,
-    port: DB_PORT,
-  });
+const MYSQL_CONTAINER = "seci-mysql";
+const DB_PORT = 3306;
+const SERVER_PORT = 3000;
 
-  const DB_NAME = config.DB_NAME;
-
-  logger.info(`Ensuring database: ${DB_NAME}`);
-
-  await connection.query(`CREATE DATABASE IF NOT EXISTS ${DB_NAME}`);
-  await connection.end();
-  logger.info(`✅ Database '${DB_NAME}' ensured.`);
-}
-
-// Utility: Timer
 function startTimer(label) {
   const start = performance.now();
   const interval = setInterval(() => {
@@ -62,122 +20,113 @@ function startTimer(label) {
   return () => {
     clearInterval(interval);
     const total = ((performance.now() - start) / 1000).toFixed(1);
-    logger.info(`✅ ${label} completed in ${total}s`);
+    console.log(`✅ ${label} completed in ${total}s`);
   };
 }
 
-// Wait for MySQL to become available
-async function waitForMysql() {
-  const end = startTimer("Waiting for MySQL");
-  const maxRetries = 100;
-  let attempts = 0;
-
-  while (attempts < maxRetries) {
-    try {
-      await sequelize.authenticate();
-      logger.info("MySQL is ready");
-      end();
-      return;
-    } catch (e) {
-      attempts++;
-      logger.info(
-        `⏳ Attempt ${attempts}/${maxRetries} - Waiting for MySQL: ${e.message}`,
-      );
-      await new Promise((res) => setTimeout(res, 3000));
-    }
+// Step 1: Start Docker MySQL container
+function startDocker() {
+  const end = startTimer("Starting Docker");
+  try {
+    console.log("🛠️  Starting Docker container...");
+    execSync(
+      `docker start ${MYSQL_CONTAINER} || docker run --name ${MYSQL_CONTAINER} ` +
+        `-e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=seci_test_db -p ${DB_PORT}:3306 -d mysql:8`
+    );
+    console.log("✅ Docker container ready.");
+  } catch (err) {
+    console.error("❌ Docker error:", err.message);
+    process.exit(1);
   }
-
-  console.error("❌ MySQL did not start in time.");
-  process.exit(1);
-}
-
-// Setup DB schema
-async function setupDatabase() {
-  const end = startTimer("Creating tables");
-  // await sequelize.query("SET FOREIGN_KEY_CHECKS = 0");
-  if (config.NODE_ENV === "PRODUCTION") {
-    await sequelize.sync();
-  } else {
-    await sequelize.sync({ alter: true });
-  }
-  // await sequelize.query("SET FOREIGN_KEY_CHECKS = 1");
   end();
 }
 
-// Start Express server
+// Step 2: Wait for MySQL to become available
+async function waitForMysql(cb) {
+  const end = startTimer("Waiting for MySQL");
+  const { Sequelize } = require("sequelize");
+  const sequelize = new Sequelize("seci_test_db", "root", "root", {
+    host: "127.0.0.1",
+    port: DB_PORT,
+    dialect: "mysql",
+    logging: false,
+  });
+
+  const maxRetries = 10;
+  let attempts = 0;
+
+  const interval = setInterval(async () => {
+    try {
+      await sequelize.authenticate();
+      clearInterval(interval);
+      console.log("✅ MySQL is ready.");
+      end();
+      cb();
+    } catch (e) {
+      attempts++;
+      if (attempts >= maxRetries) {
+        console.error("❌ MySQL did not start in time.");
+        clearInterval(interval);
+        process.exit(1);
+      }
+      console.log("⏳ Waiting for MySQL...");
+    }
+  }, 3000);
+}
+
+// Step 3: Setup Sequelize and sync DB
+async function setupDatabase() {
+  const end = startTimer("Creating tables");
+  await sequelize.sync({ force: true });
+  end();
+}
+
+// Step 4: Setup Express app
 function startExpressServer() {
-  const app = express();
-
-  const morgan = require("morgan");
-
-  app.use(
-    morgan("combined", {
-      stream: {
-        write: (message) => logger.info(message.trim()),
-      },
-    }),
-  );
-
-  handleShutdown();
   const end = startTimer("Starting Express");
-
-  app.use("/api/data/audit", require("./routes/audit_routes"));
-  app.use("/api/data/documents", require("./routes/document_upload"));
-  app.use("/api/data/correspondences", require("./routes/document_upload"));
-  app.use("/api/data/issues", require("./routes/document_upload"));
-  app.use("/api/data/reia/documents", require("./routes/document_upload"));
-  app.use("/api/data/om/excel/upload", require("./routes/document_upload"));
-  app.use("/api/data/om/upload", require("./routes/document_upload"));
-
-  app.use(express.json({ limit: "100mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+  const app = express();
   app.use(express.static(path.join(__dirname, "public")));
-  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
   app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "login.html"));
   });
 
-  const api_routes = require("./routes");
-  app.use("/api", api_routes);
-
   app.listen(SERVER_PORT, () => {
-    logger.info(`🚀 Express server running at http://localhost:${SERVER_PORT}`);
+    console.log(`🚀 Express server running at http://localhost:${SERVER_PORT}`);
     end();
   });
 }
 
-// Graceful shutdown
+// Step 5: Graceful shutdown — Drop tables + stop Docker
 function handleShutdown() {
   process.on("SIGINT", async () => {
-    logger.info("Gracefully shutting down...");
-
+    console.log("\n🧹 Dropping all tables...");
     try {
-      await sequelize.close();
-      logger.info("DB connection closed.");
+      await sequelize.drop();
+      console.log("✅ All tables dropped.");
     } catch (err) {
-      logger.error("Shutdown error", err);
+      console.error("❌ Failed to drop tables:", err.message);
     }
 
-    process.exit(0);
+    console.log("🛑 Stopping Docker container...");
+    try {
+      execSync(`docker stop ${MYSQL_CONTAINER}`);
+      console.log("✅ Docker container stopped.");
+    } catch (err) {
+      console.error("❌ Failed to stop container:", err.message);
+    }
+
+    process.exit();
   });
 }
 
-// 🟢 Main startup sequence
-(async () => {
-  await ensureDatabaseExists();
-  await waitForMysql();
+// Run everything
+startDocker();
+waitForMysql(async () => {
   await setupDatabase();
-
-  if (config.NODE_ENV === "TESTING") {
+  if (process.env.NODE_ENV === "TESTING") {
     await insertTestData();
-    // await insertOMSolarBESSDummyData();
   }
-
   startExpressServer();
-
-  if (config.NODE_ENV === "TESTING") {
-    await testAllApis();
-  }
-  logger.info(`ENVIRONMENT - ${config.NODE_ENV}`);
-})();
+  handleShutdown();
+});
