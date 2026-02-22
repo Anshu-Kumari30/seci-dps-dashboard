@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMC Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Roboto", sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        .top-bar {
+            background-color: #f8f9fa;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-logo {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        .admin-panel-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .admin-panel-btn:hover {
+            background-color: #218838;
+        }
+
+        .container-main {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 220px;
+            background-color: white;
+            border-right: 1px solid #ddd;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        /* hide sidebar as requested */
+        .sidebar { display: none; }
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #666;
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+
+        .sidebar-menu li:hover {
+            background-color: #f0f0f0;
+        }
+
+        .sidebar-menu li.active {
+            background-color: #e9ecef;
+            border-left-color: #0066cc;
+            color: #0066cc;
+            font-weight: 500;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+        }
+
+        .page-header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+            align-items: start;
+        }
+
+        .chart-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 360px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* make canvas size predictable so donuts look proper */
+        .chart-wrapper canvas {
+            max-width: 360px;
+            max-height: 360px;
+            width: 100%;
+            height: 100%;
+        }
+
+        .summary-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .summary-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .summary-tables {
+            display: block;
+        }
+
+        /* O&M-like header for summary table */
+        /* O&M-like styling */
+        .om-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .om-banner {
+            background: linear-gradient(90deg,#0b5ed7,#0a58ca);
+            color: #fff;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.05) inset;
+        }
+        .om-table thead th {
+            background: linear-gradient(90deg, #0b5ed7, #0a58ca); /* blue band */
+            color: #fff;
+            border: 1px solid #0a58ca;
+            padding: 12px;
+            text-align: left;
+            font-weight: 700;
+        }
+        .om-table thead th.sub {
+            background: linear-gradient(180deg, #1e6fbf, #2a7fcc);
+            color: #fff;
+        }
+        .om-table tbody td {
+            background: #ffffff;
+            color: #333;
+            border: 1px solid #e6eefc;
+            padding: 10px;
+        }
+        .om-table tbody tr:nth-child(even) td { background: #f7fbff; }
+
+        .add-entry-btn {
+            background-color: #198754;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .add-entry-btn:hover { background-color: #157347; }
+
+        .btn-sm { font-size: 12px; }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        table th {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            color: #333;
+        }
+
+        table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            color: #666;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        table tr:hover {
+            background-color: #f0f8ff;
+        }
+        
+        .action-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        
+
+        .action-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .add-entry-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .add-entry-btn:hover {
+            background-color: #218838;
+        }
+
+        .headcount-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .headcount-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            .summary-tables {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .breadcrumb-section {
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="breadcrumb-section">
+            <span>Projects Dashboard > <strong>PMC</strong></span>
+        </div>
+        <div class="navbar-user">
+            <span>Welcome, Administrator</span>
+            <button class="admin-panel-btn">Admin Panel</button>
+            <button class="logout-btn">Logout</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container-main">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div style="padding: 0 15px; margin-bottom: 20px; font-weight: bold; color: #333; font-size: 14px;">Departments</div>
+            <ul class="sidebar-menu">
+                <li onclick="window.location.href='/home.html'">📍 Home</li>
+                <li onclick="window.location.href='/home.html'">📊 Business Development</li>
+                <li onclick="window.location.href='/home.html'">📋 Contracts & Procurement</li>
+                <li onclick="window.location.href='/home.html'">📂 Projects</li>
+                <li onclick="window.location.href='/home.html'">📌 Live Tenders</li>
+                <li onclick="window.location.href='/home.html'">⚙️ O&M</li>
+                <li onclick="window.location.href='/home.html'">🔍 REIA</li>
+                <li class="active">🎯 PMC</li>
+                <li onclick="window.location.href='/home.html'">⚡ Energy Management</li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Page Header -->
+            <div class="page-header">PMC</div>
+
+            <!-- Headcount removed as requested -->
+
+            <!-- Title -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-weight: bold; color: #333;">Key Issues/Targets</h3>
+            </div>
+
+            <!-- Charts Section (Side by Side) -->
+            <div class="charts-container">
+                <!-- Chart 1: PMC – DPR / PFR / BMS Projects -->
+                <div class="chart-card">
+                    <div class="chart-title">PMC – DPR / PFR / BMS Projects</div>
+                    <div class="chart-wrapper">
+                        <canvas id="chart1"></canvas>
+                    </div>
+                    <div style="text-align:center; margin-top:10px;">
+                        <button class="add-entry-btn openAddEntry">Add Entry</button>
+                    </div>
+                </div>
+
+                <!-- Chart 2: PMC – Consultancy & Engineering Services -->
+                <div class="chart-card">
+                    <div class="chart-title">PMC – Consultancy & Engineering Services</div>
+                    <div style="text-align:center; margin-top:10px;">
+                        <button class="add-entry-btn openAddEntry">Add Entry</button>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chart2"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Section -->
+                <div class="summary-section">
+                
+                <div class="summary-tables">
+                    <!-- Single blank summary sheet styled like O&M table -->
+                    <div>
+                        <div class="om-banner" style="border-radius:6px; padding:10px 16px; margin-bottom:12px;">
+                            <h5 style="margin:0; color:#fff; font-weight:700;">Summary Sheet</h5>
+                        </div>
+                        <div style="position:relative; height:0;">
+                            <button class="add-entry-btn openAddEntry" style="position:absolute; right:12px; top:24px; padding:6px 14px; font-size:14px;">Add Entry</button>
+                        </div>
+                        <!-- hidden form appears here when Add Entry clicked -->
+                        <div id="addEntryForm" style="display:none; width:100%; margin-bottom:12px;">
+                            <div class="card" style="padding:12px;">
+                                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+                                    <input id="f_sno" placeholder="S.no" class="form-control" style="width:80px;" />
+                                    <input id="f_type" placeholder="Type of project" class="form-control" style="width:240px;" />
+                                    <input id="f_number" placeholder="Number" class="form-control" style="width:120px;" />
+                                    <input id="f_cost" placeholder="Cost" class="form-control" style="width:140px;" />
+                                    <input id="f_received" placeholder="Amount Received" class="form-control" style="width:160px;" />
+                                    <input id="f_pending" placeholder="Amount pending" class="form-control" style="width:160px;" />
+                                    <input id="f_remarks" placeholder="Remarks" class="form-control" style="flex:1; min-width:180px;" />
+                                    <div style="display:flex; gap:8px;">
+                                        <button id="saveEntry" class="btn btn-sm btn-success">Save</button>
+                                        <button id="cancelEntry" class="btn btn-sm btn-outline-secondary">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="om-table" id="summaryTable">
+                                <thead>
+                                    <tr>
+                                        <th>S.no</th>
+                                        <th>Type of project</th>
+                                        <th>Number</th>
+                                        <th>Cost</th>
+                                        <th>Amount Received</th>
+                                        <th>Amount pending</th>
+                                        <th>Remarks</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="summaryTbody">
+                                    <!-- blank by design -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Segment-specific performance table will render here -->
+            <div id="segmentContainer" style="margin-top:20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Chart 1 Data: PMC – DPR / PFR / BMS Projects (realistic colors + hover)
+        const chart1Data = {
+            labels: ['DPR', 'PFR', 'BMS'],
+            datasets: [{
+                data: [33, 23, 38],
+                backgroundColor: ['#1f77b4', '#ff7f0e', '#2ca02c'],
+                hoverBackgroundColor: ['#155a93', '#cc650b', '#218a1b'],
+                borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+                borderWidth: 2,
+                hoverOffset: 18
+            }]
+        };
+
+        const chartConfig1 = {
+            type: 'doughnut',
+            data: chart1Data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            font: { size: 13, weight: '500' },
+                            padding: 12,
+                            boxWidth: 12
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleFont: { size: 13, weight: '600' },
+                        bodyFont: { size: 12 },
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].label;
+                            },
+                            label: function(context) {
+                                const chart = context.chart;
+                                const idx = context.dataIndex;
+                                const label = chart.data.labels[idx];
+                                const value = chart.data.datasets[0].data[idx];
+                                return label + ': ' + value + ' Cr';
+                            }
+                        }
+                    }
+                },
+                layout: { padding: 10 }
+            }
+        };
+
+        // Chart 2 Data: PMC – Consultancy & Engineering Services
+        const chart2Data = {
+            labels: ['RE-RTC', 'Optimization', 'DPR Advisory', 'Others'],
+            datasets: [{
+                data: [8, 5, 6, 4],
+                backgroundColor: ['#4e79a7', '#59a14f', '#f28e2b', '#76b7b2'],
+                hoverBackgroundColor: ['#3d6285', '#458f3e', '#c06f21', '#5e9387'],
+                borderColor: ['#ffffff','#ffffff','#ffffff','#ffffff'],
+                borderWidth: 2,
+                hoverOffset: 15
+            }]
+        };
+
+        const chartConfig2 = {
+            type: 'doughnut',
+            data: chart2Data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            font: { size: 13, weight: '500' },
+                            padding: 15,
+                            boxWidth: 15,
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                return data.labels.map((label, i) => ({
+                                    text: label + ' - ' + data.datasets[0].data[i],
+                                    fillStyle: data.datasets[0].backgroundColor[i],
+                                    strokeStyle: data.datasets[0].borderColor[i],
+                                    hidden: false,
+                                    index: i
+                                }));
+                            }
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 15,
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 12 },
+                        borderColor: 'rgba(255,255,255,0.3)',
+                        borderWidth: 1,
+                        cornerRadius: 6,
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].label;
+                            },
+                            label: function(context) {
+                                return 'Count: ' + context.parsed + ' Assignments';
+                            },
+                            afterLabel: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return 'Percentage: ' + percentage + '%';
+                            }
+                        }
+                    }
+                },
+                layout: {
+                    padding: 10
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        };
+
+        // Initialize charts when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx1 = document.getElementById('chart1');
+            const ctx2 = document.getElementById('chart2');
+
+            if (ctx1) {
+                window.pmcChart1 = new Chart(ctx1, chartConfig1);
+            }
+            if (ctx2) {
+                new Chart(ctx2, chartConfig2);
+            }
+
+            // Logout button
+            document.querySelector('.logout-btn').addEventListener('click', function() {
+                if (confirm('Are you sure you want to logout?')) {
+                    window.location.href = '/';
+                }
+            });
+
+            // Sidebar navigation
+            document.querySelectorAll('.sidebar-menu li').forEach((item, index) => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
+                    if (index === 7) { // PMC menu item
+                        this.classList.add('active');
+                    }
+                });
+            });
+
+            // Add Entry form behavior (multiple buttons)
+            const openBtns = document.querySelectorAll('.openAddEntry');
+            const formDiv = document.getElementById('addEntryForm');
+            const saveBtn = document.getElementById('saveEntry');
+            const cancelBtn = document.getElementById('cancelEntry');
+            const tbody = document.getElementById('summaryTbody');
+
+            function clearForm() {
+                ['f_sno','f_type','f_number','f_cost','f_received','f_pending','f_remarks'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+            }
+
+            if (openBtns && formDiv) {
+                openBtns.forEach(b => b.addEventListener('click', () => {
+                    formDiv.style.display = (formDiv.style.display === 'none' || formDiv.style.display === '') ? 'block' : 'none';
+                }));
+            }
+
+            if (cancelBtn) cancelBtn.addEventListener('click', (e) => { e.preventDefault(); formDiv.style.display='none'; clearForm(); });
+
+            if (saveBtn) saveBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const sNo = document.getElementById('f_sno').value || '';
+                const type = document.getElementById('f_type').value || '';
+                const number = document.getElementById('f_number').value || '';
+                const cost = document.getElementById('f_cost').value || '';
+                const received = document.getElementById('f_received').value || '';
+                const pending = document.getElementById('f_pending').value || '';
+                const remarks = document.getElementById('f_remarks').value || '';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${sNo}</td>
+                    <td>${type}</td>
+                    <td>${number}</td>
+                    <td>${cost}</td>
+                    <td>${received}</td>
+                    <td>${pending}</td>
+                    <td>${remarks}</td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn btn-sm btn-success add-row">Add</button>
+                        <button class="btn btn-sm btn-danger delete-row">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+                formDiv.style.display = 'none';
+                clearForm();
+            });
+
+            // Delegated actions for add/duplicate and delete
+            if (tbody) {
+                tbody.addEventListener('click', (ev) => {
+                    const target = ev.target;
+                    if (target.classList.contains('delete-row')) {
+                        const row = target.closest('tr');
+                        if (row) row.remove();
+                    }
+                    if (target.classList.contains('add-row')) {
+                        const row = target.closest('tr');
+                        if (row) {
+                            const clone = row.cloneNode(true);
+                            // ensure cloned buttons work by not copying event listeners (delegation handles it)
+                            tbody.insertBefore(clone, row.nextSibling);
+                        }
+                    }
+                });
+            }
+
+            // attach click on chart segments: navigate to performance page for the segment
+            if (window.pmcChart1) {
+                window.pmcChart1.options.onClick = function(evt, elements) {
+                    if (elements && elements.length) {
+                        const idx = elements[0].index;
+                        const label = window.pmcChart1.data.labels[idx];
+                        const url = `/pmc_performance.html?segment=${encodeURIComponent(label)}`;
+                        window.location.href = url;
+                    }
+                };
+                window.pmcChart1.update();
+            }
+        });
+    </script>
+</body>
+</html>
