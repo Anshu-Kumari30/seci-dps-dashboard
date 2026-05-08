@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Operational Performance Summary</title>
+
+    <!-- Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background: #f5f7fb;
+        padding: 30px;
+      }
+
+      .table {
+        font-size: 13px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+      }
+
+      .main-header {
+        background: linear-gradient(90deg, #ffffff, #99b6e2);
+        color: #000;
+        font-weight: bold;
+      }
+
+      .solar-header {
+        background: linear-gradient(180deg, #fff3cd, #ffe69c);
+        color: #664d03;
+      }
+
+      .bess-header {
+        background: linear-gradient(180deg, #d1e7dd, #a3cfbb);
+        color: #0f5132;
+      }
+
+      .logo-cell {
+        text-align: center;
+        background: #f1f4f9;
+      }
+
+      .site-cell {
+        text-align: left !important;
+        font-weight: 600;
+        color: #0d6efd;
+        background: #f8f9fa;
+      }
+
+      .table tbody tr:nth-child(even) {
+        background-color: #f9fbff;
+      }
+
+      .table tbody tr:hover {
+        background-color: #eef5ff;
+      }
+      
+      .table th {
+        text-align: center !important;
+        vertical-align: middle !important;
+      }
+
+      .table thead th {
+        padding: 14px 8px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container-fluid">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2 flex-nowrap">
+          <label class="fw-semibold mb-0" style="white-space: nowrap">
+            Select Date:
+          </label>
+
+          <input
+            type="date"
+            id="dateFilter"
+            class="form-control"
+            style="width: 180px"
+          />
+        </div>
+
+        <a href="om_issues_actions.html" class="btn btn-success px-4 shadow-sm">
+          Key Issues & Actions
+        </a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <thead>
+            <!-- Title -->
+            <tr>
+              <th class="logo-cell" rowspan="4" style="width: 200px">
+                <img
+                  src="https://www.seci.co.in/frontend/assets/images/seci-logo.png"
+                  alt="SECI Logo"
+                  style="max-height: 80px"
+                  class="img-fluid mb-2"
+                />
+                <div class="fw-bold text-primary">
+                  SECI O&amp;M<br />Generation Data
+                </div>
+              </th>
+
+              <th class="main-header text-center" colspan="19">
+                Operational Performance Summary
+              </th>
+            </tr>
+
+            <!-- Groups -->
+            <tr>
+              <th class="solar-header text-center" colspan="8">
+                SOLAR PROJECT
+              </th>
+              <th class="bess-header text-center" colspan="6">
+                SOLAR + BESS PROJECT
+              </th>
+              <th class="bess-header" rowspan="3">Remarks</th>
+            </tr>
+
+            <!-- Sub Groups -->
+            <tr>
+              <th class="solar-header text-center" colspan="4">AS ON DATE</th>
+              <th class="solar-header text-center" colspan="2">
+                YEAR TILL DATE
+              </th>
+              <th class="solar-header text-center" colspan="2">
+                LAST FY PERFORMANCE
+              </th>
+
+              <th class="bess-header text-center" colspan="2">AS ON DATE</th>
+              <th class="bess-header text-center" colspan="2">
+                YEAR TILL DATE
+              </th>
+              <th class="bess-header text-center" colspan="2">
+                LAST FY PERFORMANCE
+              </th>
+            </tr>
+
+            <!-- Columns -->
+            <tr>
+              <!-- Solar -->
+              <th class="solar-header">GHI</th>
+              <th class="solar-header">Exported Gen</th>
+              <th class="solar-header">CUF</th>
+              <th class="solar-header">Peak Power</th>
+              <th class="solar-header">Exported Gen</th>
+              <th class="solar-header">CUF</th>
+              <th class="solar-header">Exported Gen</th>
+              <th class="solar-header">CUF</th>
+              <!-- <th class="solar-header">Remarks</th> -->
+
+              <!-- Solar + BESS -->
+              <th class="bess-header">Net Energy Export</th>
+              <th class="bess-header">Net Energy Import</th>
+              <th class="bess-header">Net Energy Export</th>
+              <th class="bess-header">Net Energy Import</th>
+              <th class="bess-header">Net Energy Export</th>
+              <th class="bess-header">Net Energy Import</th>
+            </tr>
+          </thead>
+
+          <tbody id="omTableBody">
+            <!-- Example Row -->
+            <tr>
+              <td class="site-cell">Solar Plant - Example</td>
+
+              <td>5.21</td>
+              <td>1.24</td>
+              <td>19%</td>
+              <td>220</td>
+              <td>450</td>
+              <td>20%</td>
+              <td>-</td>
+
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <script>
+      /* ---------------- AUTH FETCH ---------------- */
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Please login again.");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      /* ---------------- FORMATTER ---------------- */
+
+      function format(val, decimals = 2) {
+        if (val === null || val === undefined || isNaN(val)) return "-";
+        return Number(val).toFixed(decimals);
+      }
+
+      /* ---------------- LOAD TABLE DATA ---------------- */
+
+      function loadOMData() {
+        const dateInput = document.getElementById("dateFilter");
+
+        const date = dateInput.value || new Date().toISOString().split("T")[0];
+
+        authFetch(`/api/data/om/all/data?date=${date}`)
+          .then((res) => res.json())
+          .then((res) => {
+            const tbody = document.getElementById("omTableBody");
+            tbody.innerHTML = "";
+
+            /* ---------------- SOLAR ---------------- */
+            const solarCurrent = res.data?.solar?.current || [];
+            const solarLastFY = res.data?.solar?.lastFYYear || [];
+
+            solarCurrent.forEach((row) => {
+              const lastFY = solarLastFY.find(
+                (fy) => fy.entity_id === row.entity_id,
+              );
+
+              const url = `/om_solar.html?dept_id=${row.dept_id}&statistic_id=${row.statistic_id}&entity_id=${row.entity_id}`;
+
+              tbody.innerHTML += `
+          <tr style="cursor:pointer"
+              onclick="window.location.href='${url}'">
+
+            <td class="site-cell">Solar Plant - ${row.entity_name}</td>
+
+            <td>${format(row.radiation)}</td>
+            <td>${format(row.generation / 1000000, 6)}</td>
+            <td>${format(row.cuf)}%</td>
+            <td>${format(row.peak_power / 1000, 3)}</td>
+
+            <td>${format(row.cumulative_generation / 1000000, 6)}</td>
+            <td>${format(row.cuf_till_date)}%</td>
+            <td>${format(lastFY?.generation / 1000000, 6)}</td>
+            <td>${format(lastFY?.cuf)}%</td>
+            ${"<td>-</td>".repeat(6)}
+            <td>${row.remarks ?? "-"}</td>
+          </tr>
+        `;
+            });
+
+            /* ---------------- SOLAR + BESS ---------------- */
+
+            const bessCurrent = res.data?.solar_bess?.current || [];
+            const bessLastFY = res.data?.solar_bess?.lastFYYear || [];
+
+            bessCurrent.forEach((row) => {
+              const lastFY = bessLastFY.find(
+                (fy) => fy.entity_id === row.entity_id,
+              );
+              const url = `/om_solar_bess.html?dept_id=${row.dept_id}&statistic_id=${row.statistic_id}&entity_id=${row.entity_id}`;
+
+              tbody.innerHTML += `
+          <tr style="cursor:pointer"
+              onclick="window.location.href='${url}'">
+
+            <td class="site-cell">
+              Solar + BESS Plant - ${row.entity_name}
+            </td>
+
+            ${"<td>-</td>".repeat(0)}
+
+            <td>${format(row.radiation)}</td>
+            <td>${format(row.generation / 1000000, 6)}</td>
+            <td>${format(row.daily_cuf_worc)}%</td>
+            <td>${format(row.peak_power / 10, 3)}</td>
+            <td>${format(row.bess_export, 3)}</td>
+            <td>${format(row.bess_import, 3)}</td>
+
+            <td>${format(row.cumulative_generation / 1000000, 6)}</td>
+            <td>${format(row.cuf_till_date)}%</td>
+            <td>${format(row.bess_export, 3)}</td>
+            <td>${format(row.bess_import, 3)}</td>
+            <td>${format(row.cumulative_bess_export, 3)}</td>
+            <td>${format(row.cumulative_bess_import, 3)}</td>
+            <td>${format(lastFY?.generation / 1000000, 6)}</td>
+            <td>${format(lastFY?.daily_cuf_worc)}%</td>
+            <td>${row.remarks ?? "-"}</td>
+          </tr>
+        `;
+            });
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Failed to load Operational data.");
+          });
+      }
+
+      /* ---------------- INIT ---------------- */
+
+      function initOMTable() {
+        const dateInput = document.getElementById("dateFilter");
+
+        // ✅ Default = Yesterday (industry standard for generation reports)
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        dateInput.value = yesterday.toISOString().split("T")[0];
+
+        loadOMData();
+
+        dateInput.addEventListener("change", loadOMData);
+      }
+
+      window.addEventListener("DOMContentLoaded", initOMTable);
+    </script>
+    <script src="./js/main.js"></script>
+  </body>
+</html>

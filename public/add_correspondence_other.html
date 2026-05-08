@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <script src="./js/auth_guard.js"></script>
+<title>Add Other Correspondence</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      body {
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        background: linear-gradient(135deg, #f4f6f9 0%, #e8ecf1 100%);
+        padding: 20px;
+        min-height: 100vh;
+        color: #333;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #0b5ed7;
+        font-weight: 700;
+        font-size: 28px;
+      }
+      .form-container {
+        max-width: 600px;
+        margin: auto;
+        background: #ffffff;
+        padding: 35px 40px;
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 18px;
+      }
+      label {
+        font-weight: 600;
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+      }
+      input, select, textarea {
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        border: 1px solid #cfd4da;
+        border-radius: 6px;
+        transition: all 0.3s;
+      }
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #0b5ed7;
+        box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.15);
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #0b5ed7, #146c43);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #146c43, #0b5ed7);
+      }
+      .form-text {
+        font-size: 12px;
+        color: #6c757d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="form-container">
+      <h1>Add Other Correspondence</h1>
+      <form id="addOtherCorrespondenceForm">
+        <div class="mb-3">
+          <label for="subject" class="form-label">Subject</label>
+          <input
+            type="text"
+            class="form-control"
+            id="subject"
+            name="subject"
+            placeholder="Enter subject"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="from" class="form-label">From</label>
+          <input
+            class="form-control"
+            id="from"
+            name="from"
+            placeholder="sender@example.com"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="to" class="form-label">To</label>
+          <input
+            class="form-control"
+            id="to"
+            name="to"
+            placeholder="recipient@example.com"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="correspondence_date" class="form-label">Correspondence Date</label>
+          <input
+            type="date"
+            class="form-control"
+            id="correspondence_date"
+            name="correspondence_date"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="docFile" class="form-label">Upload Correspondence Document</label>
+          <small class="form-text text-muted">
+            Maximum file size allowed: <strong>50 MB</strong>.
+          </small>
+          <input
+            type="file"
+            class="form-control"
+            id="docFile"
+            name="doc_file"
+            required
+          />
+        </div>
+
+        <input type="hidden" id="deptId" name="dept_id" />
+        <input type="hidden" id="statisticId" name="statistic_id" />
+        <input type="hidden" id="entityId" name="entity_id" />
+        <input type="hidden" id="correspondenceType" name="correspondence_type" value="other" />
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const deptId = urlParams.get("dept_id");
+      const statisticId = urlParams.get("statistic_id");
+      const entityId = urlParams.get("entity_id");
+      const context = urlParams.get('context');
+
+      document.getElementById("deptId").value = deptId || '';
+      document.getElementById("statisticId").value = statisticId || '';
+      document.getElementById("entityId").value = entityId || '';
+
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      document
+        .getElementById("addOtherCorrespondenceForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+
+          try {
+         
+            // choose endpoint based on context
+            let endpoint = '/api/data/correspondences/add';
+            if (context === 'pmc') endpoint = '/api/data/correspondences';
+            else if (context === 'pmc_ce') endpoint = '/api/data/documents/pmc_ce/correspondence';
+            const response = await authFetch(endpoint, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error("Failed to add other correspondence.");
+            }
+
+            alert("Other correspondence added successfully!");
+            const params = new URLSearchParams(window.location.search);
+            const pmcCeEntityId = params.get('pmc_ce_entity_id') || '';
+            if (context === 'pmc') {
+              const pmcEntityId = params.get('entity_id') || '';
+              window.location.href = `/pmc_projects.html?pmc_entry_id=${encodeURIComponent(pmcEntityId)}`;
+            } else if (context === 'pmc_ce' || pmcCeEntityId) {
+              window.location.href = `/pmc_ce_projects.html?entity_id=${encodeURIComponent(pmcCeEntityId)}&dept_id=${encodeURIComponent(deptId)}&statistic_id=${encodeURIComponent(statisticId)}&dept_entity_id=${encodeURIComponent(entityId)}`;
+            } else {
+              window.location.href = `/external.html?dept_id=${deptId}&statistic_id=${statisticId}&entity_id=${entityId}`;
+            }
+          } catch (err) {
+            console.error(err);
+            alert("Error adding other correspondence.");
+          }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

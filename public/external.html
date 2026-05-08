@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Correspondences</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .tab-content {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0">View Correspondences</h2>
+      <a href="/home.html" class="btn btn-secondary">Back to Home</a>
+    </div>
+
+    <!-- <div class="mb-3">
+      <label for="statisticDropdown" class="form-label">Select Statistic</label>
+      <select id="statisticDropdown" class="form-select"></select>
+    </div> -->
+
+    <div class="mb-3">
+      <h4 id="statisticTitle" class="mb-1"></h4>
+      <h5 id="entityTitle" class="text-muted"></h5>
+    </div>
+
+    <ul class="nav nav-tabs" id="dynamicTabs" role="tablist"></ul>
+    <div class="tab-content" id="dynamicTabContent"></div>
+
+    <script src="./js/main.js"></script>
+    <script>
+      // Force browser back navigation from this page to go to home.html.
+      // We insert a synthetic history entry, then handle popstate.
+      (function setupBackToHomeRedirect() {
+        const currentState = window.history.state || {};
+        if (!currentState.__externalGuard) {
+          window.history.replaceState(
+            { ...currentState, __externalGuard: true },
+            "",
+            window.location.href
+          );
+          window.history.pushState(
+            { __externalGuard: "sentinel" },
+            "",
+            window.location.href
+          );
+        }
+
+        window.addEventListener("popstate", function () {
+          window.location.replace("/home.html");
+        });
+      })();
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const params = new URLSearchParams(window.location.search);
+        const dept_id = params.get("dept_id");
+        const statistic_id = params.get("statistic_id");
+        const entity_id = params.get("entity_id");
+        const statisticDropdown = document.getElementById("statisticDropdown");
+
+        Promise.all([
+          authFetch(`/api/data/statistics/${dept_id}`),
+          authFetch(`/api/data/entities/${dept_id}/${statistic_id}`),
+        ])
+          .then(([statsRes, entitiesRes]) =>
+            Promise.all([statsRes.json(), entitiesRes.json()])
+          )
+          .then(([stats, entities]) => {
+            const stat = stats.find((s) => s.statistic_id == statistic_id);
+            const entity = entities.find((e) => e.entity_id == entity_id);
+
+            document.getElementById("statisticTitle").innerText =
+              stat?.statistic_name || "Statistic";
+            document.getElementById("entityTitle").innerText =
+              entity?.entity_name || "Entity";
+
+            loadTabsForStatistic(statistic_id);
+          });
+
+        if (statisticDropdown) {
+          statisticDropdown.addEventListener("change", (e) => {
+            loadTabsForStatistic(e.target.value);
+          });
+        }
+
+        function loadTabsForStatistic(statistic_id) {
+          authFetch(
+            `/api/data/documents/grouped/${dept_id}/${statistic_id}/${entity_id}`
+          )
+            .then((res) => res.json())
+            .then((data) => {
+              populateTabs(data, dept_id, statistic_id, entity_id);
+            });
+        }
+
+        // Tariff petition helpers (client-side storage and modal)
+        function _loadTariffMap() {
+          try { return JSON.parse(localStorage.getItem('tariffPetitions') || '{}'); } catch(e){ return {}; }
+        }
+        function _saveTariffMap(m) { try { localStorage.setItem('tariffPetitions', JSON.stringify(m||{})); } catch(e){} }
+        function loadTariffEntriesFor(key) { try { const m=_loadTariffMap(); return Array.isArray(m[key])?m[key]:[]; } catch(e){return[]} }
+        function saveTariffEntriesFor(key, arr) { try { const m=_loadTariffMap(); m[key]=arr; _saveTariffMap(m); } catch(e){} }
+        // Prefer server-backed storage for tariff placeholders. Fall back to
+        // localStorage if API is unreachable.
+        function _tariffContextKey(deptId, statId, entityId) {
+          return [String(deptId || ''), String(statId || ''), String(entityId || '')].join('::');
+        }
+
+        async function loadTariffValuesForContext(deptId, statId, entityId) {
+          try {
+            const resp = await authFetch(`/api/data/tariff-values/${deptId}/${statId}/${entityId}`);
+            if (!resp || !resp.ok) throw new Error('API error');
+            const data = await resp.json();
+            return { requested_tariff: (data.requested_tariff ?? ''), approved_tariff: (data.approved_tariff ?? '') };
+          } catch (e) {
+            // fallback to localStorage map
+            try { const map = JSON.parse(localStorage.getItem('tariffValuesByContext') || '{}'); const rec = map[_tariffContextKey(deptId, statId, entityId)] || {}; return { requested_tariff: (rec.requested_tariff ?? ''), approved_tariff: (rec.approved_tariff ?? '') }; } catch (ie) { return { requested_tariff: '', approved_tariff: '' }; }
+          }
+        }
+
+        async function saveTariffValuesForContext(deptId, statId, entityId, payload) {
+          try {
+            await authFetch('/api/data/tariff-values/save', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dept_id: deptId, statistic_id: statId, entity_id: entityId, requested_tariff: payload.requested_tariff, approved_tariff: payload.approved_tariff }),
+            });
+            return;
+          } catch (e) {
+            // fallback to localStorage
+            try {
+              const key = _tariffContextKey(deptId, statId, entityId);
+              const map = JSON.parse(localStorage.getItem('tariffValuesByContext') || '{}');
+              const existing = map[key] || {};
+              map[key] = {
+                requested_tariff: (payload && payload.requested_tariff !== undefined && payload.requested_tariff !== null) ? payload.requested_tariff : (existing.requested_tariff ?? ''),
+                approved_tariff: (payload && payload.approved_tariff !== undefined && payload.approved_tariff !== null) ? payload.approved_tariff : (existing.approved_tariff ?? ''),
+              };
+              localStorage.setItem('tariffValuesByContext', JSON.stringify(map));
+            } catch (ie) { console.warn('Failed to persist tariff values', ie); }
+          }
+        }
+        function openTariffModal(key, editIndex) {
+          const entries = loadTariffEntriesFor(key);
+          const edit = (typeof editIndex === 'number' && editIndex>=0) ? entries[editIndex] : null;
+          let modal = document.getElementById('extTariffModal');
+          if (!modal) {
+            modal = document.createElement('div'); modal.id='extTariffModal';
+            modal.style.position='fixed'; modal.style.left='50%'; modal.style.top='50%'; modal.style.transform='translate(-50%,-50%)';
+            modal.style.zIndex=9999; modal.style.width='520px'; modal.style.maxHeight='80vh'; modal.style.overflowY='auto';
+            modal.style.background='#fff'; modal.style.border='1px solid #ddd'; modal.style.borderRadius='6px'; modal.style.boxShadow='0 6px 30px rgba(0,0,0,0.2)';
+            modal.innerHTML = `
+              <div style="padding:12px 16px; border-bottom:1px solid #eee; font-weight:700">Tariff Petition</div>
+              <div style="padding:12px 16px;">
+                <div class="mb-2"><label>Document Name</label><input id="ext_tp_docName" class="form-control" /></div>
+                <!-- Request/Approved tariff fields removed -->
+                <div class="mb-2"><label>Dated</label><input id="ext_tp_dated" type="date" class="form-control" /></div>
+                <div class="mb-2"><label>Document URL</label><input id="ext_tp_docUrl" class="form-control" placeholder="https://..." /></div>
+                <div class="mb-2"><label>Uploaded On</label><input id="ext_tp_uploadedOn" type="date" class="form-control" /></div>
+                <div style="text-align:right;margin-top:8px"><button id="ext_tp_cancel" class="btn btn-secondary btn-sm">Cancel</button> <button id="ext_tp_save" class="btn btn-primary btn-sm">Save Changes</button></div>
+              </div>
+            `;
+            document.body.appendChild(modal);
+          }
+          modal.querySelector('#ext_tp_docName').value = edit ? (edit.documentName||'') : '';
+          // tariff fields removed
+          modal.querySelector('#ext_tp_dated').value = edit ? (edit.dated||'') : '';
+          modal.querySelector('#ext_tp_docUrl').value = edit ? (edit.documentUrl||'') : '';
+          modal.querySelector('#ext_tp_uploadedOn').value = edit ? (edit.uploadedOn||'') : '';
+          modal.style.display='block';
+          modal.querySelector('#ext_tp_cancel').onclick = function(){ modal.style.display='none'; };
+          modal.querySelector('#ext_tp_save').onclick = function(){
+            const obj = {
+              documentName: modal.querySelector('#ext_tp_docName').value || '',
+              dated: modal.querySelector('#ext_tp_dated').value || '',
+              documentUrl: modal.querySelector('#ext_tp_docUrl').value || '',
+              uploadedOn: modal.querySelector('#ext_tp_uploadedOn').value || ''
+            };
+            const arr = loadTariffEntriesFor(key);
+            if (edit) arr[editIndex] = obj; else arr.push(obj);
+            saveTariffEntriesFor(key, arr);
+            modal.style.display='none';
+            try { window.dispatchEvent(new CustomEvent('tariffPetitionUpdated',{detail:{project:key, entries:arr}})); } catch(e){}
+            alert('Tariff petition saved');
+          };
+        }
+
+        function populateTabs(data, dept_id, statistic_id, entity_id) {
+          const tabList = document.getElementById("dynamicTabs");
+          const tabContent = document.getElementById("dynamicTabContent");
+
+          tabList.innerHTML = "";
+          tabContent.innerHTML = "";
+
+          const types = [
+            { id: "cdoc", label: "Contract Documents", source: "documents" },
+            { id: "dpr", label: "Daily Progress Report", source: "documents" },
+            {
+              id: "mpr",
+              label: "Monthly Progress Report",
+              source: "documents",
+            },
+            { id: "tp", label: "Tariff Petition", source: "documents" },
+            {
+              id: "cc",
+              label: "Correspondences with Contractors",
+              source: "correspondences",
+              filter: "contractor",
+            },
+            {
+              id: "sc",
+              label: "Correspondences with other Stakeholders",
+              source: "correspondences",
+              filter: "other",
+            },
+            {
+              id: "is",
+              label: "Key Issues",
+              source: "issues",
+            },
+          ];
+
+          types.forEach((type, index) => {
+            const tabId = `tab-${type.id}`;
+            const isActive = index === 0 ? "active" : "";
+            const isShow = index === 0 ? "show active" : "";
+
+            const tabButton = document.createElement("li");
+            tabButton.className = "nav-item";
+            tabButton.innerHTML = `
+      <button class="nav-link ${isActive}" id="${tabId}-tab" data-bs-toggle="tab" data-bs-target="#${tabId}" type="button" role="tab">
+        ${type.label}
+      </button>`;
+            tabList.appendChild(tabButton);
+
+            const pane = document.createElement("div");
+            pane.className = `tab-pane fade ${isShow}`;
+            pane.id = tabId;
+            pane.role = "tabpanel";
+
+            let items = [];
+            if (type.source === "documents") {
+              items = (data.documents || []).filter(
+                (doc) =>
+                  doc.doc_type === type.id &&
+                  doc.statistic_id == statistic_id &&
+                  doc.entity_id == entity_id
+              );
+            } else if (type.source === "correspondences") {
+              items = (data.correspondences || []).filter(
+                (c) =>
+                  c.correspondence_type === type.filter &&
+                  c.statistic_id == statistic_id &&
+                  c.entity_id == entity_id
+              );
+            } else if (type.source === "issues") {
+              items = (data.issues || []).filter(
+                (issue) =>
+                  issue.statistic_id == statistic_id &&
+                  issue.entity_id == entity_id
+              );
+            }
+
+            // Add "+ Add ..." button
+            const addButton = document.createElement("button");
+            addButton.className = "btn btn-sm btn-success mb-2";
+            addButton.innerText = `+ Add ${type.label}`;
+            addButton.onclick = () => {
+              if (type.label === "Daily Progress Report") {
+                window.location.href = `/add_dpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Monthly Progress Report") {
+                window.location.href = `/add_mpr.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Contract Documents") {
+                window.location.href = `/add_contract_document.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Correspondences with Contractors") {
+                window.location.href = `/add_correspondence_contractor.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (
+                type.label === "Correspondences with other Stakeholders"
+              ) {
+                window.location.href = `/add_correspondence_other.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Key Issues") {
+                window.location.href = `/add_issues.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else if (type.label === "Tariff Petition") {
+                // Navigate to dedicated Add Tariff Petition form
+                window.location.href = `/add_tariff_petition.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+              } else {
+                alert("Coming Soon...");
+              }
+            };
+
+            if (type.id === 'tp') {
+              const toolbar = document.createElement('div');
+              toolbar.className = 'd-flex flex-wrap align-items-end gap-2 mb-2';
+
+              const requestedWrap = document.createElement('div');
+              requestedWrap.style.minWidth = '220px';
+              requestedWrap.innerHTML = '<label class="form-label mb-1">Requested Tariff (Rs/KWh)</label><input id="requestedTariffInput" type="number" step="0.0001" class="form-control form-control-sm" placeholder="Requested Tariff (Rs/KWh)" />';
+
+              const approvedWrap = document.createElement('div');
+              approvedWrap.style.minWidth = '220px';
+              approvedWrap.innerHTML = '<label class="form-label mb-1">Approved Tariff (Rs/KWh)</label><input id="approvedTariffInput" type="number" step="0.0001" class="form-control form-control-sm" placeholder="Approved Tariff (Rs/KWh)" />';
+
+              toolbar.appendChild(addButton);
+              toolbar.appendChild(requestedWrap);
+              toolbar.appendChild(approvedWrap);
+              pane.appendChild(toolbar);
+
+              const requestedEl = requestedWrap.querySelector('#requestedTariffInput');
+              const approvedEl = approvedWrap.querySelector('#approvedTariffInput');
+
+              // load persisted values (server-backed with local fallback)
+              loadTariffValuesForContext(dept_id, statistic_id, entity_id).then(values => {
+                requestedEl.value = values.requested_tariff || '';
+                approvedEl.value = values.approved_tariff || '';
+              }).catch(() => { requestedEl.value=''; approvedEl.value=''; });
+
+              function persistTariffInputs() {
+                saveTariffValuesForContext(dept_id, statistic_id, entity_id, {
+                  requested_tariff: requestedEl.value,
+                  approved_tariff: approvedEl.value,
+                });
+              }
+
+              requestedEl.addEventListener('input', persistTariffInputs);
+              approvedEl.addEventListener('input', persistTariffInputs);
+              requestedEl.addEventListener('change', persistTariffInputs);
+              approvedEl.addEventListener('change', persistTariffInputs);
+            } else {
+              pane.appendChild(addButton);
+            }
+
+            // Add the data table
+            const table = buildDocumentTable(items, type.id);
+            table.className = "table table-bordered";
+            pane.appendChild(table);
+            tabContent.appendChild(pane);
+          });
+        }
+
+        function buildDocumentTable(items, type) {
+          const table = document.createElement("table");
+          table.className = "table table-bordered";
+          const thead = document.createElement("thead");
+          const tbody = document.createElement("tbody");
+
+          let columns = "";
+          if (type === "is") {
+            columns = `
+            <tr>
+              <th class="sortable">S. No.</th>
+              <th class="sortable">Issue Description</th>
+              <th class="sortable">Issue Pertaining To</th>
+              <th class="sortable">Issue Date</th>
+              <th>View Issue Document</th>
+              <th class="sortable">Uploaded On</th>
+              <th>action</th>
+            </tr>`;
+          } else if (type === "tp") {
+            columns = `
+              <tr>
+              <th class="sortable">S. No.</th>
+              <th class="sortable">Document Name</th>
+              <th class="sortable">Dated</th>
+              <th>View Document</th>
+              <th class="sortable">Uploaded On</th>
+              <th></th>
+              </tr>`;
+          } else if (["dpr", "mpr", "cdoc"].includes(type)) {
+            columns = `
+              <tr>
+              <th class="sortable">S. No.</th>
+              <th class="sortable">Document Name</th>
+              <th class="sortable">Dated</th>
+              <th>View Document</th>
+              <th class="sortable">Uploaded On</th>
+              <th></th>
+              </tr>`;
+          } else {
+            columns = `
+              <tr>
+  <th class="sortable">S. No.</th>
+  <th class="sortable">Subject</th>
+  <th class="sortable">Dated</th>
+  <th class="sortable">From</th>
+  <th class="sortable">To</th>
+  <th class="sortable">Uploaded On</th>
+  <th>View</th>
+  <th></th>
+</tr>
+            `;
+          }
+
+          thead.innerHTML = columns;
+
+          let index = 1;
+          items.forEach((item) => {
+            const tr = document.createElement("tr");
+
+            if (type === "is") {
+              const issueDocPath = item.issue_doc_path || "";
+              tr.innerHTML = `
+              <td>${index}</td>
+              <td>${item.issue_description}</td>
+              <td>${item.issue_pertaining_to}</td>
+<td data-sort-value="${item.issue_date}">
+  ${formatToISTDate(item.issue_date)}
+</td>              <td>
+                ${
+                  issueDocPath
+                    ? `<button class="btn btn-sm btn-outline-primary" data-doc-path="${encodeURIComponent(issueDocPath)}" onclick="openDocFromBtn(event)">View</button>`
+                    : `<button class="btn btn-sm btn-secondary" disabled>No Document</button>`
+                }
+              </td>
+<td data-sort-value="${item.createdAt}">
+  ${formatToISTDate(item.createdAt)}
+</td>              <td><button class="btn btn-danger btn-sm" data-is-id="${
+                item.issue_id
+              }" onclick="deleteIssue(event)">Delete</button></td>`;
+            } else if (type === "tp") {
+              const docPath = item.doc_path || "";
+              tr.innerHTML = `
+              <td>${index}</td>
+              <td>${item.doc_name}</td>
+              <td data-sort-value="${item.doc_date}">
+  ${formatToISTDate(item.doc_date)}
+</td>
+              <td>${
+                docPath
+                  ? `<button class="btn btn-sm btn-outline-primary" data-doc-path="${encodeURIComponent(docPath)}" onclick="openDocFromBtn(event)">View</button>`
+                  : `<button class="btn btn-sm btn-secondary" disabled>No Document</button>`
+              }</td>
+<td data-sort-value="${item.createdAt}">
+  ${formatToISTDate(item.createdAt)}
+</td>              <td><button class="btn btn-danger btn-sm" data-doc-id="${
+                item.doc_id
+              }" onclick="deleteDocument(event)">Delete</button></td>`;
+            } else if (["dpr", "mpr", "cdoc"].includes(type)) {
+              const docPath = item.doc_path || item.document_path || "";
+              const fileNameFromPath = docPath
+                ? decodeURIComponent(String(docPath).split("/").pop() || "")
+                : "";
+              const docName = item.doc_name || item.document_name || item.subject || fileNameFromPath || "-";
+              const docDate = item.doc_date || item.dated || item.document_date || "";
+              const uploadedOn = item.createdAt || item.uploaded_on || item.uploadedOn || "";
+
+              tr.innerHTML = `
+              <td>${index}</td>
+              <td>${docName}</td>
+              <td data-sort-value="${docDate}">${formatToISTDate(docDate)}</td>
+              <td>
+                ${
+                  docPath
+                    ? `<button class="btn btn-sm btn-outline-primary" data-doc-path="${encodeURIComponent(docPath)}" onclick="openDocFromBtn(event)">View</button>`
+                    : `<button class="btn btn-sm btn-secondary" disabled>No Document</button>`
+                }
+              </td>
+              <td data-sort-value="${uploadedOn}">${formatToISTDate(uploadedOn)}</td>
+              <td><button class="btn btn-danger btn-sm" data-doc-id="${
+                item.doc_id
+              }" onclick="deleteDocument(event)">Delete</button></td>`;
+            } else {
+              const corrDocPath = item.doc_path || "";
+              tr.innerHTML = `
+        <td>${index}</td>
+        <td>${item.subject || ""}</td>
+<td data-sort-value="${item.correspondence_date}">
+  ${formatToISTDate(item.correspondence_date)}
+</td>        <td>${item.from || ""}</td>
+        <td>${item.to || ""}</td>
+<td data-sort-value="${item.createdAt}">
+  ${formatToISTDate(item.createdAt)}
+</td>        <td>${
+                corrDocPath
+                  ? `<button class="btn btn-sm btn-outline-primary" data-doc-path="${encodeURIComponent(corrDocPath)}" onclick="openDocFromBtn(event)">View</button>`
+                  : `<button class="btn btn-sm btn-secondary" disabled>No Document</button>`
+              }</td>
+        <td><button class="btn btn-danger btn-sm" data-corr-id="${
+          item.correspondence_id
+        }" onclick="deleteCorrespondence(event)">Delete</button></td>`;
+            }
+
+            tbody.appendChild(tr);
+            index++;
+          });
+
+          table.appendChild(thead);
+          table.appendChild(tbody);
+          return table;
+        }
+      });
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      function formatToISTDate(dateString) {
+        if (!dateString) return "-";
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return "-";
+
+        // Convert to IST (UTC+5:30)
+        const istOffset = 5.5 * 60 * 60000; // in milliseconds
+        const istDate = new Date(date.getTime() + istOffset);
+
+        const day = String(istDate.getUTCDate()).padStart(2, "0");
+        const month = String(istDate.getUTCMonth() + 1).padStart(2, "0"); // Months are 0-based
+        const year = istDate.getUTCFullYear();
+
+        return `${day}/${month}/${year}`;
+      }
+
+      function normalizePublicDocPath(rawPath) {
+        if (!rawPath) return "";
+        const raw = String(rawPath).trim();
+        if (!raw) return "";
+        if (/^https?:\/\//i.test(raw)) return raw;
+
+        const normalized = raw.replace(/\\/g, "/");
+        const lower = normalized.toLowerCase();
+        const uploadsIdx = lower.lastIndexOf("/uploads/");
+        if (uploadsIdx >= 0) return normalized.substring(uploadsIdx);
+        if (lower.startsWith("uploads/")) return `/${normalized}`;
+        if (lower.startsWith("/uploads/")) return normalized;
+
+        const fileName = normalized.split("/").pop() || "";
+        if (fileName) return `/uploads/${fileName}`;
+        return normalized.startsWith("/") ? normalized : `/${normalized}`;
+      }
+
+      function buildDocCandidates(rawPath) {
+        const primary = normalizePublicDocPath(rawPath);
+        const candidates = [];
+        if (primary) candidates.push(primary);
+
+        const normalized = String(rawPath || "").replace(/\\/g, "/");
+        const fileName = normalized.split("/").pop() || "";
+        if (fileName) {
+          const fallback = `/uploads/${fileName}`;
+          if (!candidates.includes(fallback)) candidates.push(fallback);
+        }
+
+        return candidates;
+      }
+
+      async function openDocumentPath(rawPath) {
+        const trimmed = String(rawPath || "").trim();
+        if (!trimmed) {
+          alert("Document path is missing for this record.");
+          return;
+        }
+
+        if (/^https?:\/\//i.test(trimmed)) {
+          window.open(trimmed, "_blank");
+          return;
+        }
+
+        const candidates = buildDocCandidates(trimmed);
+        for (const url of candidates) {
+          try {
+            const res = await fetch(url, { method: "HEAD" });
+            if (res.ok) {
+              window.open(url, "_blank");
+              return;
+            }
+          } catch (e) {
+            // Try next candidate
+          }
+        }
+
+        alert("Document file not found . Please re-upload this document.");
+      }
+
+      function openDocFromBtn(event) {
+        event.preventDefault();
+        const button = event.currentTarget || event.target;
+        const encodedPath = (button && button.getAttribute("data-doc-path")) || "";
+        const rawPath = encodedPath ? decodeURIComponent(encodedPath) : "";
+        openDocumentPath(rawPath);
+      }
+
+      window.openDocFromBtn = openDocFromBtn;
+
+      function deleteIssue(event) {
+        const button = event.target;
+        const issue_id = button.getAttribute("data-is-id");
+
+        if (!confirm("Are you sure you want to delete this issue")) return;
+
+        authFetch(`/api/data/issues/${issue_id}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to delete issue.");
+            button.closest("tr")?.remove();
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Error deleting issue.");
+          });
+      }
+
+      function deleteCorrespondence(event) {
+        const button = event.target;
+        const correspondence_id = button.getAttribute("data-corr-id");
+
+        console.log(correspondence_id);
+
+        if (!confirm("Are you sure you want to delete this correspondence?"))
+          return;
+
+        authFetch(`/api/data/correspondences/${correspondence_id}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to delete document.");
+            button.closest("tr")?.remove();
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Error deleting document.");
+          });
+      }
+
+      function deleteDocument(event) {
+        const button = event.target;
+        const doc_id = button.getAttribute("data-doc-id");
+
+        if (!confirm("Are you sure you want to delete this document?")) return;
+
+        authFetch(`/api/data/documents/${doc_id}`, {
+          method: "DELETE",
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to delete document.");
+            button.closest("tr")?.remove();
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("Error deleting document.");
+          });
+      }
+    </script>
+
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/0.8.0/Sortable.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

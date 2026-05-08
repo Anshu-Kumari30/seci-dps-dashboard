@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <script src="./js/auth_guard.js"></script>
+    <script src="./js/main.js"></script>
+<title>Add Key Issue (Execution)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      body { font-family: "Segoe UI", Roboto, Arial, sans-serif; background: linear-gradient(135deg, #f4f6f9 0%, #e8ecf1 100%); padding: 20px; min-height: 100vh; color: #333; }
+      h1 { text-align: center; margin-bottom: 25px; color: #0b5ed7; font-weight: 700; font-size: 28px; }
+      .form-container { max-width: 600px; margin: auto; background: #fff; padding: 35px 40px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+      .form-group { display: flex; flex-direction: column; margin-bottom: 18px; }
+      label { font-weight: 600; font-size: 14px; color: #333; margin-bottom: 8px; }
+      input, select, textarea { width: 100%; padding: 12px; font-size: 15px; border: 1px solid #cfd4da; border-radius: 6px; transition: all 0.3s; }
+      input:focus, select:focus, textarea:focus { outline: none; border-color: #0b5ed7; box-shadow: 0 0 0 3px rgba(11,94,215,0.15); }
+      .btn-primary { background: linear-gradient(135deg, #0b5ed7, #146c43); color: white; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+      .btn-primary:hover { background: linear-gradient(135deg, #146c43, #0b5ed7); }
+      .form-text { font-size: 12px; color: #6c757d; }
+      textarea { min-height: 100px; resize: vertical; }
+    </style>
+  </head>
+  <body>
+    <div class="form-container">
+      <h1>Add Key Issue (Execution)</h1>
+      <form id="addIssueForm">
+        <div class="mb-3">
+          <label for="issue_description" class="form-label">Issue Description</label>
+          <textarea class="form-control" id="issue_description" name="issue_description" placeholder="Describe the issue in detail" required></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="issue_pertaining_to" class="form-label">Issue Status</label>
+          <input type="text" class="form-control" id="issue_pertaining_to" name="issue_pertaining_to" placeholder="E.g., Technical, Financial, Scheduling" />
+        </div>
+        <div class="mb-3">
+          <label for="issue_date" class="form-label">Issue Date</label>
+          <input type="date" class="form-control" id="issue_date" name="issue_date" required />
+        </div>
+        <div class="mb-3">
+          <label for="docFile" class="form-label">Upload Supporting Document</label>
+          <small class="form-text text-muted">Maximum file size allowed: <strong>50 MB</strong>.</small>
+          <input type="file" class="form-control" id="docFile" name="doc_file" />
+        </div>
+        <div id="projectSelectorContainer" class="mb-3"></div>
+        <input type="hidden" id="pmcEntryId" name="pmc_entry_id" />
+        <input type="hidden" id="pmcExecutionEntityId" name="pmc_execution_entity_id" />
+        <input type="hidden" id="projectName" name="project_name" />
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      let pmcEntryId = urlParams.get("pmc_entry_id") || urlParams.get("entity_id");
+      const projectName = (urlParams.get("project_name") || "").trim();
+      const executionKey = "pmc_execution_entity_id:" + (projectName || "default").toLowerCase();
+      let pmcExecutionEntityId = urlParams.get("pmc_execution_entity_id") || localStorage.getItem(executionKey) || "";
+      const editId = urlParams.get("edit_id") || "";
+
+      function persistExecutionEntityId(value) {
+        const id = String(value || "").trim();
+        if (!id) return;
+        pmcExecutionEntityId = id;
+        document.getElementById("pmcExecutionEntityId").value = id;
+        localStorage.setItem(executionKey, id);
+      }
+
+      function ensureExecutionEntityId() {
+        if (pmcEntryId) {
+          persistExecutionEntityId(pmcEntryId);
+          return pmcEntryId;
+        }
+        if (!pmcExecutionEntityId && window.crypto && typeof window.crypto.randomUUID === "function") {
+          persistExecutionEntityId(window.crypto.randomUUID());
+        }
+        return pmcExecutionEntityId;
+      }
+
+      if (pmcEntryId) document.getElementById("pmcEntryId").value = pmcEntryId;
+      if (projectName) document.getElementById("projectName").value = projectName;
+      ensureExecutionEntityId();
+
+      if (editId) {
+        document.querySelector('h1').textContent = 'Edit Key Issue (Execution)';
+        document.getElementById('issue_description').value = urlParams.get('issue_description') || '';
+        document.getElementById('issue_pertaining_to').value = urlParams.get('issue_pertaining_to') || '';
+        document.getElementById('issue_date').value = urlParams.get('issue_date') || '';
+        document.getElementById('docFile').required = false;
+      }
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        return fetch(url, { ...options, headers: { Authorization: "Bearer " + token, ...(options.headers || {}) } }).then(res => {
+          if (res.status === 401) { alert("Session expired."); localStorage.clear(); window.location.href = "/"; throw new Error("Unauthorized"); }
+          return res;
+        });
+      }
+
+      async function resolvePmcEntryByProjectName(segmentKey) {
+        const projectName = (urlParams.get('project_name') || '').trim();
+        if (!projectName || pmcEntryId) return;
+        try {
+          const res = await authFetch('/api/data/pmc/entry/all?segment=' + encodeURIComponent(segmentKey || 'pmc-execution') + '&project_name=' + encodeURIComponent(projectName));
+          if (!res.ok) return;
+          const j = await res.json();
+          const entries = Array.isArray(j.data) ? j.data : [];
+          if (entries.length === 1) {
+            pmcEntryId = String(entries[0].pmc_entry_id || entries[0].id || '');
+            if (pmcEntryId) document.getElementById('pmcEntryId').value = pmcEntryId;
+            if (pmcEntryId) persistExecutionEntityId(pmcEntryId);
+          } else if (entries.length > 1) {
+            const container = document.getElementById('projectSelectorContainer');
+            const label = document.createElement('label');
+            label.className = 'form-label';
+            label.textContent = 'Select Project (multiple found)';
+            const sel = document.createElement('select');
+            sel.className = 'form-control';
+            sel.innerHTML = '<option value="">-- choose project --</option>' + entries.map(function (e) { return '<option value="' + (e.pmc_entry_id || '') + '">' + ((e.project_name || e.project_details || e.client) || e.pmc_entry_id) + '</option>'; }).join('');
+            sel.addEventListener('change', function () {
+              document.getElementById('pmcEntryId').value = this.value || '';
+              pmcEntryId = this.value || null;
+              if (pmcEntryId) persistExecutionEntityId(pmcEntryId);
+            });
+            container.appendChild(label);
+            container.appendChild(sel);
+          }
+        } catch (err) {
+          console.error('Failed to resolve PMC entry by project name', err);
+        }
+      }
+
+      resolvePmcEntryByProjectName('pmc-execution');
+
+      document.getElementById("addIssueForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        ensureExecutionEntityId();
+        const formData = new FormData(this);
+        if (projectName) formData.set("project_name", projectName);
+        try {
+          const endpoint = editId
+            ? "/api/data/issues/execution/issue/" + encodeURIComponent(editId)
+            : "/api/data/issues/execution/issues";
+          const method = editId ? "PUT" : "POST";
+          const response = await authFetch(endpoint, { method, body: formData });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            let errMsg = 'Failed to save issue.';
+            if (body && body.error) errMsg = body.error + (body.detail ? ' - '+body.detail : '');
+            throw new Error(errMsg);
+          }
+          const resolvedId = (body && body.pmc_entry_id) || pmcEntryId || pmcExecutionEntityId || "";
+          if (resolvedId) persistExecutionEntityId(resolvedId);
+          alert(editId ? "Issue updated successfully!" : "Issue added successfully!");
+          const params = new URLSearchParams();
+          if (resolvedId && !projectName) params.set("pmc_entry_id", resolvedId);
+          if (projectName) params.set("project_name", projectName);
+          window.location.href = "/pmc_execution_projects.html" + (params.toString() ? "?" + params.toString() : "");
+        } catch (err) {
+          console.error(err);
+          alert("Error adding issue.");
+        }
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

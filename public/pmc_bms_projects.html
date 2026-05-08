@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PMC C&E Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .tab-content { margin-top: 20px; }
+      .btn-add { margin-bottom: 12px; }
+
+      .table-container {
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        border: 1px solid #e0e6ef;
+      }
+      #bmsMilestoneTable { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+      #bmsMilestoneTable thead tr:first-child th {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        border: none;
+        padding: 14px 10px;
+        text-align: center;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+      }
+      #bmsMilestoneTable tbody tr { border-bottom: 1px solid #e0e6ef; }
+      #bmsMilestoneTable tbody td {
+        padding: 12px 10px;
+        background: #fff;
+        color: #333;
+        font-size: 13px;
+        text-align: center;
+        vertical-align: middle;
+      }
+      #bmsMilestoneTable tbody tr:nth-child(even) td { background: #f8fafc; }
+      #bmsMilestoneTable tbody tr:hover td { background: #f0f8ff; }
+
+      .summary-bar { display: inline-flex; align-items: center; gap: 6px; }
+      .summary-bar-track { width: 70px; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+      .summary-bar-fill { height: 100%; border-radius: 4px; }
+      .summary-bar-green { background: linear-gradient(90deg, #198754, #20c997); }
+      .summary-bar-yellow { background: linear-gradient(90deg, #f0ad4e, #f7c948); }
+      .summary-bar-red { background: linear-gradient(90deg, #dc3545, #f06a6a); }
+      .summary-bar-orange { background: linear-gradient(90deg, #fd7e14, #f4a261); }
+      .summary-bar-value { font-size: 11px; font-weight: 600; color: #0b5ed7; }
+      .summary-bar-segment { height: 100%; }
+      .milestone-dropdown-row td { background: #f8fbff !important; padding: 0; }
+      .milestone-dropdown-container { padding: 12px; border-top: 1px solid #dbe6ff; }
+      .milestone-dropdown-title { font-size: 13px; font-weight: 600; color: #1f4e79; margin-bottom: 8px; }
+    </style>
+  </head>
+
+  <body class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0">PMC -BMS</h2>
+      <a href="/home.html" class="btn btn-secondary">Back to Home</a>
+    </div>
+
+    <div class="mb-3">
+      <h4 id="statisticTitle" class="mb-1"></h4>
+      <h5 id="entityTitle" class="text-muted"></h5>
+    </div>
+
+    <ul class="nav nav-tabs" id="bmsTabs" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="bms-milestone-tab" data-bs-toggle="tab" data-bs-target="#bms-milestones" type="button" role="tab">Milestone Status</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="bms-contract-docs-tab" data-bs-toggle="tab" data-bs-target="#bms-contract-docs" type="button" role="tab">Contract Documents</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="bms-dpr-tab" type="button" role="tab" style="pointer-events:none;opacity:0.5;" title="Not available">Daily Progress Report</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="bms-mpr-tab" type="button" role="tab" style="pointer-events:none;opacity:0.5;" title="Not available">Monthly Progress Report</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="bms-corr-cont-tab" type="button" role="tab" style="pointer-events:none;opacity:0.5;" title="Not available">Correspondences with Contractors</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="bms-corr-other-tab" data-bs-toggle="tab" data-bs-target="#bms-corr-other" type="button" role="tab">Correspondences with Stakeholders</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="bms-key-issues-tab" data-bs-toggle="tab" data-bs-target="#bms-key-issues" type="button" role="tab">Key Issues</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="bmsTabContent">
+      <!-- Milestone Tab -->
+      <div class="tab-pane fade show active" id="bms-milestones" role="tabpanel">
+        <button id="bms-addMilestoneBtn" class="btn btn-sm btn-success mb-2" onclick="openAddMilestoneBMS()">+ Add Milestone</button>
+        <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-bordered" id="bmsMilestoneTable">
+            <thead>
+              <tr>
+                <th>S.No</th>
+                <th>Type of Service</th>
+                <th>Client</th>
+                <th>Project Details</th>
+                <th>LOA to SECI</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Target Date</th>
+                <th>P O Value</th>
+                <th>Invoice Raised</th>
+                <th>Amount Pending</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Milestones</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bmsTableBody"></tbody>
+          </table>
+        </div>
+        </div>
+      </div>
+
+      <!-- Contract Documents Tab -->
+      <div class="tab-pane fade" id="bms-contract-docs" role="tabpanel">
+        <button id="bms-addContractDocBtn" class="btn btn-sm btn-success mb-2">+ Add Contract Documents</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="bmsContractDocsTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Document Name</th>
+                <th class="sortable">Dated</th>
+                <th>View Document</th>
+                <th class="sortable">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+
+
+      <!-- Correspondences with other Stakeholders Tab -->
+      <div class="tab-pane fade" id="bms-corr-other" role="tabpanel">
+        <button id="bms-addCorrOtherBtn" class="btn btn-sm btn-success mb-2">+ Add Other Correspondence</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="bmsCorrOtherTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Subject</th>
+                <th class="sortable">Dated</th>
+                <th class="sortable">From</th>
+                <th class="sortable">To</th>
+                <th class="sortable">Uploaded On</th>
+                <th>View</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Key Issues Tab -->
+      <div class="tab-pane fade" id="bms-key-issues" role="tabpanel">
+        <button id="bms-addIssueBtn" class="btn btn-sm btn-success mb-2">+ Add Issue</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="bmsIssuesTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Issue Description</th>
+                <th class="sortable">Issue Pertaining To</th>
+                <th class="sortable">Issue Date</th>
+                <th>View Issue Document</th>
+                <th class="sortable">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      var bmsProjects = [];
+      var currentVisibleProjects = [];
+      var bmsContractDocsItems = [];
+      var bmsCorrItems = [];
+      var bmsIssueItems = [];
+      var queryParams = new URLSearchParams(window.location.search);
+      var pmcEntryId = queryParams.get('pmc_entry_id') || null;
+      var projectNameFilter = (queryParams.get('project_name') || '').trim();
+      var segmentParam = (queryParams.get('segment') || '').trim().toLowerCase();
+      var sliceSegmentKey = (segmentParam === 'pmc-bms' || segmentParam === 'bms') ? 'pmc-bms' : 'pmc-bms';
+      var sliceEntryIdParam = null;
+      var pmcEntryIdLooksLikeUuid = !!(pmcEntryId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(pmcEntryId)));
+      if (pmcEntryId && /^slice-/i.test(pmcEntryId)) {
+        sliceEntryIdParam = String(pmcEntryId);
+        pmcEntryId = null;
+      }
+      if (pmcEntryId && !sliceEntryIdParam && !pmcEntryIdLooksLikeUuid) {
+        // Backward compatibility: some old flows passed project name in pmc_entry_id.
+        if (!projectNameFilter) projectNameFilter = String(pmcEntryId).trim();
+        pmcEntryId = null;
+      }
+      var openMilestoneDropdown = null;
+
+      function matchesSliceEntryId(sliceItem) {
+        if (!sliceEntryIdParam) return true;
+        var sid = String(sliceItem.pmc_slice_meta_id || sliceItem.id || '');
+        return ('slice-' + sid).toLowerCase() === sliceEntryIdParam.toLowerCase();
+      }
+
+      function authFetch(url, options) {
+        options = options || {};
+        var token = localStorage.getItem('token');
+        var headers = Object.assign({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, options.headers || {});
+        return fetch(url, Object.assign({}, options, { headers: headers })).then(function (res) {
+          if (res.status === 401) { alert('Session expired.'); localStorage.clear(); window.location.href = '/'; throw new Error('Unauthorized'); }
+          return res;
+        });
+      }
+
+      function formatDate(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-IN');
+      }
+
+      function formatDateTime(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        return isNaN(d.getTime()) ? v : d.toLocaleString('en-IN');
+      }
+
+      function formatCurrency(v) {
+        var a = parseFloat(v) || 0;
+        return a ? a.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+      }
+
+      function toInputDate(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        if (isNaN(d.getTime())) return '';
+        return d.toISOString().slice(0, 10);
+      }
+
+      function initSortableTable(tableId) {
+        var table = document.getElementById(tableId);
+        if (!table) return;
+        var tbody = table.querySelector('tbody');
+        var headers = table.querySelectorAll('th.sortable');
+        headers.forEach(function (th, idx) {
+          th.style.cursor = 'pointer';
+          th.addEventListener('click', function () {
+            var current = th.getAttribute('data-order') || 'desc';
+            var next = current === 'asc' ? 'desc' : 'asc';
+            headers.forEach(function (h) { h.removeAttribute('data-order'); });
+            th.setAttribute('data-order', next);
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+              var av = (a.children[idx] && a.children[idx].innerText || '').trim();
+              var bv = (b.children[idx] && b.children[idx].innerText || '').trim();
+              var ad = Date.parse(av);
+              var bd = Date.parse(bv);
+              if (!isNaN(ad) && !isNaN(bd)) return next === 'asc' ? ad - bd : bd - ad;
+              var an = parseFloat(av.replace(/,/g, ''));
+              var bn = parseFloat(bv.replace(/,/g, ''));
+              if (!isNaN(an) && !isNaN(bn)) return next === 'asc' ? an - bn : bn - an;
+              return next === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+            });
+            rows.forEach(function (r) { tbody.appendChild(r); });
+          });
+        });
+      }
+
+      function buildSliceContextId() {
+        if (!projectNameFilter) return null;
+        return 'slicectx:pmc-bms:' + projectNameFilter.toLowerCase();
+      }
+
+      function getActiveProjectIds() {
+        return (currentVisibleProjects || [])
+          .map(function (p) { return String(p.pmc_entry_id || ''); })
+          .filter(function (id) { return id && !/^slice-/i.test(id); });
+      }
+
+      function getPreferredProjectId() {
+        if (pmcEntryId && !/^slice-/i.test(String(pmcEntryId))) return pmcEntryId;
+        var ids = getActiveProjectIds();
+        return ids.length === 1 ? ids[0] : null;
+      }
+
+      function getContextEntityId() {
+        var preferred = getPreferredProjectId();
+        if (preferred) return preferred;
+        var ids = getActiveProjectIds();
+        if (ids.length > 1) return null;
+        return buildSliceContextId();
+      }
+
+      function getPublicFileHref(storagePath) {
+        if (!storagePath) return '';
+        var p = String(storagePath).replace(/\\/g, '/');
+        var lower = p.toLowerCase();
+        var idx = lower.lastIndexOf('/uploads/');
+        if (idx >= 0) return p.substring(idx);
+        if (lower.indexOf('uploads/') === 0) return '/' + p;
+        if (p.charAt(0) !== '/') return '/' + p;
+        return p;
+      }
+
+      function openAddMilestoneBMS() {
+        try {
+          var href = '/add_pmc_entry.html?from=bms&serviceType=BMS&segment=pmc-bms&bmsOnly=1';
+          var contextProject = (projectNameFilter || '').trim();
+          if (!contextProject && currentVisibleProjects.length === 1) {
+            contextProject = String(currentVisibleProjects[0].projectName || currentVisibleProjects[0].client || currentVisibleProjects[0].projectDetails || '').trim();
+          }
+          if (contextProject) href += '&project_name=' + encodeURIComponent(contextProject) + '&autofillProject=0&lockProject=1';
+          window.location.href = href;
+        } catch (e) { console.error('openAddMilestoneBMS error', e); }
+      }
+
+      // ---- Contract Documents ----
+      function fetchContractDocs() {
+        var tbody = document.querySelector('#bmsContractDocsTable tbody');
+        if (!tbody) return;
+        var url = '/api/data/documents/bms/documents';
+        var targetEntityId = getContextEntityId();
+        var activeIds = getActiveProjectIds();
+        var params = [];
+        if (targetEntityId) params.push('entity_id=' + encodeURIComponent(targetEntityId));
+        if (projectNameFilter) params.push('project_name=' + encodeURIComponent(projectNameFilter));
+        if (params.length) url += '?' + params.join('&');
+        authFetch(url)
+          .then(function (res) { if (!res.ok) throw new Error('Failed'); return res.json(); })
+          .then(function (docs) {
+            docs = Array.isArray(docs) ? docs : [];
+            bmsContractDocsItems = docs.slice();
+            if (!targetEntityId && activeIds.length > 1) {
+              docs = docs.filter(function (d) {
+                var id = String(d.pmc_entry_id || '');
+                return activeIds.indexOf(id) !== -1;
+              });
+            }
+            tbody.innerHTML = '';
+            if (!docs.length) {
+              tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No documents found</td></tr>';
+              return;
+            }
+            docs.forEach(function (d, i) {
+              var docHref = getPublicFileHref(d.storage_path);
+              var viewLink = docHref
+                ? '<a href="' + docHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
+                : '-';
+              var tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (d.description || d.original_name || '') + '</td>' +
+                '<td>' + formatDate(d.doc_date) + '</td>' +
+                '<td>' + viewLink + '</td>' +
+                '<td>' + formatDateTime(d.createdAt) + '</td>' +
+                '<td><button class="btn btn-danger btn-sm" onclick="deleteBmsDoc(' + d.id + ')">Delete</button></td>';
+              tbody.appendChild(tr);
+            });
+          })
+          .catch(function (err) {
+            console.error('fetchContractDocs error:', err);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Failed to load documents</td></tr>';
+          });
+      }
+
+      window.deleteBmsDoc = function (id) {
+        if (!confirm('Are you sure you want to delete this document?')) return;
+        authFetch('/api/data/documents/bms/document/' + id, { method: 'DELETE' })
+          .then(function (res) {
+            if (res.ok) { alert('Document deleted'); fetchContractDocs(); }
+            else alert('Error deleting document');
+          })
+          .catch(function (err) { console.error(err); alert('Error deleting document'); });
+      };
+
+      window.editBmsDoc = function (id) {
+        var d = (bmsContractDocsItems || []).find(function (x) { return String(x.id) === String(id); });
+        if (!d) return alert('Document not found');
+        var href = '/add_contract_document_bms.html?edit_id=' + encodeURIComponent(d.id);
+        if (d.pmc_entry_id) href += '&entity_id=' + encodeURIComponent(d.pmc_entry_id);
+        if (projectNameFilter) href += '&project_name=' + encodeURIComponent(projectNameFilter);
+        href += '&segment=pmc-bms';
+        href += '&doc_name=' + encodeURIComponent(d.description || d.original_name || '');
+        href += '&doc_date=' + encodeURIComponent(toInputDate(d.doc_date));
+        window.location.href = href;
+      };
+
+      // ---- Correspondences with other Stakeholders ----
+      function fetchCorrespondences() {
+        var tbody = document.querySelector('#bmsCorrOtherTable tbody');
+        if (!tbody) return;
+        var url = '/api/data/documents/bms/correspondences';
+        var targetEntityId = getContextEntityId();
+        var activeIds = getActiveProjectIds();
+        var params = [];
+        if (targetEntityId) params.push('entity_id=' + encodeURIComponent(targetEntityId));
+        if (projectNameFilter) params.push('project_name=' + encodeURIComponent(projectNameFilter));
+        if (params.length) url += '?' + params.join('&');
+        authFetch(url)
+          .then(function (res) { if (!res.ok) throw new Error('Failed'); return res.json(); })
+          .then(function (items) {
+            items = Array.isArray(items) ? items : [];
+            bmsCorrItems = items.slice();
+            if (!targetEntityId && activeIds.length > 1) {
+              items = items.filter(function (c) {
+                var id = String(c.pmc_entry_id || '');
+                return activeIds.indexOf(id) !== -1;
+              });
+            }
+            tbody.innerHTML = '';
+            if (!items.length) {
+              tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No correspondences found</td></tr>';
+              return;
+            }
+            items.forEach(function (c, i) {
+              var fromVal = c.sender || '';
+              var toVal = c.recipient || '';
+              if (!fromVal && !toVal && c.correspondent) {
+                var parts = c.correspondent.split(' -> ');
+                fromVal = parts[0] || '';
+                toVal = parts[1] || '';
+              }
+              var corrHref = getPublicFileHref(c.storage_path);
+              var viewLink = corrHref
+                ? '<a href="' + corrHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
+                : '-';
+              var tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (c.subject || '') + '</td>' +
+                '<td>' + formatDate(c.correspondence_date) + '</td>' +
+                '<td>' + fromVal + '</td>' +
+                '<td>' + toVal + '</td>' +
+                '<td>' + formatDateTime(c.createdAt) + '</td>' +
+                '<td>' + viewLink + '</td>' +
+                '<td><button class="btn btn-danger btn-sm" onclick="deleteBmsCorr(' + c.id + ')">Delete</button></td>';
+              tbody.appendChild(tr);
+            });
+            // fetch BMS issues after correspondences
+            fetchBmsIssues();
+          })
+          .catch(function (err) {
+            console.error('fetchCorrespondences error:', err);
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Failed to load correspondences</td></tr>';
+            // Keep issues tab functional even if correspondences endpoint fails.
+            fetchBmsIssues();
+          });
+      }
+
+      window.deleteBmsCorr = function (id) {
+        if (!confirm('Are you sure you want to delete this correspondence?')) return;
+        authFetch('/api/data/documents/bms/correspondence/' + id, { method: 'DELETE' })
+          .then(function (res) {
+            if (res.ok) { alert('Correspondence deleted'); fetchCorrespondences(); }
+            else alert('Error deleting correspondence');
+          })
+          .catch(function (err) { console.error(err); alert('Error deleting correspondence'); });
+      };
+
+      window.editBmsCorr = function (id) {
+        var c = (bmsCorrItems || []).find(function (x) { return String(x.id) === String(id); });
+        if (!c) return alert('Correspondence not found');
+        var href = '/add_correspondence_other_bms.html?edit_id=' + encodeURIComponent(c.id);
+        if (c.pmc_entry_id) href += '&entity_id=' + encodeURIComponent(c.pmc_entry_id);
+        if (projectNameFilter) href += '&project_name=' + encodeURIComponent(projectNameFilter);
+        href += '&segment=pmc-bms';
+        href += '&subject=' + encodeURIComponent(c.subject || '');
+        href += '&from=' + encodeURIComponent(c.sender || '');
+        href += '&to=' + encodeURIComponent(c.recipient || '');
+        href += '&correspondence_date=' + encodeURIComponent(toInputDate(c.correspondence_date));
+        window.location.href = href;
+      };
+
+      // ---- BMS Key Issues ----
+      function fetchBmsIssues() {
+        var tbody = document.querySelector('#bmsIssuesTable tbody');
+        if (!tbody) return;
+        var url = '/api/data/issues/bms/issues';
+        var targetEntityId = getContextEntityId();
+        var params = [];
+        if (targetEntityId) params.push('entity_id=' + encodeURIComponent(targetEntityId));
+        if (projectNameFilter) params.push('project_name=' + encodeURIComponent(projectNameFilter));
+        if (params.length) url += '?' + params.join('&');
+        authFetch(url)
+          .then(function (res) { if (!res.ok) throw new Error('Failed'); return res.json(); })
+          .then(function (items) {
+            items = Array.isArray(items) ? items : [];
+            bmsIssueItems = items.slice();
+            tbody.innerHTML = '';
+            if (!items.length) {
+              tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No issues found</td></tr>';
+              return;
+            }
+            items.forEach(function (it, i) {
+              var issueHref = getPublicFileHref(it.storage_path);
+              var viewLink = issueHref ? '<a href="' + issueHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>' : '-';
+              var tr = document.createElement('tr');
+              tr.innerHTML = '<td>' + (i+1) + '</td>' +
+                '<td>' + (it.issue_description || '') + '</td>' +
+                '<td>' + (it.issue_pertaining_to || '') + '</td>' +
+                '<td>' + (it.issue_date ? new Date(it.issue_date).toLocaleDateString('en-IN') : '') + '</td>' +
+                '<td>' + viewLink + ' <button class="btn btn-sm btn-secondary ms-1" onclick="editBmsIssue(\'' + (it.issue_id || it.id || '') + '\')">Edit</button></td>' +
+                '<td>' + (it.createdAt ? new Date(it.createdAt).toLocaleString('en-IN') : '') + '</td>' +
+                '<td><button class="btn btn-danger btn-sm" onclick="deleteBmsIssue(\'' + (it.issue_id || it.id || '') + '\')">Delete</button></td>';
+              tbody.appendChild(tr);
+            });
+          })
+          .catch(function (err) { console.error('fetchBmsIssues error', err); tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Failed to load issues</td></tr>'; });
+      }
+
+      window.deleteBmsIssue = function (id) {
+        if (!confirm('Are you sure you want to delete this issue?')) return;
+        authFetch('/api/data/issues/bms/issue/' + encodeURIComponent(id), { method: 'DELETE' })
+          .then(function (res) { if (res.ok) { alert('Issue deleted'); fetchBmsIssues(); } else alert('Error deleting issue'); })
+          .catch(function (err) { console.error(err); alert('Error deleting issue'); });
+      };
+
+      window.editBmsIssue = function (id) {
+        var it = (bmsIssueItems || []).find(function (x) { return String(x.issue_id || x.id || '') === String(id); });
+        if (!it) return alert('Issue not found');
+        var href = '/add_issues.html?context=pmc_bms&edit_id=' + encodeURIComponent(it.issue_id || it.id || '');
+        if (it.pmc_entry_id) href += '&pmc_bms_entity_id=' + encodeURIComponent(it.pmc_entry_id);
+        if (projectNameFilter) href += '&project_name=' + encodeURIComponent(projectNameFilter);
+        href += '&issue_description=' + encodeURIComponent(it.issue_description || '');
+        href += '&issue_pertaining_to=' + encodeURIComponent(it.issue_pertaining_to || '');
+        href += '&issue_date=' + encodeURIComponent(toInputDate(it.issue_date));
+        window.location.href = href;
+      };
+
+      // ---- Milestones (PMC Projects) ----
+      // Get color coding for service type/project categorization
+      function getServiceTypeColor(serviceType) {
+        var st = String(serviceType || '').trim().toUpperCase();
+        if (st === 'BMS') return { bg: '#a85dc0', text: '#fff', label: 'BMS' };
+        if (st === 'DPR/PFR' || st === 'DPR_PFR') return { bg: '#0b5ed7', text: '#fff', label: 'DPR/PFR' };
+        if (st === 'DPR' || st === 'PFR') return { bg: '#0b5ed7', text: '#fff', label: 'DPR/PFR' };
+        if (st === 'EXECUTION' || st === 'C&E') return { bg: '#17a2b8', text: '#fff', label: 'Execution' };
+        return { bg: '#6c757d', text: '#fff', label: st };
+      }
+
+      function getMilestoneBarClass(invoiceAmount, invoiceRaised, invoiceStatus) {
+        var raised = parseFloat(invoiceRaised) || 0;
+        var st = String(invoiceStatus || '').trim().toLowerCase();
+        if (raised <= 0 && (st === 'pending' || st === 'delayed' || st === 'delay')) return 'summary-bar-orange';
+        if (raised > 0 && st === 'pending') return 'summary-bar-yellow';
+        if (raised > 0 && st === 'received') return 'summary-bar-green';
+        return 'summary-bar-orange';
+      }
+
+      function getProgressBarMarkup(ia, ir, is) {
+        var amt = parseFloat(ia) || 0;
+        var raised = parseFloat(ir) || 0;
+        var pct = amt > 0 ? Math.min(100, (raised / amt) * 100) : 0;
+        var cls = getMilestoneBarClass(ia, ir, is);
+        return '<div class="summary-bar" style="justify-content:center;"><div class="summary-bar-track"><div class="summary-bar-fill ' + cls + '" style="width:' + pct + '%;"></div></div><span class="summary-bar-value">' + pct.toFixed(1) + '%</span></div>';
+      }
+
+      function renderSummaryBar(project) {
+        var milestones = project.milestones || [];
+        var total = parseFloat(project.totalAmount) || 0;
+        var received = parseFloat(project.amountReceived) || 0;
+        var pct = total > 0 ? Math.min(100, (received / total) * 100) : 0;
+        if (!milestones.length) return '<div class="summary-bar"><div class="summary-bar-track"><div class="summary-bar-fill summary-bar-orange" style="width:100%;"></div></div><span class="summary-bar-value">0.0%</span></div>';
+        var totalMA = milestones.reduce(function (s, m) { return s + (parseFloat(m.invoice_amount) || 0); }, 0);
+        var weights = totalMA > 0 ? milestones.map(function (m) { return (parseFloat(m.invoice_amount) || 0) / totalMA; }) : milestones.map(function () { return 1 / milestones.length; });
+        var segs = milestones.map(function (m, i) { return '<div class="summary-bar-segment ' + getMilestoneBarClass(m.invoice_amount, m.invoice_raised, m.status) + '" style="width:' + Math.max(0, weights[i] * 100) + '%;"></div>'; }).join('');
+        return '<div class="summary-bar"><div class="summary-bar-track" style="display:flex;">' + segs + '</div><span class="summary-bar-value">' + pct.toFixed(1) + '%</span></div>';
+      }
+
+      function buildMilestoneDropdownTable(project) {
+        var ms = (project && project.milestones) ? project.milestones : [];
+        if (!ms.length) return '<div style="text-align:center;padding:12px;color:#999;">No milestones available</div>';
+        var typeColor = getServiceTypeColor(project.serviceType);
+        var rows = ms.map(function (m, i) {
+          return '<tr>' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + (m.milestone || '') + '</td>' +
+            '<td>' + (m.stage_payment != null ? m.stage_payment : '') + '</td>' +
+            '<td>' + formatCurrency(m.invoice_amount) + '</td>' +
+            '<td>' + formatCurrency(m.invoice_raised) + '</td>' +
+            '<td>' + formatDate(m.invoice_date) + '</td>' +
+            '<td>' + (m.invoice_number || '') + '</td>' +
+            '<td>' + (m.status || '') + '</td>' +
+            '<td>' + getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status) + '</td>' +
+            '</tr>';
+        }).join('');
+        return '<div style="overflow-x:auto;">' +
+          '<div style="padding:8px; background:' + typeColor.bg + '; color:' + typeColor.text + '; font-weight:600; margin-bottom:8px; border-radius:4px;">Service Type: ' + typeColor.label + '</div>' +
+          '<table class="table table-bordered mb-0"><thead><tr>' +
+          '<th>Sr no</th><th>Milestone</th><th>Stage Payment</th><th>Invoice Amount</th><th>Invoice Raised</th><th>Invoice Date</th><th>Invoice Number</th><th>Invoice Status</th><th>Progress</th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      }
+
+      function toggleMilestones(btn, projectId) {
+        var project = bmsProjects.find(function (p) { return p.pmc_entry_id === projectId; });
+        if (!project) return;
+        var parentRow = btn.closest('tr');
+        if (!parentRow) return;
+        if (openMilestoneDropdown && openMilestoneDropdown.row) {
+          var same = openMilestoneDropdown.projectId === projectId;
+          openMilestoneDropdown.row.remove();
+          openMilestoneDropdown = null;
+          if (same) return;
+        }
+        var dr = document.createElement('tr');
+        dr.className = 'milestone-dropdown-row';
+        dr.innerHTML = '<td colspan="15"><div class="milestone-dropdown-container"><div class="milestone-dropdown-title">Milestones - ' + (project.serviceType || '') + ' / ' + (project.client || '') + '</div>' + buildMilestoneDropdownTable(project) + '</div></td>';
+        parentRow.parentNode.insertBefore(dr, parentRow.nextSibling);
+        openMilestoneDropdown = { row: dr, projectId: projectId };
+      }
+
+      function fetchBMSData() {
+        var tbody = document.getElementById('bmsTableBody');
+        if (!tbody) return;
+        // Fetch projects only from pmc_project endpoint
+        var allUrl = '/api/data/pmc/entry/all?segment=' + encodeURIComponent(sliceSegmentKey);
+        if (projectNameFilter) allUrl += '&project_name=' + encodeURIComponent(projectNameFilter);
+        return authFetch(allUrl).then(function (res) { if (!res.ok) throw new Error('Failed'); return res.json(); }).then(processBMSResults).catch(function (err) { console.error(err); tbody.innerHTML = '<tr><td colspan="15" class="text-center text-muted">Failed to load data</td></tr>'; });
+      }
+
+      function processBMSResults(payload) {
+        var tbody = document.getElementById('bmsTableBody');
+        if (!tbody) return;
+        var projects = Array.isArray(payload.data) ? payload.data : [];
+            bmsProjects = projects.map(function (p) {
+              return {
+                pmc_entry_id: p.pmc_entry_id,
+                serviceType: p.service_type,
+                client: p.client,
+                projectDetails: p.project_details,
+                projectName: p.project_name,
+                loaDate: formatDate(p.loa_date),
+                startDate: formatDate(p.start_date),
+                endDate: formatDate(p.end_date),
+                targetDate: formatDate(p.target_date),
+                totalAmount: p.total_amount,
+                amountReceived: p.amount_received,
+                amountPending: p.amount_pending,
+                status: p.status,
+                milestones: Array.isArray(p.milestones) ? p.milestones : [],
+              };
+            });
+
+            bmsProjects = bmsProjects.map(function (project) {
+              var invoiceAmountTotal = (project.milestones || []).reduce(function (s, m) { return s + (parseFloat(m.invoice_amount) || 0); }, 0);
+              var invoiceRaisedTotal = (project.milestones || []).reduce(function (s, m) { return s + (parseFloat(m.invoice_raised) || 0); }, 0);
+              var statusToShow = project.status;
+              if (Array.isArray(project.milestones) && project.milestones.length) {
+                var received = project.milestones.filter(function (m) { return String(m.invoice_status || '').toLowerCase() === 'received'; });
+                var raised = project.milestones.filter(function (m) { return parseFloat(m.invoice_raised) > 0; });
+                if (received.length) statusToShow = received[received.length - 1].milestone || project.status;
+                else if (raised.length) statusToShow = raised[raised.length - 1].milestone || project.status;
+              }
+              return Object.assign({}, project, { totalAmount: invoiceAmountTotal, amountReceived: invoiceRaisedTotal, amountPending: Math.max(0, invoiceAmountTotal - invoiceRaisedTotal), status: statusToShow });
+            });
+
+            var visible = [];
+            if (pmcEntryId) {
+              visible = bmsProjects.filter(function (p) { return String(p.pmc_entry_id || '') === String(pmcEntryId); });
+            } else {
+              visible = bmsProjects.filter(function (p) {
+                var st = String(p.serviceType || '').trim().toUpperCase();
+                return st === 'BMS';
+              });
+
+              if (projectNameFilter) {
+                var q = projectNameFilter.toLowerCase();
+                visible = visible.filter(function (p) {
+                  var pname = String(p.projectName || '').toLowerCase();
+                  var client = String(p.client || '').toLowerCase();
+                  var details = String(p.projectDetails || '').toLowerCase();
+                  return pname.indexOf(q) !== -1 || client.indexOf(q) !== -1 || details.indexOf(q) !== -1;
+                });
+
+                if (!visible.length) {
+                  var normalize = function (v) {
+                    return String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  };
+                  var nq = normalize(projectNameFilter);
+                  visible = bmsProjects.filter(function (p) {
+                    var st = String(p.serviceType || '').trim().toUpperCase();
+                    if (st !== 'BMS') return false;
+                    var pname = normalize(p.projectName);
+                    var client = normalize(p.client);
+                    var details = normalize(p.projectDetails);
+                    return !!nq && (pname.indexOf(nq) !== -1 || client.indexOf(nq) !== -1 || details.indexOf(nq) !== -1);
+                  });
+                }
+
+                if (!visible.length) {
+                  visible = bmsProjects.filter(function (p) {
+                    var st = String(p.serviceType || '').trim().toUpperCase();
+                    return st === 'BMS';
+                  });
+                }
+              }
+            }
+
+            // No slice-editor fallback: only show projects from pmc_project
+            
+            bmsProjects = visible;
+            currentVisibleProjects = visible;
+
+            if (!visible.length) {
+              tbody.innerHTML = '<tr><td colspan="15" class="text-center text-muted">No BMS projects available</td></tr>';
+              return;
+            }
+
+            tbody.innerHTML = '';
+            visible.forEach(function (project, i) {
+              var tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (project.serviceType || '') + '</td>' +
+                '<td>' + (project.client || '') + '</td>' +
+                '<td>' + (project.projectDetails || '') + '</td>' +
+                '<td>' + (project.loaDate || '') + '</td>' +
+                '<td>' + (project.startDate || '') + '</td>' +
+                '<td>' + (project.endDate || '') + '</td>' +
+                '<td>' + (project.targetDate || '') + '</td>' +
+                '<td>' + formatCurrency(project.totalAmount) + '</td>' +
+                '<td>' + formatCurrency(project.amountReceived) + '</td>' +
+                '<td>' + formatCurrency(project.amountPending) + '</td>' +
+                '<td>' + (project.status || '') + '</td>' +
+                '<td>' + renderSummaryBar(project) + '</td>' +
+                '<td><button class="btn btn-sm btn-primary" onclick="toggleMilestones(this,\'' + project.pmc_entry_id + '\')">View</button></td>' +
+                '<td><button class="btn btn-sm btn-secondary me-1" onclick="editEntry(\'' + project.pmc_entry_id + '\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEntry(\'' + project.pmc_entry_id + '\')">Delete</button></td>';
+              tbody.appendChild(tr);
+            });
+
+            // Auto-expand project if pmc_entry_id present in URL
+            if (pmcEntryId) {
+              setTimeout(function () {
+                try {
+                  var selector = '#bmsTableBody button[onclick*="toggleMilestones(this,\'' + pmcEntryId + '\')"]';
+                  var btn = document.querySelector(selector);
+                  if (btn) btn.click();
+                } catch (e) { /* ignore */ }
+              }, 80);
+            }
+      }
+
+      function editEntry(pid) {
+        if (pid && /^slice-/i.test(String(pid))) {
+          var p = (currentVisibleProjects || []).find(function (x) { return String(x.pmc_entry_id || '') === String(pid); }) || {};
+          var contextProject = (p.projectName || p.client || p.projectDetails || projectNameFilter || '').trim();
+          var href = '/add_pmc_entry.html?from=bms&serviceType=BMS&segment=pmc-bms&bmsOnly=1';
+          if (contextProject) href += '&project_name=' + encodeURIComponent(contextProject) + '&autofillProject=0&lockProject=1';
+          window.location.href = href;
+          return;
+        }
+        window.location.href = '/add_pmc_entry.html?edit=' + encodeURIComponent(pid) + '&from=bms';
+      }
+
+      function deleteEntry(pid) {
+        if (!pid || /^slice-/i.test(String(pid))) {
+          alert('Only saved milestone entries can be deleted.');
+          return;
+        }
+        if (!confirm('Are you sure you want to delete this milestone entry?')) return;
+        authFetch('/api/data/pmc/entry/delete/' + encodeURIComponent(pid), { method: 'DELETE' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('Delete failed');
+            alert('Milestone entry deleted successfully');
+            fetchBMSData();
+          })
+          .catch(function (err) {
+            console.error(err);
+            alert('Failed to delete milestone entry');
+          });
+      }
+
+      // ---- Init ----
+      document.addEventListener('DOMContentLoaded', function () {
+        initSortableTable('bmsContractDocsTable');
+        initSortableTable('bmsCorrOtherTable');
+        initSortableTable('bmsIssuesTable');
+        Promise.resolve(fetchBMSData())
+          .finally(function () {
+            fetchContractDocs();
+            fetchCorrespondences();
+            fetchBmsIssues();
+          });
+
+        document.getElementById('bms-addContractDocBtn').addEventListener('click', function () {
+          var href = '/add_contract_document_bms.html';
+          var params = [];
+          var targetEntityId = getContextEntityId();
+          // Prefer explicit entity id from context but only if it looks like a UUID
+          var uuidRx = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (targetEntityId && uuidRx.test(String(targetEntityId))) params.push('entity_id=' + encodeURIComponent(targetEntityId));
+
+          // Always carry project_name from URL context when present.
+          if (projectNameFilter) {
+            params.push('project_name=' + encodeURIComponent(projectNameFilter));
+          }
+
+          // If user filtered by project name, try to include the matching pmc_entry_id
+          if (projectNameFilter && Array.isArray(currentVisibleProjects) && currentVisibleProjects.length) {
+            var match = currentVisibleProjects.find(function(p) { return String(p.projectName || '').trim().toLowerCase() === projectNameFilter.toLowerCase(); });
+            if (!match) {
+              // fallback: substring match
+              match = currentVisibleProjects.find(function(p) { return String(p.projectName || '').toLowerCase().indexOf(projectNameFilter.toLowerCase()) !== -1; });
+            }
+            if (match && match.pmc_entry_id) {
+              // prefer explicit uuid param so saved document is linked
+              params.push('entity_id=' + encodeURIComponent(match.pmc_entry_id));
+            }
+          } else if (!projectNameFilter && Array.isArray(currentVisibleProjects) && currentVisibleProjects.length === 1) {
+            // Single visible project — include its name as project_name so add-form has context even without UUID
+            var singleProject = currentVisibleProjects[0] || {};
+            var ctxName = String(singleProject.projectName || singleProject.client || singleProject.projectDetails || '').trim();
+            if (ctxName) params.push('project_name=' + encodeURIComponent(ctxName));
+            if (singleProject && singleProject.pmc_entry_id && uuidRx.test(String(singleProject.pmc_entry_id))) {
+              params.push('entity_id=' + encodeURIComponent(singleProject.pmc_entry_id));
+            }
+          }
+
+          // ensure segment is always present for BMS flows
+          params.push('segment=pmc-bms');
+          if (params.length) href += '?' + params.join('&');
+          window.location.href = href;
+        });
+
+        var addMilestoneBtn = document.getElementById('bms-addMilestoneBtn');
+        addMilestoneBtn.addEventListener('click', function () {
+          // Always open Add form (not edit) so saving creates a new milestone row.
+          var href = '/add_pmc_entry.html?from=bms&serviceType=BMS&segment=pmc-bms&bmsOnly=1';
+          var contextProject = (projectNameFilter || '').trim();
+          if (!contextProject && currentVisibleProjects.length === 1) {
+            contextProject = String(currentVisibleProjects[0].projectName || currentVisibleProjects[0].client || currentVisibleProjects[0].projectDetails || '').trim();
+          }
+          if (contextProject) href += '&project_name=' + encodeURIComponent(contextProject) + '&autofillProject=0&lockProject=1';
+          window.location.href = href;
+        });
+
+        document.getElementById('bms-addCorrOtherBtn').addEventListener('click', function () {
+          var href = '/add_correspondence_other_bms.html';
+          var params = [];
+          var targetEntityId = getContextEntityId();
+          var uuidRx = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (targetEntityId && uuidRx.test(String(targetEntityId))) params.push('entity_id=' + encodeURIComponent(targetEntityId));
+          if (projectNameFilter) {
+            params.push('project_name=' + encodeURIComponent(projectNameFilter));
+          }
+          if (projectNameFilter && Array.isArray(currentVisibleProjects) && currentVisibleProjects.length) {
+            var match = currentVisibleProjects.find(function(p) { return String(p.projectName || '').trim().toLowerCase() === projectNameFilter.toLowerCase(); });
+            if (!match) match = currentVisibleProjects.find(function(p) { return String(p.projectName || '').toLowerCase().indexOf(projectNameFilter.toLowerCase()) !== -1; });
+            if (match && match.pmc_entry_id) params.push('entity_id=' + encodeURIComponent(match.pmc_entry_id));
+          } else if (!projectNameFilter && Array.isArray(currentVisibleProjects) && currentVisibleProjects.length === 1) {
+            var singleProject = currentVisibleProjects[0] || {};
+            var ctxName = String(singleProject.projectName || singleProject.client || singleProject.projectDetails || '').trim();
+            if (ctxName) params.push('project_name=' + encodeURIComponent(ctxName));
+            if (singleProject && singleProject.pmc_entry_id && uuidRx.test(String(singleProject.pmc_entry_id))) {
+              params.push('entity_id=' + encodeURIComponent(singleProject.pmc_entry_id));
+            }
+          }
+          params.push('segment=pmc-bms');
+          if (params.length) href += '?' + params.join('&');
+          window.location.href = href;
+        });
+
+        document.getElementById('bms-addIssueBtn').addEventListener('click', function () {
+          var targetEntityId = getPreferredProjectId();
+          var contextProject = (projectNameFilter || '').trim();
+          if (!contextProject && currentVisibleProjects.length === 1) {
+            contextProject = String(currentVisibleProjects[0].projectName || currentVisibleProjects[0].client || currentVisibleProjects[0].projectDetails || '').trim();
+          }
+          if (!targetEntityId && contextProject && Array.isArray(currentVisibleProjects) && currentVisibleProjects.length) {
+            var exact = currentVisibleProjects.find(function(p) { return String(p.projectName || '').trim().toLowerCase() === contextProject.toLowerCase(); });
+            if (!exact) exact = currentVisibleProjects.find(function(p) { return String(p.projectName || '').toLowerCase().indexOf(contextProject.toLowerCase()) !== -1; });
+            if (exact && exact.pmc_entry_id) targetEntityId = exact.pmc_entry_id;
+          }
+          var href = '/add_issues.html?context=pmc_bms';
+          var params = [];
+          if (targetEntityId) params.push('pmc_bms_entity_id=' + encodeURIComponent(targetEntityId));
+          // Always pass project_name when available so pre-milestone issue saves have context.
+          if (contextProject) params.push('project_name=' + encodeURIComponent(contextProject));
+          if (params.length) href += '&' + params.join('&');
+          window.location.href = href;
+        });
+      });
+    </script>
+  </body>
+</html>

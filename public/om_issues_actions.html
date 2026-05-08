@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Project Issues Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      body {
+        background: #f3f6fb;
+        font-family: "Segoe UI", sans-serif;
+      }
+
+      /* container */
+      .container-fluid {
+        max-width: 1500px;
+      }
+
+      /* header */
+      .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #0b5ed7;
+      }
+
+      /* section header */
+      .section-header {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: #fff;
+        padding: 12px 16px;
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 6px;
+        margin-top: 20px;
+      }
+
+      /* table card */
+      .table-container {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e0e6ef;
+        margin-top: 10px;
+        overflow: hidden;
+      }
+
+      /* header row */
+      thead {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: white;
+      }
+
+      th.sortable {
+        cursor: pointer;
+      }
+
+      /* zebra */
+      tbody tr:nth-child(even) {
+        background: #f8fbff;
+      }
+
+      /* hover */
+      tbody tr:hover {
+        background: #e7f1ff;
+      }
+
+      /* issues column */
+      .issue {
+        color: #dc3545;
+        font-weight: 600;
+      }
+
+      /* action column */
+      .action {
+        color: #198754;
+        font-weight: 600;
+      }
+
+      /* updated column */
+      .updated {
+        color: #6c757d;
+        font-size: 13px;
+      }
+
+      /* GLOBAL LOADER */
+      .global-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+    </style>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <div class="container-fluid p-4">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="page-title">
+          <i class="fas fa-triangle-exclamation"></i>
+          Project Key Issues Dashboard
+        </div>
+
+        <button
+          class="btn btn-secondary"
+          onclick="window.location.href = '/home.html'"
+        >
+          <i class="fas fa-arrow-left"></i> Back
+        </button>
+      </div>
+
+      <!-- Section -->
+      <div class="section-header">All Project Issues & Action Plans</div>
+
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-bordered mb-0">
+            <thead>
+              <tr>
+                <th class="sortable">Project Name</th>
+                <th class="sortable">Key Issues</th>
+                <th class="sortable">Action Plan</th>
+                <th class="sortable">Last Updated</th>
+              </tr>
+            </thead>
+
+            <tbody id="issuesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+      // AUTH FETCH (uses GlobalLoader from main.js)
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+
+        GlobalLoader.show();
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
+        })
+          .then((res) => {
+            if (res.status === 401) {
+              alert("Session expired");
+              localStorage.clear();
+              window.location.href = "/";
+            }
+            return res;
+          })
+          .finally(() => GlobalLoader.hide());
+      }
+
+      // LOAD DATA
+      async function loadIssues() {
+        const tbody = document.getElementById("issuesTableBody");
+
+        try {
+          const res = await authFetch("/api/data/get/all/issues_action");
+          const json = await res.json();
+          const data = json.data || [];
+
+          if (!data.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center p-4">
+                        No issues found
+                    </td>
+                </tr>
+            `;
+            return;
+          }
+
+          tbody.innerHTML = "";
+
+          data.forEach((issue) => {
+            const dateObj = new Date(issue.updatedAt);
+
+            const displayDate = dateObj.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+
+            tbody.insertAdjacentHTML(
+              "beforeend",
+              `
+                <tr>
+                    <td data-sort-value="${issue.project_name}">
+                        <strong>${issue.project_name}</strong>
+                    </td>
+
+                    <td class="issue"
+                        data-sort-value="${issue.key_issues || ""}">
+                        ${issue.key_issues || "-"}
+                    </td>
+
+                    <td class="action"
+                        data-sort-value="${issue.action_plan || ""}">
+                        ${issue.action_plan || "-"}
+                    </td>
+
+                    <td class="updated"
+                        data-sort-value="${dateObj.getTime()}">
+                        ${displayDate}
+                    </td>
+                </tr>
+            `,
+            );
+          });
+        } catch (err) {
+          console.error("Failed to load issues:", err);
+
+          tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-danger p-4">
+                    Failed to load data
+                </td>
+            </tr>
+        `;
+        }
+      }
+
+      window.addEventListener("DOMContentLoaded", loadIssues);
+    </script>
+  </body>
+</html>

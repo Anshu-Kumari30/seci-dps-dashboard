@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PMC C&E Details</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .tab-content {
+        margin-top: 20px;
+      }
+      .btn-add {
+        margin-bottom: 12px;
+      }
+
+      .table-container {
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        border: 1px solid #e0e6ef;
+      }
+      #milestonesTable { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+      #milestonesTable thead tr:first-child th {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        border: none;
+        padding: 14px 10px;
+        text-align: center;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+      }
+      #milestonesTable tbody tr { border-bottom: 1px solid #e0e6ef; }
+      #milestonesTable tbody td {
+        padding: 12px 10px;
+        background: #fff;
+        color: #333;
+        font-size: 13px;
+        text-align: center;
+        vertical-align: middle;
+      }
+      #milestonesTable tbody tr:nth-child(even) td { background: #f8fafc; }
+      #milestonesTable tbody tr:hover td { background: #f0f8ff; }
+
+      .summary-bar { display: inline-flex; align-items: center; gap: 6px; }
+      .summary-bar-track { width: 70px; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+      .summary-bar-fill { height: 100%; border-radius: 4px; }
+      .summary-bar-green { background: linear-gradient(90deg, #198754, #20c997); }
+      .summary-bar-yellow { background: linear-gradient(90deg, #f0ad4e, #f7c948); }
+      .summary-bar-red { background: linear-gradient(90deg, #dc3545, #f06a6a); }
+      .summary-bar-orange { background: linear-gradient(90deg, #fd7e14, #f4a261); }
+      .summary-bar-value { font-size: 11px; font-weight: 600; color: #0b5ed7; }
+      .summary-bar-segment { height: 100%; }
+      .milestone-dropdown-row td { background: #f8fbff !important; padding: 0; }
+      .milestone-dropdown-container { padding: 12px; border-top: 1px solid #dbe6ff; }
+      .milestone-dropdown-title { font-size: 13px; font-weight: 600; color: #1f4e79; margin-bottom: 8px; }
+    </style>
+  </head>
+
+  <body class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0">PMC - Execution</h2>
+      <a href="/home.html" class="btn btn-secondary">Back to Home</a>
+    </div>
+
+    <!-- Statistic and entity titles removed as per UI request -->
+
+    <ul class="nav nav-tabs" id="projectTabs" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="milestone-tab" data-bs-toggle="tab" data-bs-target="#milestones" type="button" role="tab">Milestone</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="contract-docs-tab" data-bs-toggle="tab" data-bs-target="#contract-docs" type="button" role="tab">Contract Documents</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="dpr-tab" data-bs-toggle="tab" data-bs-target="#dpr" type="button" role="tab">Daily Progress Report</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="mpr-tab" data-bs-toggle="tab" data-bs-target="#mpr" type="button" role="tab">Monthly Progress Report</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="corr-cont-tab" data-bs-toggle="tab" data-bs-target="#corr-cont" type="button" role="tab">Correspondences with Contractors</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="corr-other-tab" data-bs-toggle="tab" data-bs-target="#corr-other" type="button" role="tab">Correspondences with other Stakeholders</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="key-issues-tab" data-bs-toggle="tab" data-bs-target="#key-issues" type="button" role="tab">Key Issues</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="projectTabContent">
+      <div class="tab-pane fade show active" id="milestones" role="tabpanel">
+        <button id="addMilestoneBtn" class="btn btn-sm btn-success mb-2">+ Add Milestone</button>
+        <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-bordered" id="milestonesTable">
+            <thead>
+              <tr>
+                <th>S.No</th>
+                <th>Type of Service</th>
+                <th>Client</th>
+                <th>Project Details</th>
+                <th>LOA to SECI</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Target Date</th>
+                <th>P O Value</th>
+                <th>Invoice Raised</th>
+                <th>Amount Pending</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Milestones</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="milestoneTableBody"></tbody>
+          </table>
+        </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="contract-docs" role="tabpanel">
+        <button id="addContractDocBtn" class="btn btn-sm btn-success mb-2">+ Add Contract Documents</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="contractDocsTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Document Name</th>
+                <th class="sortable">Dated</th>
+                <th>View Document</th>
+                <th class="sortable">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="dpr" role="tabpanel">
+        <button id="addDprBtn" class="btn btn-sm btn-success mb-2">+ Add Daily Progress Report</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="dprTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Document Name</th>
+                <th class="sortable">Dated</th>
+                <th>View Document</th>
+                <th class="sortable">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="mpr" role="tabpanel">
+        <button id="addMprBtn" class="btn btn-sm btn-success mb-2">+ Add Monthly Progress Report</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="mprTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Document Name</th>
+                <th class="sortable">Dated</th>
+                <th>View Document</th>
+                <th class="sortable">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="corr-cont" role="tabpanel">
+        <button id="addCorrContractorBtn" class="btn btn-sm btn-success mb-2">+ Add Contractor Correspondence</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="corrContractorTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Subject</th>
+                <th class="sortable">Dated</th>
+                <th class="sortable">From</th>
+                <th class="sortable">To</th>
+                <th class="sortable">Uploaded On</th>
+                <th>View</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="corr-other" role="tabpanel">
+        <button id="addCorrOtherBtn" class="btn btn-sm btn-success mb-2">+ Add Other Correspondence</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="corrOtherTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Subject</th>
+                <th class="sortable">Dated</th>
+                <th class="sortable">From</th>
+                <th class="sortable">To</th>
+                <th class="sortable">Uploaded On</th>
+                <th>View</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="key-issues" role="tabpanel">
+        <button id="addIssueBtn" class="btn btn-sm btn-success mb-2">+ Add Issue</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="issuesTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Issue Description</th>
+                <th class="sortable">Issue Pertaining To</th>
+                <th class="sortable">Issue Date</th>
+                <th>View Issue Document</th>
+                <th class="sortable">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./js/main.js"></script>
+    <script src="/js/pmc_ce_projects.js"></script>
+  </body>
+</html>

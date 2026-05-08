@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Admin Panel</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"
+    />
+    <style>
+      .table-filter {
+        margin-bottom: 10px;
+        max-width: 300px;
+      }
+      .form-check-inline {
+        margin-right: 12px;
+      }
+      .scrollable-depts {
+        max-height: 180px;
+        overflow-y: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      #saveBtn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="adminPanel" class="container mt-4" style="display: none">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Admin Panel</h4>
+        <a href="/home.html" class="btn btn-outline-primary">Back to Home</a>
+      </div>
+
+      <!-- 🔹 Tabs for Admin Functions -->
+      <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link active"
+            id="users-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#users"
+            type="button"
+            role="tab"
+          >
+            Manage User
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="departments-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#departments"
+            type="button"
+            role="tab"
+          >
+            Manage Departments
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="logs-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#logs"
+            type="button"
+            role="tab"
+          >
+            User Activity
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="mapping-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#mapping"
+            type="button"
+            role="tab"
+          >
+            Manage User-Department Mapping
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content mt-3" id="adminTabsContent">
+        <!-- 🔹 User Access Tab -->
+        <div class="tab-pane fade show active" id="users" role="tabpanel">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5>Add or remove Users here</h5>
+            <button class="btn btn-sm btn-primary" onclick="addUser()">
+              <i class="bi bi-plus-circle"></i> Add User
+            </button>
+          </div>
+          <input
+            type="text"
+            id="userFilter"
+            class="form-control form-control-sm table-filter"
+            placeholder="Search Users..."
+          />
+          <table class="table table-bordered table-sm" id="userTable">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Department</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody">
+              <tr>
+                <td colspan="5" class="text-center">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 🔹 Department Management Tab -->
+        <div class="tab-pane fade" id="departments" role="tabpanel">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5>Manage Departments here</h5>
+            <button class="btn btn-sm btn-primary" onclick="addDepartment()">
+              <i class="bi bi-plus-circle"></i> Add Department
+            </button>
+          </div>
+          <input
+            type="text"
+            id="deptFilter"
+            class="form-control form-control-sm table-filter"
+            placeholder="Search Departments..."
+          />
+          <table class="table table-bordered table-sm" id="deptTable">
+            <thead>
+              <tr>
+                <th>Department Name</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="deptTableBody">
+              <tr>
+                <td colspan="3" class="text-center">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 🔹 Audit Logs Tab -->
+        <div class="tab-pane fade" id="logs" role="tabpanel">
+          <h5>User Activity Logs</h5>
+          <input
+            type="text"
+            id="logsFilter"
+            class="form-control form-control-sm table-filter"
+            placeholder="Search Logs..."
+          />
+          <table id="auditLogsTable" class="table table-bordered table-sm">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Action</th>
+                <th>Created At</th>
+                <th>Updated At</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody">
+              <tr>
+                <td colspan="4" class="text-center">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 🔹 User-Department Mapping Tab -->
+        <div class="tab-pane fade" id="mapping" role="tabpanel">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5>Assign or remove departments to users from here</h5>
+          </div>
+          <input
+            type="text"
+            id="mappingFilter"
+            class="form-control form-control-sm table-filter"
+            placeholder="Search Mappings..."
+          />
+          <table class="table table-bordered table-sm" id="mappingTable">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Departments</th>
+              </tr>
+            </thead>
+            <tbody id="mappingsTableBody">
+              <tr>
+                <td colspan="2" class="text-center">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+          <button id="saveBtn" class="btn btn-success mt-3" disabled>
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap & DataTables Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+      // Generic table filter
+      function filterTable(inputId, tableId) {
+        const filterInput = document.getElementById(inputId);
+        const filter = filterInput.value.toLowerCase();
+        const table = document.getElementById(tableId);
+        const tbody = table.tBodies[0];
+        const rows = tbody.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const rowText = row.textContent.toLowerCase();
+          row.style.display = rowText.indexOf(filter) > -1 ? "" : "none";
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("userFilter")
+          .addEventListener("input", () =>
+            filterTable("userFilter", "userTable")
+          );
+        document
+          .getElementById("deptFilter")
+          .addEventListener("input", () =>
+            filterTable("deptFilter", "deptTable")
+          );
+        document
+          .getElementById("logsFilter")
+          .addEventListener("input", () =>
+            filterTable("logsFilter", "auditLogsTable")
+          );
+        document
+          .getElementById("mappingFilter")
+          .addEventListener("input", () =>
+            filterTable("mappingFilter", "mappingTable")
+          );
+      });
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        return fetch(url, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res.json();
+        });
+      }
+
+      function addUser() {
+        window.location.href = "/add_user.html";
+      }
+
+      function addDepartment() {
+        window.location.href = "/add_department.html";
+      }
+
+      // MAPPING FUNCTIONALITY
+      const originalMappings = {};
+      let hasChanges = false;
+
+      function setSaveButtonState(state) {
+        document.getElementById("saveBtn").disabled = !state;
+      }
+
+      function loadMappings() {
+        const tableBody = document.getElementById("mappingsTableBody");
+        tableBody.innerHTML = `<tr><td colspan="2" class="text-center">Loading...</td></tr>`;
+        setSaveButtonState(false);
+
+        Promise.all([
+          authFetch("/api/data/mapping/all"),
+          authFetch("/api/auth/users"),
+          authFetch("/api/data/departments"),
+        ])
+          .then(([mappingData, users, departments]) => {
+            tableBody.innerHTML = "";
+
+            users.forEach((user) => {
+              const userDepts = mappingData[user.name] || [];
+              originalMappings[user.user_id] = new Set(
+                departments
+                  .filter((d) => userDepts.includes(d.dept_name))
+                  .map((d) => d.dept_id)
+              );
+
+              const deptCheckboxes = departments
+                .map((dept) => {
+                  const isChecked = userDepts.includes(dept.dept_name);
+                  return `
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input mapping-checkbox" type="checkbox"
+                        data-user-id="${user.user_id}"
+                        data-dept-id="${dept.dept_id}"
+                        ${isChecked ? "checked" : ""}>
+                      <label class="form-check-label">${dept.dept_name}</label>
+                    </div>
+                  `;
+                })
+                .join("");
+
+              const row = document.createElement("tr");
+              row.innerHTML = `
+                <td>${user.name}</td>
+                <td>
+                  <div class="scrollable-depts">${deptCheckboxes}</div>
+                </td>
+              `;
+              tableBody.appendChild(row);
+            });
+
+            tableBody.addEventListener("change", () => {
+              hasChanges = true;
+              setSaveButtonState(true);
+            });
+          })
+          .catch((err) => {
+            console.error("Error loading mappings", err);
+            tableBody.innerHTML = `<tr><td colspan="2" class="text-danger text-center">Error loading mappings</td></tr>`;
+          });
+      }
+
+      document.getElementById("saveBtn").addEventListener("click", () => {
+        if (!hasChanges) return;
+
+        const checkboxes = document.querySelectorAll(".mapping-checkbox");
+        const currentMap = {};
+        checkboxes.forEach((cb) => {
+          const userId = cb.dataset.userId;
+          const deptId = cb.dataset.deptId;
+          if (!currentMap[userId]) currentMap[userId] = new Set();
+          if (cb.checked) currentMap[userId].add(deptId);
+        });
+
+        const changes = [];
+        for (const userId in currentMap) {
+          const currentDepts = currentMap[userId];
+          const originalDepts = originalMappings[userId] || new Set();
+
+          currentDepts.forEach((deptId) => {
+            if (!originalDepts.has(deptId)) {
+              changes.push({ user_id: userId, dept_id: deptId, action: "add" });
+            }
+          });
+
+          originalDepts.forEach((deptId) => {
+            if (!currentDepts.has(deptId)) {
+              changes.push({
+                user_id: userId,
+                dept_id: deptId,
+                action: "remove",
+              });
+            }
+          });
+        }
+
+        for (const userId in originalMappings) {
+          if (!currentMap[userId]) {
+            originalMappings[userId].forEach((deptId) => {
+              changes.push({
+                user_id: userId,
+                dept_id: deptId,
+                action: "remove",
+              });
+            });
+          }
+        }
+
+        if (changes.length === 0) {
+          alert("No changes to save.");
+          return;
+        }
+
+        authFetch("/api/auth/users/mapping/edit", {
+          method: "PUT",
+          body: JSON.stringify({ mappings: changes }),
+        })
+          .then(() => {
+            alert("Mappings updated successfully.");
+            hasChanges = false;
+            setSaveButtonState(false);
+            loadMappings();
+          })
+          .catch((err) => {
+            console.error("Error saving mappings:", err);
+            alert("Failed to save changes.");
+          });
+      });
+
+      // LOAD AUDIT LOGS
+      function loadAuditLogs() {
+        const logsTable = document.getElementById("logsTableBody");
+        logsTable.innerHTML = `<tr><td colspan="4" class="text-center">Loading...</td></tr>`;
+
+        authFetch("/api/data/audit/all")
+          .then((response) => {
+            logsTable.innerHTML = "";
+            const logs = response.data;
+
+            if (!logs.length) {
+              logsTable.innerHTML = `<tr><td colspan="4" class="text-center">No logs found.</td></tr>`;
+              return;
+            }
+
+            logs.forEach((log) => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td>${log.name}</td>
+                <td>${log.action}</td>
+                <td>${new Date(log.createdAt).toLocaleString()}</td>
+                <td>${new Date(log.updatedAt).toLocaleString()}</td>
+              `;
+              logsTable.appendChild(tr);
+            });
+
+            if ($.fn.DataTable.isDataTable("#auditLogsTable")) {
+              $("#auditLogsTable").DataTable().destroy();
+            }
+
+            $("#auditLogsTable").DataTable({
+              responsive: true,
+              pageLength: 10,
+              lengthChange: false,
+            });
+          })
+          .catch((err) => {
+            logsTable.innerHTML = `<tr><td colspan="4" class="text-danger text-center">Error loading logs.</td></tr>`;
+            console.error("Error loading audit logs:", err);
+          });
+      }
+
+      // LOAD ADMIN DATA
+      function loadAdminData() {
+        authFetch("/api/auth/users").then((users) => {
+          const userTable = document.getElementById("userTableBody");
+          userTable.innerHTML = "";
+
+          users.forEach((u) => {
+            const tr = document.createElement("tr");
+            let actionHtml = "";
+
+            if (u.role === "admin") {
+              actionHtml = `<span class="text-muted">Admin can't be deleted</span>`;
+            } else {
+              actionHtml = `
+                <button class="btn btn-sm ${
+                  u.is_active ? "btn-danger" : "btn-success"
+                }" 
+                  onclick="toggleUser('${u.user_id}', ${!u.is_active})">
+                  ${u.is_active ? "Disable" : "Enable"}
+                </button>`;
+            }
+
+            tr.innerHTML = `
+              <td>${u.name}</td>
+              <td>${u.email || "N/A"}</td>
+              <td>${u.role}</td>
+              <td>${u.is_active === true ? "Enabled" : "Disabled"}</td>
+              <td>${actionHtml}</td>
+            `;
+            userTable.appendChild(tr);
+          });
+        });
+
+        authFetch("/api/data/departments").then((depts) => {
+          const deptTable = document.getElementById("deptTableBody");
+          deptTable.innerHTML = "";
+
+          depts.forEach((d) => {
+            const tr = document.createElement("tr");
+            const toggleValue = d.is_active ? false : true;
+
+            tr.innerHTML = `
+              <td>${d.dept_name}</td>
+              <td>${d.is_active ? "Enabled" : "Disabled"}</td>
+              <td>
+                <button class="btn btn-sm ${
+                  d.is_active ? "btn-danger" : "btn-success"
+                }"
+                  data-dept-id="${d.dept_id}"
+                  data-enable="${toggleValue}">
+                  ${d.is_active ? "Disable" : "Enable"}
+                </button>
+              </td>
+            `;
+
+            tr.querySelector("button").addEventListener("click", (e) => {
+              const deptId = e.target.getAttribute("data-dept-id");
+              const enable = e.target.getAttribute("data-enable") === "true";
+              toggleDepartment(deptId, enable);
+            });
+
+            deptTable.appendChild(tr);
+          });
+        });
+      }
+
+      function toggleUser(user_id, enable) {
+        authFetch(`/api/auth/users/${user_id}`, {
+          method: "PUT",
+          body: JSON.stringify({ is_active: enable }),
+        }).then(() => loadAdminData());
+      }
+
+      function toggleDepartment(deptId, enable) {
+        authFetch(`/api/data/departments/manage/${deptId}`, {
+          method: "PUT",
+          body: JSON.stringify({ is_active: enable }),
+        }).then(() => loadAdminData());
+      }
+
+      document.getElementById("adminPanel").style.display = "block";
+      loadAdminData();
+      document
+        .getElementById("logs-tab")
+        .addEventListener("click", loadAuditLogs);
+      document
+        .getElementById("mapping-tab")
+        .addEventListener("click", loadMappings);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Daily Progress Report (Custom)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="page-wrap">
+      <div class="page-container">
+        <h1 class="page-title">Add Daily Progress Report</h1>
+        <p class="page-subtitle">Upload and manage daily progress report documents</p>
+
+        <div class="form-card">
+          <h2 class="section-title">Document Details</h2>
+
+          <form id="addDPRForm">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="docName" class="form-label">Document Name</label>
+                <input type="text" class="form-control" id="docName" name="doc_name" placeholder="Enter document name" required />
+              </div>
+              <div class="col-md-6">
+                <label for="docDate" class="form-label">Document Date</label>
+                <input type="date" class="form-control" id="docDate" name="doc_date" required />
+              </div>
+
+              <div class="col-12">
+                <label for="docFile" class="form-label">Upload Document</label>
+                <div class="helper-text mb-2">Maximum file size allowed: <strong>50 MB</strong>.</div>
+                <input type="file" class="form-control" id="docFile" name="doc_file" required />
+              </div>
+            </div>
+
+            <input type="hidden" id="deptId" name="dept_id" />
+            <input type="hidden" id="statisticId" name="statistic_id" />
+            <input type="hidden" id="entityId" name="entity_id" />
+            <input type="hidden" id="docType" name="doc_type" value="dpr" />
+
+            <div class="form-actions">
+              <button type="submit" class="btn-save">Save</button>
+              <button type="button" class="btn-cancel" onclick="window.history.back()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const deptId = urlParams.get("dept_id");
+      const statisticId = urlParams.get("statistic_id");
+      const entityId = urlParams.get("entity_id");
+
+      document.getElementById("deptId").value = deptId;
+      document.getElementById("statisticId").value = statisticId;
+      document.getElementById("entityId").value = entityId;
+      document.getElementById("docType").value = "dpr";
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = { Authorization: `Bearer ${token}` };
+        return fetch(url, { ...options, headers: { ...defaultHeaders, ...(options.headers || {}) } }).then(res => {
+          if (res.status === 401) { localStorage.clear(); window.location.href = "/"; throw new Error('Unauthorized'); }
+          return res;
+        });
+      }
+
+      document.getElementById('addDPRForm').addEventListener('submit', async function(e){
+        e.preventDefault();
+        const formData = new FormData(this);
+        try {
+          const res = await authFetch('/api/data/documents', { method: 'POST', body: formData });
+          if(!res.ok) throw new Error('Failed');
+          alert('Saved');
+          window.location.href = `/pmc_ce_custom.html?dept_id=${deptId}&statistic_id=${statisticId}&entity_id=${entityId}&tab=dpr`;
+        } catch(err) { console.error(err); alert('Save failed'); }
+      });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,1282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>O&M Solar + BESS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      body {
+        background: #f3f6fb;
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        color: #333;
+      }
+
+      /* Improved container */
+      .container-fluid {
+        padding: 20px 24px;
+        max-width: 1600px;
+      }
+
+      /* Header section */
+      .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #0b5ed7;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .page-title i {
+        color: #0b5ed7;
+        font-size: 26px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+        color: #6c757d;
+        margin-left: 10px;
+        font-weight: 400;
+      }
+
+      /* Section headers */
+      .section-header {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: #fff;
+        padding: 12px 16px;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: left;
+        margin-top: 30px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .section-header i {
+        font-size: 16px;
+      }
+
+      /* Toolbar improvements */
+      .toolbar-container {
+        background: #fff;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e0e6ef;
+      }
+
+      .toolbar-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: #f8fafc;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .toolbar-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #4a5568;
+        margin-right: 4px;
+        white-space: nowrap;
+      }
+
+      .toolbar-divider {
+        width: 1px;
+        height: 30px;
+        background: #d0d7e2;
+        margin: 0 6px;
+      }
+
+      /* Form controls */
+      .form-control-sm {
+        height: 36px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .form-control-sm:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+      }
+
+      /* Buttons */
+      .btn-sm {
+        height: 36px;
+        padding: 6px 14px;
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 4px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #0b5ed7, #1f4e79);
+        border: none;
+      }
+
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #0a58ca, #1a4066);
+        transform: translateY(-1px);
+        transition: all 0.2s;
+      }
+
+      .btn-success {
+        background: linear-gradient(135deg, #198754, #146c43);
+        border: none;
+      }
+
+      .btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border: none;
+      }
+
+      /* Tables */
+      .table-container {
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        border: 1px solid #e0e6ef;
+      }
+
+      table {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+
+      /* Header styling */
+      thead tr:first-child th {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        border: none;
+        padding: 14px 10px;
+        text-align: center;
+        letter-spacing: 0.5px;
+      }
+
+      /* Second header row - Solar/BESS grouping */
+      thead tr:nth-child(2) th {
+        background: #eaf1fb;
+        color: #1f4e79;
+        font-size: 13px;
+        font-weight: 600;
+        border-bottom: 2px solid #cfe2ff;
+        padding: 12px 10px;
+      }
+
+      /* Third header row - column headers */
+      thead tr:nth-child(3) th {
+        background: #f8fafc;
+        color: #4a5568;
+        font-size: 13px;
+        font-weight: 600;
+        border-bottom: 2px solid #e2e8f0;
+        padding: 10px 8px;
+        line-height: 1.3;
+      }
+
+      /* Cell styling */
+      tbody td {
+        font-size: 13px;
+        vertical-align: middle;
+        padding: 12px 8px;
+        color: #333;
+        border-top: 1px solid #f0f4f9;
+        text-align: center;
+      }
+
+      /* Zebra striping */
+      tbody tr:nth-child(even) {
+        background-color: #f8fbff;
+      }
+
+      /* Hover effect */
+      tbody tr:hover {
+        background-color: #e7f1ff;
+        transition: background-color 0.2s ease-in-out;
+      }
+
+      /* ===== COLORFUL TABLE CELLS ===== */
+
+      /* Generation/Export columns - BLUE (like solar page) */
+      tbody td:nth-child(2),  /* As on Date - Exported (MU) */
+      tbody td:nth-child(8),  /* YTD - Exported (MU) */
+      tbody td:nth-child(12), /* Last FY - Exported (MU) */
+      #last7DaysTable tbody td:nth-child(3), /* Current Year - Net Generation */
+      #last7DaysTable tbody td:nth-child(11) /* Previous Year - Net Generation */ {
+        font-weight: 600;
+        color: #0b5ed7 !important;
+        background-color: rgba(13, 110, 253, 0.05);
+      }
+
+      /* CUF columns - GREEN */
+      tbody td:nth-child(3),  /* As on Date - CUF */
+      tbody td:nth-child(9), 
+      tbody td:nth-child(7), 
+      tbody td:nth-child(13), /* Last FY - CUF */
+      tbody td:nth-child(16),
+      #last7DaysTable tbody td:nth-child(4), /* Current Year - CUF */
+      #last7DaysTable tbody td:nth-child(12) /* Previous Year - CUF */ {
+        font-weight: 600;
+        color: #198754 !important;
+        background-color: rgba(25, 135, 84, 0.05);
+      }
+
+      /* BESS Export columns - TEAL */
+      tbody td:nth-child(5),  /* As on Date - Net Energy Export */
+      tbody td:nth-child(10), /* YTD - Net Energy Export */
+      tbody td:nth-child(14), /* Last FY - Net Energy Export */
+      tbody td:nth-child(17),
+      #last7DaysTable tbody td:nth-child(7),  /* Current Year - Net Export */
+      #last7DaysTable tbody td:nth-child(15)  /* Previous Year - Net Export */ {
+        font-weight: 600;
+        color: #20c997 !important;
+        background-color: rgba(32, 201, 151, 0.05);
+      }
+
+      /* BESS Import/FED columns - ORANGE */
+      tbody td:nth-child(6),  /* As on Date - Net Energy FED */
+      tbody td:nth-child(11), /* YTD - Net Energy FED */
+      tbody td:nth-child(15), /* Last FY - Net Energy FED */
+      #last7DaysTable tbody td:nth-child(6),  /* Current Year - Net Import */
+      #last7DaysTable tbody td:nth-child(14)  /* Previous Year - Net FED */ {
+        font-weight: 600;
+        color: #fd7e14 !important;
+        background-color: rgba(253, 126, 20, 0.05);
+      }
+
+      /* GHI columns - PURPLE */
+      tbody td:nth-child(1),  /* As on Date - GHI */
+      #last7DaysTable tbody td:nth-child(2),  /* Current Year - GHI */
+      #last7DaysTable tbody td:nth-child(10) /* Previous Year - GHI */ {
+        color: #6f42c1 !important;
+        background-color: rgba(111, 66, 193, 0.05);
+      }
+
+      /* Peak Power columns - INDIGO */
+      tbody td:nth-child(4),  /* As on Date - Peak Power */
+      #last7DaysTable tbody td:nth-child(5),  /* Current Year - Peak Power */
+      #last7DaysTable tbody td:nth-child(13) /* Previous Year - Peak Power */ {
+        color: #6610f2 !important;
+        background-color: rgba(102, 16, 242, 0.05);
+      }
+
+      /* Remarks column */
+      tbody td:nth-child(8) /* Remarks column in main table */ {
+        font-style: italic;
+        color: #6c757d !important;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background-color: rgba(108, 117, 125, 0.05);
+      }
+
+      /* Last 7 Days Table styling */
+      #last7DaysTable thead tr:first-child th {
+        background: linear-gradient(135deg, #198754, #20c997);
+      }
+
+      #last7DaysTable thead tr:nth-child(2) th {
+        background: #e9f7ef;
+        color: #146c43;
+      }
+
+      #last7DaysTable thead tr:nth-child(3) th {
+        background: #f8fafc;
+        color: #4a5568;
+      }
+
+      /* Note text */
+      .note {
+        font-size: 12px;
+        color: #6c757d;
+        padding: 10px 15px;
+        background: #f8f9fa;
+        border-radius: 0 0 8px 8px;
+        border-top: 1px solid #e9ecef;
+        line-height: 1.5;
+      }
+
+      .note i {
+        margin-right: 5px;
+      }
+
+      /* Chart card */
+      .chart-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e0e6ef;
+        overflow: hidden;
+      }
+
+      .chart-card .card-header {
+        background: linear-gradient(135deg, #fd7e14, #e8590c);
+        color: white;
+        padding: 12px 20px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .chart-card .card-body {
+        padding: 20px;
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 1400px) {
+        .container-fluid {
+          padding: 16px;
+        }
+
+        .table-container {
+          overflow-x: auto;
+        }
+
+        table {
+          min-width: 1200px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .page-title {
+          font-size: 22px;
+        }
+
+        .section-header {
+          font-size: 16px;
+          padding: 10px 12px;
+        }
+
+        .btn-sm {
+          padding: 6px 10px;
+          font-size: 13px;
+        }
+
+        .form-control-sm {
+          width: 100% !important;
+        }
+
+        .toolbar-group {
+          flex-wrap: wrap;
+        }
+
+        .toolbar-container {
+          padding: 12px;
+        }
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #b8c2cc;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .table th {
+        text-align: center !important;
+        vertical-align: middle !important;
+      }
+
+      .table thead th {
+        padding: 14px 8px;
+      }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+
+  <body>
+    <div class="container-fluid px-3 py-3">
+      <!-- Page Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <div class="page-title">
+            <i class="fas fa-solar-panel"></i>
+            O&M Solar + BESS Dashboard
+            <span class="subtitle" id="project-name"></span>
+          </div>
+        </div>
+
+        <button
+          class="btn btn-secondary btn-sm"
+          onclick="window.location.href = '/home.html'"
+        >
+          <i class="fas fa-arrow-left"></i> Back to Home
+        </button>
+      </div>
+
+      <!-- Toolbar Section -->
+      <div class="toolbar-container">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="d-flex align-items-center flex-wrap gap-3">
+              <div class="toolbar-group">
+                <span class="toolbar-label"
+                  ><i class="fas fa-calendar-alt"></i> View Date:</span
+                >
+                <input
+                  type="date"
+                  id="dateFilter"
+                  class="form-control form-control-sm"
+                  style="width: 150px"
+                />
+              </div>
+
+              <div class="toolbar-group">
+                <span class="toolbar-label"
+                  ><i class="fas fa-file-export"></i> Export Range:</span
+                >
+                <input
+                  type="date"
+                  id="fromDate"
+                  class="form-control form-control-sm"
+                  style="width: 140px"
+                  placeholder="From"
+                />
+                <span class="text-muted" style="font-size: 12px">to</span>
+                <input
+                  type="date"
+                  id="toDate"
+                  class="form-control form-control-sm"
+                  style="width: 140px"
+                  placeholder="To"
+                />
+                <button
+                  class="btn btn-primary btn-sm"
+                  onclick="downloadExcel()"
+                >
+                  <i class="fas fa-download"></i> Download
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div
+              class="d-flex align-items-center justify-content-md-end flex-wrap gap-3"
+            >
+              <div class="toolbar-group">
+                <span class="toolbar-label"
+                  ><i class="fas fa-file-upload"></i> Upload Excel:</span
+                >
+                <input
+                  type="file"
+                  id="excelUpload"
+                  class="form-control form-control-sm"
+                  accept=".xlsx,.xls"
+                  style="width: 180px"
+                />
+              </div>
+
+              <a
+                href="add_om_solar_bess_entry.html"
+                class="btn btn-success btn-sm"
+                onclick="
+                  this.href =
+                    'add_om_solar_bess_entry.html' + window.location.search
+                "
+              >
+                <i class="fas fa-plus-circle"></i> Add / Edit Data
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Data Section -->
+      <div class="section-header">
+        <i class="fas fa-chart-bar"></i>
+        Performance Summary (Solar + BESS)
+      </div>
+
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-bordered mb-0">
+            <thead>
+              <tr>
+                <th colspan="8">As on Date</th>
+                <th colspan="5">Year Till Date</th>
+                <th colspan="4">Last FY Performance</th>
+              </tr>
+              <tr>
+                <th colspan="5">Solar</th>
+                <th colspan="3">BESS</th>
+                <th colspan="3">Solar</th>
+                <th colspan="2">BESS</th>
+                <th colspan="2">Solar</th>
+                <th colspan="2">BESS</th>
+              </tr>
+              <tr>
+                <!-- As on Date -->
+                <th>GHI<br />(kWh/sq.m)</th>
+                <th>Net Generation<br />(MU)</th>
+                <th>Exported Generation<br />(MU)</th>
+                <th>CUF<br />(%)</th>
+                <th>Peak Power<br />(MW)</th>
+
+                <th>Net Import<br />(MWh)</th>
+                <th>Net Export<br />(MWh)</th>
+                <th>Remarks</th>
+
+                <!-- YTD -->
+                <th>Net Generation<br />(MU)</th>
+                <th>Exported Generation<br />(MU)</th>
+                <th>CUF<br />(%)</th>
+
+                <th>Net Import<br />(MWh)</th>
+                <th>Net Export<br />(MWh)</th>
+
+                <!-- Last FY -->
+                <th>Exported Generation<br />(MU)</th>
+                <th>CUF<br />(%)</th>
+
+                <th>Net Import<br />(MWh)</th>
+                <th>Net Export<br />(MWh)</th>
+              </tr>
+            </thead>
+            <tbody id="currentDateTableBody">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        <div class="note">
+          <i class="fas fa-info-circle"></i> * Data is without considering
+          radiation correction &nbsp;&nbsp; ^ Data is with radiation correction
+        </div>
+      </div>
+
+      <!-- Last 7 Days Section -->
+      <div class="section-header">
+        <i class="fas fa-calendar-week"></i>
+        Generation Data for Last 7 Days
+      </div>
+
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-bordered mb-0" id="last7DaysTable">
+            <thead>
+              <tr>
+                <th rowspan="3">Date</th>
+                <th colspan="8">Current Year</th>
+                <th colspan="6">Previous Year</th>
+              </tr>
+              <tr>
+                <th colspan="5">Solar</th>
+                <th colspan="2">BESS</th>
+                <th rowspan="2">Remarks</th>
+                <th colspan="4">Solar</th>
+                <th colspan="2">BESS</th>
+              </tr>
+              <tr>
+                <th>GHI</th>
+                <th>Net Generation (kWh)</th>
+                <th>Exported Generation (MU)</th>
+                <th>CUF (%)</th>
+                <th>Peak Power (MW)</th>
+                <th>Net Import (MWh)</th>
+                <th>Net Export (MWh)</th>
+                <!-- <th colspan="2">Remarks</th> -->
+
+                <th>GHI</th>
+                <th>Net Generation (kWh)</th>
+                <th>CUF (%)</th>
+                <th>Peak Power (MW)</th>
+                <th>Net Import (MWh)</th>
+                <th>Net Export (MWh)</th>
+              </tr>
+            </thead>
+            <tbody id="last7DaysTableBody">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Chart Section -->
+      <div class="section-header">
+        <i class="fas fa-chart-line"></i>
+        Daily Generation for Last 7 Days & CUF
+      </div>
+
+      <div class="chart-card">
+        <div class="card-header">
+          <i class="fas fa-chart-bar"></i> Solar Generation & CUF Trends
+        </div>
+        <div class="card-body">
+          <canvas id="dailyGenerationChart" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- Issues & Action Plan Section -->
+      <div class="section-header">
+        <i class="fas fa-exclamation-circle"></i>
+        Key Issues & Action Plan
+      </div>
+
+      <div class="table-container">
+        <div style="padding: 20px">
+          <label class="fw-semibold mb-2">Key Issues</label>
+          <textarea
+            id="keyIssues"
+            class="form-control mb-3"
+            rows="4"
+            placeholder="Enter key issues..."
+          ></textarea>
+
+          <label class="fw-semibold mb-2">Action Plan</label>
+          <textarea
+            id="actionPlan"
+            class="form-control mb-3"
+            rows="4"
+            placeholder="Enter action plan..."
+          ></textarea>
+
+          <button class="btn btn-primary" onclick="saveIssuesAction()">
+            <i class="fas fa-save"></i> Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const dept_id = params.get("dept_id");
+      const statistic_id = params.get("statistic_id");
+      const entity_id = params.get("entity_id");
+      let dailyGenerationChart = null;
+      let dateInput;
+      let currentDateTbody;
+      let last7DaysTbody;
+      const excelUpload = document.getElementById("excelUpload");
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      async function fetchProjectName() {
+        try {
+          GlobalLoader.show();
+          const res = await authFetch(
+            `/api/data/project/find/name?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+            {
+              method: "GET",
+            },
+          );
+
+          const json = await res.json();
+          const projectName = json.project_name || "";
+          document.getElementById("project-name").textContent = projectName;
+        } catch (err) {
+          console.error("API Error:", err);
+        } finally {
+          GlobalLoader.hide();
+        }
+      }
+
+      async function fetchDataForDate(selectedDate) {
+        try {
+          GlobalLoader.show();
+
+          const res = await authFetch(
+            `/api/data/om/solar_bess/date/one?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+            {
+              method: "POST",
+              body: JSON.stringify({ requestedDate: selectedDate }),
+            },
+          );
+
+          // ✅ HANDLE 204 NO CONTENT
+          if (res.status === 204) {
+            showNoDataState();
+            return;
+          }
+
+          const json = await res.json();
+          const data = json.data || {};
+
+          bindCurrentDateTable(data.currentDate, data.lastYearMarch31);
+          bindLast7DaysTable(
+            data.last7Days || [],
+            data.lastYearLast7Days || [],
+          );
+          bindDailyGenerationChart(data.last7Days || []);
+        } catch (err) {
+          console.error("API Error:", err);
+          showNoDataState();
+        } finally {
+          GlobalLoader.hide();
+        }
+      }
+
+      function bindCurrentDateTable(d, lastFY) {
+        if (!d) {
+          currentDateTbody.innerHTML = `
+            <tr>
+              <td colspan="17" class="text-center text-muted py-4">
+                <i class="fas fa-database me-2"></i>No data found for selected date
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        console.log(
+          "test val1 ==>",
+          d.generation,
+          "test val2 ==>",
+          d.cumulative_bess_import,
+        );
+
+        currentDateTbody.innerHTML = `
+          <tr>
+            <!-- As on Date – Solar -->
+            <td>${d.radiation?.toFixed(2) ?? "-"}</td>
+            <td>${d.generation ? (d.generation / 1e6).toFixed(6) : "-"}</td>
+            <td>${(d.generation - d.bess_import * 1000) / 1e6}</td>
+            <td>${d.daily_cuf_worc?.toFixed(2) ?? "-"}%</td>
+            <td>${d.peak_power?.toFixed(3) ?? "-"}</td>
+
+            <!-- As on Date – BESS -->
+            <td>${d.bess_import?.toFixed(3) ?? "-"}</td>
+            <td>${d.bess_export?.toFixed(3) ?? "-"}</td>
+            <td title="${d.remarks || ""}">${d.remarks ? d.remarks.substring(0, 30) + (d.remarks.length > 30 ? "..." : "") : "-"}</td>
+
+            <!-- YTD -->
+            <td>${d.cumulative_generation ? (d.cumulative_generation / 1e6).toFixed(6) : "-"}</td>
+            <td>${d.cumulative_generation - d.cumulative_bess_import * 1000}</td>
+            <td>${d.cuf_till_date?.toFixed(2) ?? "-"}%</td>
+
+            <td>${d.cumulative_bess_import?.toFixed(3) ?? "-"}</td>
+            <td>${d.cumulative_bess_export?.toFixed(3) ?? "-"}</td>
+
+            <!-- Last FY -->
+            <td>${lastFY ? (lastFY.generation / 1e6).toFixed(6) : "-"}</td>
+            <td>${lastFY ? lastFY.daily_cuf_worc?.toFixed(2) + "%" : "-"}</td>
+
+            <td>${lastFY ? lastFY.bess_import?.toFixed(3) : "-"}</td>
+            <td>${lastFY ? lastFY.bess_export?.toFixed(3) : "-"}</td>
+          </tr>
+        `;
+      }
+
+      function bindLast7DaysTable(currentYear = [], previousYear = []) {
+        last7DaysTbody.innerHTML = "";
+
+        if (!currentYear.length && !previousYear.length) {
+          last7DaysTbody.innerHTML = `
+            <tr>
+              <td colspan="14" class="text-center text-muted py-4">
+                <i class="fas fa-calendar-times me-2"></i>No data available for last 7 days
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        for (
+          let i = 0;
+          i < Math.max(currentYear.length, previousYear.length);
+          i++
+        ) {
+          const cur = currentYear[i];
+          const prev = previousYear[i];
+
+          last7DaysTbody.innerHTML += `
+            <tr>
+              <td><strong>${formatDate(cur?.date || prev?.date)}</strong></td>
+
+              <!-- 2026 -->
+              <td>${cur?.radiation?.toFixed(2) ?? "-"}</td>
+              <td>${cur?.generation?.toFixed(2) ?? "-"}</td>
+              <td>${(cur.generation - cur.bess_import * 1000) / 1e6}</td>
+              <td>${cur ? cur.daily_cuf_worc.toFixed(2) : "-"}%</td>
+              <td>${cur?.peak_power?.toFixed(3) ?? "-"}</td>
+              <td>${cur?.bess_import?.toFixed(3) ?? "-"}</td>
+              <td>${cur?.bess_export?.toFixed(3) ?? "-"}</td>
+              <td title="${cur?.remarks || ""}">${cur?.remarks ? cur.remarks.substring(0, 20) + (cur.remarks.length > 20 ? "..." : "") : "-"}</td>
+
+              <!-- 2025 -->
+              <td>${prev?.radiation?.toFixed(2) ?? "-"}</td>
+              <td>${prev?.generation?.toFixed(2) ?? "-"}</td>
+              <td>${prev ? prev.daily_cuf_worc.toFixed(2) : "-"}%</td>
+              <td>${prev?.peak_power?.toFixed(3) ?? "-"}</td>
+              <td>${prev?.bess_import?.toFixed(3) ?? "-"}</td>
+              <td>${prev?.bess_export?.toFixed(3) ?? "-"}</td>
+            </tr>
+          `;
+        }
+      }
+
+      function showNoDataState() {
+        // Top table
+        currentDateTbody.innerHTML = `
+          <tr>
+            <td colspan="17" class="text-center text-muted py-4">
+              <i class="fas fa-exclamation-triangle me-2"></i>No data found for selected date
+            </td>
+          </tr>
+        `;
+
+        // Last 7 days table
+        last7DaysTbody.innerHTML = `
+          <tr>
+            <td colspan="15" class="text-center text-muted py-4">
+              <i class="fas fa-exclamation-triangle me-2"></i>No data found
+            </td>
+          </tr>
+        `;
+
+        // Destroy chart if exists
+        if (dailyGenerationChart) {
+          dailyGenerationChart.destroy();
+          dailyGenerationChart = null;
+        }
+      }
+
+      function formatDate(dateStr) {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+
+      function fileAuthFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      function bindDailyGenerationChart(last7Days = []) {
+        if (!last7Days.length) {
+          if (dailyGenerationChart) {
+            dailyGenerationChart.destroy();
+            dailyGenerationChart = null;
+          }
+          return;
+        }
+
+        const labels = last7Days.map((d) =>
+          new Date(d.date).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+          }),
+        );
+
+        const solarGeneration = last7Days.map((d) => d.generation ?? null);
+        const dailyCUF = last7Days.map((d) => d.daily_cuf_worc ?? null);
+        const cufTillDate = last7Days.map((d) => d.cuf_till_date ?? null);
+        const radiation = last7Days.map((d) => d.radiation ?? null);
+
+        const validGen = solarGeneration.filter((v) => v !== null);
+        const minGenRaw = Math.min(...validGen);
+        const maxGenRaw = Math.max(...validGen);
+        const range = maxGenRaw - minGenRaw || 1;
+        const magnitude = Math.pow(10, Math.floor(Math.log10(range)));
+        const padding = range * 0.1;
+        const minGen =
+          Math.floor((minGenRaw - padding) / magnitude) * magnitude;
+        const maxGen = Math.ceil((maxGenRaw + padding) / magnitude) * magnitude;
+
+        const ctx = document
+          .getElementById("dailyGenerationChart")
+          .getContext("2d");
+
+        if (dailyGenerationChart) {
+          dailyGenerationChart.destroy();
+        }
+
+        dailyGenerationChart = new Chart(ctx, {
+          data: {
+            labels,
+            datasets: [
+              {
+                type: "bar",
+                label: "Solar Generation (kWh)",
+                data: solarGeneration,
+                yAxisID: "yGeneration",
+                backgroundColor: "rgba(13, 110, 253, 0.7)",
+                borderRadius: 4,
+                order: 1,
+              },
+              {
+                type: "line",
+                label: "Daily CUF (%)",
+                data: dailyCUF,
+                yAxisID: "yCUF",
+                borderColor: "#fd7e14",
+                backgroundColor: "#fd7e14",
+                tension: 0.3,
+                pointRadius: 4,
+                borderWidth: 2,
+                order: 10,
+              },
+              {
+                type: "line",
+                label: "CUF Till Date (%)",
+                data: cufTillDate,
+                yAxisID: "yCUF",
+                borderColor: "#dc3545",
+                backgroundColor: "#dc3545",
+                tension: 0,
+                pointRadius: 3,
+                borderWidth: 2,
+                order: 20,
+              },
+              {
+                type: "line",
+                label: "GHI",
+                data: radiation,
+                yAxisID: "yCUF",
+                borderColor: "#15bf15",
+                backgroundColor: "#15bf15",
+                tension: 0,
+                pointRadius: 3,
+                borderWidth: 2,
+                order: 20,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: "top",
+                labels: {
+                  padding: 15,
+                  usePointStyle: true,
+                },
+              },
+              tooltip: {
+                mode: "index",
+                intersect: false,
+                callbacks: {
+                  afterBody: function (tooltipItems) {
+                    const index = tooltipItems[0].dataIndex;
+                    const remarks = last7Days[index]?.remarks || "No remarks";
+                    return `Remarks: ${remarks}`;
+                  },
+                },
+              },
+            },
+            scales: {
+              yGeneration: {
+                position: "left",
+                beginAtZero: false,
+                min: Math.max(0, minGen),
+                max: maxGen,
+                title: {
+                  display: true,
+                  text: "Generation (kWh)",
+                  font: {
+                    weight: "bold",
+                  },
+                },
+              },
+              yCUF: {
+                position: "right",
+                title: {
+                  display: true,
+                  text: "CUF (%)",
+                  font: {
+                    weight: "bold",
+                  },
+                },
+                grid: {
+                  drawOnChartArea: false,
+                },
+              },
+            },
+          },
+        });
+      }
+
+      document
+        .getElementById("excelUpload")
+        .addEventListener("change", async function (e) {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          if (!file.name.match(/\.(xlsx|xls)$/i)) {
+            alert("Please upload a valid Excel file (.xls or .xlsx)");
+            e.target.value = "";
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append("excelFile", file);
+
+          try {
+            GlobalLoader.show();
+            const res = await fileAuthFetch(
+              `/api/data/om/upload/solar_bess?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+              {
+                method: "POST",
+                body: formData,
+              },
+            );
+            const { message, summary } = await res.json();
+
+            if (!res.ok) {
+              throw new Error(message || "Excel upload failed");
+            }
+
+            let alertMsg = `✅ ${message}\n\n`;
+
+            if (summary) {
+              alertMsg +=
+                `📊 Upload Summary:\n` +
+                `• Total Rows: ${summary.totalRows ?? 0}\n` +
+                `• Inserted: ${summary.inserted ?? 0}\n` +
+                `• Updated: ${summary.updated ?? 0}\n` +
+                `• Skipped: ${summary.skipped ?? 0}`;
+            }
+
+            alert(alertMsg);
+
+            const selectedDate = document.getElementById("dateFilter").value;
+            if (selectedDate) {
+              fetchDataForDate(selectedDate);
+            }
+          } catch (err) {
+            console.error("Excel upload error:", err);
+            alert(err.message || "Failed to upload Excel file");
+          } finally {
+            e.target.value = "";
+            GlobalLoader.hide();
+          }
+        });
+
+      async function downloadExcel() {
+        const fromDate = document.getElementById("fromDate").value;
+        const toDate = document.getElementById("toDate").value;
+
+        if (!fromDate || !toDate) {
+          alert("Please select From Date and To Date");
+          return;
+        }
+        if (new Date(toDate) < new Date(fromDate)) {
+          alert("To date cannot be earlier than From date");
+          return;
+        }
+
+        try {
+          GlobalLoader.show();
+
+          const token = localStorage.getItem("token");
+          const url = `/api/data/om/solar_bess/excel?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&fromDate=${fromDate}&toDate=${toDate}`;
+
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (response.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error("Failed to download Excel");
+          }
+
+          const blob = await response.blob();
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.download = `OM_Solar_${fromDate}_to_${toDate}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(downloadUrl);
+        } catch (err) {
+          console.error("Download error:", err);
+          alert(err.message || "Excel download failed");
+        } finally {
+          GlobalLoader.hide();
+        }
+      }
+
+      async function fetchIssuesAction() {
+        try {
+          const res = await authFetch(
+            `/api/data/get/issues_action?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+          );
+
+          if (!res.ok) return;
+
+          const json = await res.json();
+          const data = json.data;
+
+          if (!data) return;
+
+          document.getElementById("keyIssues").value = data.key_issues || "";
+
+          document.getElementById("actionPlan").value = data.action_plan || "";
+        } catch (err) {
+          console.error("Fetch issues/action error:", err);
+        }
+      }
+
+      async function saveIssuesAction() {
+        const key_issues = document.getElementById("keyIssues").value;
+
+        const action_plan = document.getElementById("actionPlan").value;
+
+        try {
+          GlobalLoader.show();
+
+          const res = await authFetch("/api/data/upsert/issues_action", {
+            method: "POST",
+            body: JSON.stringify({
+              dept_id,
+              statistic_id,
+              entity_id,
+              key_issues,
+              action_plan,
+            }),
+          });
+
+          const json = await res.json();
+
+          if (!res.ok) {
+            throw new Error(json.message || "Save failed");
+          }
+
+          alert("✅ Issues & Action Plan saved successfully");
+        } catch (err) {
+          console.error("Save error:", err);
+          alert(err.message);
+        } finally {
+          GlobalLoader.hide();
+        }
+      }
+
+      window.addEventListener("DOMContentLoaded", () => {
+        dateInput = document.getElementById("dateFilter");
+        currentDateTbody = document.getElementById("currentDateTableBody");
+        last7DaysTbody = document.getElementById("last7DaysTableBody");
+
+        const from = document.getElementById("fromDate");
+        const to = document.getElementById("toDate");
+
+        dateInput.addEventListener("change", () => {
+          if (!dateInput.value) return;
+          fetchDataForDate(dateInput.value);
+        });
+
+        const formatLocalDate = (date) => {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, "0");
+          const d = String(date.getDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        };
+
+        const base = new Date();
+
+        const yesterday = new Date(base);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const last30 = new Date(yesterday);
+        last30.setDate(last30.getDate() - 30);
+
+        const defaultDate = formatLocalDate(yesterday);
+
+        dateInput.value = defaultDate;
+        from.value = formatLocalDate(last30);
+        to.value = defaultDate;
+
+        fetchDataForDate(defaultDate);
+        fetchProjectName();
+        fetchIssuesAction();
+      });
+    </script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <script src="./js/auth_guard.js"></script>
+    <script src="./js/main.js"></script>
+<title>Add Other Correspondence (DPR/PFR)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      body { font-family: "Segoe UI", Roboto, Arial, sans-serif; background: linear-gradient(135deg, #f4f6f9 0%, #e8ecf1 100%); padding: 20px; min-height: 100vh; color: #333; }
+      h1 { text-align: center; margin-bottom: 25px; color: #0b5ed7; font-weight: 700; font-size: 28px; }
+      .form-container { max-width: 600px; margin: auto; background: #fff; padding: 35px 40px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+      .form-group { display: flex; flex-direction: column; margin-bottom: 18px; }
+      label { font-weight: 600; font-size: 14px; color: #333; margin-bottom: 8px; }
+      input, select, textarea { width: 100%; padding: 12px; font-size: 15px; border: 1px solid #cfd4da; border-radius: 6px; transition: all 0.3s; }
+      input:focus, select:focus, textarea:focus { outline: none; border-color: #0b5ed7; box-shadow: 0 0 0 3px rgba(11,94,215,0.15); }
+      .btn-primary { background: linear-gradient(135deg, #0b5ed7, #146c43); color: white; border: none; padding: 10px 24px; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+      .btn-primary:hover { background: linear-gradient(135deg, #146c43, #0b5ed7); }
+      .form-text { font-size: 12px; color: #6c757d; }
+    </style>
+  </head>
+  <body>
+    <div class="form-container">
+      <h1>Add Other Correspondence (DPR/PFR)</h1>
+      <form id="addOtherCorrespondenceForm">
+        <div class="mb-3">
+          <label for="subject" class="form-label">Subject</label>
+          <input type="text" class="form-control" id="subject" name="subject" placeholder="Enter subject" required />
+        </div>
+        <div class="mb-3">
+          <label for="from" class="form-label">From</label>
+          <input class="form-control" id="from" name="from" placeholder="sender@example.com" required />
+        </div>
+        <div class="mb-3">
+          <label for="to" class="form-label">To</label>
+          <input class="form-control" id="to" name="to" placeholder="recipient@example.com" required />
+        </div>
+        <div class="mb-3">
+          <label for="correspondence_date" class="form-label">Correspondence Date</label>
+          <input type="date" class="form-control" id="correspondence_date" name="correspondence_date" required />
+        </div>
+        <div class="mb-3">
+          <label for="docFile" class="form-label">Upload Correspondence Document</label>
+          <small class="form-text text-muted">Maximum file size allowed: <strong>50 MB</strong>.</small>
+          <input type="file" class="form-control" id="docFile" name="doc_file" required />
+        </div>
+        <input type="hidden" id="entityId" name="entity_id" />
+        <input type="hidden" name="correspondence_type" value="other" />
+        <input type="hidden" name="context" value="pmc_dpr" />
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const entityId = urlParams.get("entity_id") || urlParams.get("pmc_entry_id");
+      const editId = urlParams.get("edit_id") || "";
+      const projectName = urlParams.get("project_name") || "";
+      const segment = urlParams.get("segment") || "pmc-dpr-pfr";
+      if (entityId) document.getElementById("entityId").value = entityId;
+
+      if (editId) {
+        document.querySelector('h1').textContent = 'Edit Other Correspondence (DPR/PFR)';
+        document.getElementById('subject').value = urlParams.get('subject') || '';
+        document.getElementById('from').value = urlParams.get('from') || '';
+        document.getElementById('to').value = urlParams.get('to') || '';
+        document.getElementById('correspondence_date').value = urlParams.get('correspondence_date') || '';
+        document.getElementById('docFile').required = false;
+      }
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        return fetch(url, { ...options, headers: { Authorization: "Bearer " + token, ...(options.headers || {}) } }).then(res => {
+          if (res.status === 401) { alert("Session expired."); localStorage.clear(); window.location.href = "/"; throw new Error("Unauthorized"); }
+          return res;
+        });
+      }
+
+      document.getElementById("addOtherCorrespondenceForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        if (projectName) formData.append('project_name', projectName);
+        try {
+          const endpoint = editId
+            ? "/api/data/correspondences/dpr/correspondence/" + encodeURIComponent(editId)
+            : "/api/data/correspondences/dpr/correspondence";
+          const method = editId ? "PUT" : "POST";
+          const response = await authFetch(endpoint, { method, body: formData });
+          if (!response.ok) throw new Error("Failed to add correspondence.");
+          alert(editId ? "Correspondence updated successfully!" : "Correspondence added successfully!");
+          if (projectName) {
+            window.location.href = "/pmc_dpr_projects.html?segment=" + encodeURIComponent(segment) + "&project_name=" + encodeURIComponent(projectName);
+          } else if (entityId) {
+            window.location.href = "/pmc_dpr_projects.html?pmc_entry_id=" + encodeURIComponent(entityId);
+          } else {
+            window.location.href = "/pmc_dpr_projects.html";
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error adding correspondence.");
+        }
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

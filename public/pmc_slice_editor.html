@@ -1,0 +1,439 @@
+<!doctype html>
+<html>
+<head>
+  
+    <script src="./js/auth_guard.js"></script>
+<meta charset="utf-8">
+  <title>PMC Slice Editor</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body{padding:20px;background:#f5f5f5;}
+    /* overlay + card: keep existing style but add overlay support for blur effect */
+    .overlay {
+      position:fixed;inset:0;z-index:998;background:rgba(0,0,0,0.25);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+      display:block;
+    }
+    
+    .form-card{position:relative;z-index:999;background:#fff;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.08);border:1px solid #d8e3f1;padding:0;overflow:hidden;max-width:980px;margin:20px auto;max-height:84vh;display:flex;flex-direction:column}
+    .section-header{background:linear-gradient(135deg,#1f4e79,#0b5ed7);color:#fff;padding:14px 18px;font-weight:700;font-size:16px;flex-shrink:0;position:sticky;top:0;z-index:2}
+    .form-content{padding:18px;flex:1;overflow-y:auto}
+    .stat-section{border:1px solid #dce6f3;border-radius:8px;background:#fdfefe;padding:14px;margin-bottom:14px}
+    .slice-item{border:1px solid #dfe8f3;padding:14px;border-radius:8px;margin-bottom:14px;background:#fff;box-shadow:0 2px 10px rgba(16,52,90,0.04)}
+    .slice-title{font-size:14px;font-weight:700;color:#1f4e79;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e9eff8}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-group{margin-bottom:14px}
+    .form-group label{font-weight:600;margin-bottom:6px;display:block}
+    .form-control{height:38px;border-radius:6px}
+    /* Make the Statistic Name input more prominent and responsive */
+    #statistic_name{width:90%;min-width:450px;max-width:800px;box-sizing:border-box}
+    .fields-list .field-row{display:grid;grid-template-columns:1.1fr 1fr 110px 34px;gap:8px;align-items:center;margin-bottom:8px}
+    .fields-list .field-row .form-control{height:38px}
+    .fields-list .field-row .field-name{width:100%}
+    .fields-list .field-row .field-value{width:100%}
+    .fields-list .field-row .field-unit{width:100%}
+    .remove-field{background:transparent;border:1px solid #dc3545;color:#dc3545;padding:6px 8px}
+    .btn-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid #e9ecef;background:#fbfdff;flex-shrink:0;position:sticky;bottom:0}
+    .btn-success{background:linear-gradient(135deg,#198754,#146c43);color:#fff}
+    .btn-success:hover{background:linear-gradient(135deg,#157347,#104930)}
+    .btn-secondary{background:linear-gradient(135deg,#6c757d,#495057);color:#fff}
+    .tos-selected{font-weight:600;color:#0b5ed7}
+    .slice-actions{display:flex;gap:8px;margin-top:10px;padding-top:8px;border-top:1px dashed #e0e8f4}
+    @media (max-width:768px){
+      .form-row{grid-template-columns:1fr}
+      .fields-list .field-row{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="form-card">
+      <div class="section-header">Edit Statistic</div>
+      <div class="form-content">
+        <div class="stat-section">
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Statistic Name</label>
+            <input id="statistic_name" class="form-control" placeholder="Enter statistic name (used as segment)" autocomplete="off" readonly />
+          </div>
+        </div>
+
+        <div style="margin-top:8px;">
+          <button id="addProjectTop" type="button" class="btn btn-success">+ Add Project</button>
+        </div>
+
+        <div id="slices"></div>
+      </div>
+      <div class="btn-actions">
+        <button id="cancelBtn" type="button" class="btn btn-secondary">Cancel</button>
+        <button id="saveAll" type="button" class="btn btn-success">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <template id="sliceTemplate">
+    <div class="slice-item">
+      <input type="hidden" class="pmc_slice_meta_id">
+      <div class="slice-title">Project Configuration</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Project Name</label>
+          <input class="form-control project_name" autocomplete="off">
+        </div>
+        <div class="form-group project-capacity-group">
+          <label>Project Capacity (Maxinum dispatachable capacity at any given point of time in MW)</label>
+          <input class="form-control project_capacity" type="number" step="0.01" autocomplete="off">
+        </div>
+        <div class="form-group number-projects-group" style="display:none;">
+          <label>Number of Projects</label>
+          <input class="form-control number_of_projects" type="number" step="1" min="1" value="1" autocomplete="off" readonly>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Type(s) of Service</label>
+        <div class="type_of_service_checklist">
+          <label class="form-check form-check-inline"><input type="checkbox" class="form-check-input tos" value="DPR"> DPR</label>
+          <label class="form-check form-check-inline"><input type="checkbox" class="form-check-input tos" value="BMS"> BMS</label>
+          <label class="form-check form-check-inline"><input type="checkbox" class="form-check-input tos" value="EXECUTION"> Execution</label>
+        </div>
+        <div class="small text-muted">Selected: <span class="tos-selected">(none)</span></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input class="form-control loa_date" type="date" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Complete Date</label>
+          <input class="form-control scod" type="date" autocomplete="off">
+        </div>
+        <div class="form-group land-group" style="display:none;">
+          <label>Land (in acres)</label>
+          <input class="form-control land" type="number" step="1" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="fields-list"></div>
+
+        <div style="margin-top:8px;">
+          <button type="button" class="btn btn-sm btn-secondary add-field-top">+ Add Field</button>
+        </div>
+
+      <div class="slice-actions">
+        <button type="button" class="btn btn-danger btn-sm ml-auto remove-slice">Remove</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="fieldTemplate">
+    <div class="field-row">
+      <input class="form-control field-name" placeholder="Field name" autocomplete="off">
+      <input class="form-control field-value mx-2" placeholder="Value" autocomplete="off">
+      <input class="form-control field-unit" style="width:100px" placeholder="Unit" autocomplete="off">
+      <button type="button" class="remove-field">x</button>
+    </div>
+  </template>
+
+  <script>
+  const apiBase = '/api/data/pmc/slice_editor';
+
+  async function loadSegment(){
+    const stat = (document.getElementById('statistic_name')||{}).value || '';
+    const seg = stat || new URLSearchParams(window.location.search).get('segment') || 'pmc';
+    document.getElementById('statistic_name').value = seg; // reflect chosen
+    // If the caller requested a fresh form (no saved values), skip fetching saved items
+    const q = new URLSearchParams(window.location.search);
+    const forceNew = q.get('new') === '1';
+    if (forceNew) {
+      // ensure container is empty and provide a blank card
+      const c = document.getElementById('slices'); c.innerHTML = '';
+      c.appendChild(makeSliceCard());
+      return;
+    }
+    const res = await fetch(`${apiBase}/segment/${encodeURIComponent(seg)}`);
+    const data = await res.json();
+    const items = data.items || [];
+    renderSlices(items);
+    // if there are no saved items, provide a blank card so user can add fresh data
+    if (!items.length) {
+      document.getElementById('slices').appendChild(makeSliceCard());
+    }
+  }
+
+  function renderSlices(items){
+    const container = document.getElementById('slices');
+    container.innerHTML='';
+    items.forEach(it => container.appendChild(makeSliceCard(it)));
+  }
+
+  function makeSliceCard(it={}){
+    const tpl = document.getElementById('sliceTemplate');
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.querySelector('.pmc_slice_meta_id').value = it.pmc_slice_meta_id || '';
+    node.querySelector('.project_name').value = it.project_name || '';
+    node.querySelector('.project_capacity').value = it.project_capacity || '';
+    // number_of_projects may be present for DPR/BMS specialized records
+    const numEl = node.querySelector('.number_of_projects');
+    if (numEl) numEl.value = it.number_of_projects || '1';
+    // Populate new date fields
+    const loaDateEl = node.querySelector('.loa_date');
+    if (loaDateEl) loaDateEl.value = it.loa_date ? it.loa_date.split('T')[0] : '';
+    const scodEl = node.querySelector('.scod');
+    if (scodEl) scodEl.value = it.scod ? it.scod.split('T')[0] : '';
+    const landEl = node.querySelector('.land');
+    if (landEl) landEl.value = it.land || '';
+    
+    // Show/hide capacity vs number_of_projects based on segment (URL or item)
+    // Also show/hide land field for Execution only
+    try {
+      const seg = (it.segment || new URLSearchParams(window.location.search).get('segment') || '').toLowerCase();
+      const capGroup = node.querySelector('.project-capacity-group');
+      const numGroup = node.querySelector('.number-projects-group');
+      const landGroup = node.querySelector('.land-group');
+      if (seg.includes('dpr') || seg.includes('bms')) {
+        if (capGroup) capGroup.style.display = 'none';
+        if (numGroup) numGroup.style.display = 'block';
+        if (numEl) {
+          numEl.value = '1';
+          numEl.readOnly = true;
+        }
+        if (landGroup) landGroup.style.display = 'none';
+      } else if (seg.includes('execution')) {
+        if (capGroup) capGroup.style.display = 'block';
+        if (numGroup) numGroup.style.display = 'none';
+        if (numEl) numEl.readOnly = false;
+        if (landGroup) landGroup.style.display = 'block';
+      } else {
+        if (capGroup) capGroup.style.display = 'block';
+        if (numGroup) numGroup.style.display = 'none';
+        if (numEl) numEl.readOnly = false;
+        if (landGroup) landGroup.style.display = 'none';
+      }
+    } catch(e){}
+    const fieldsList = node.querySelector('.fields-list');
+    const fields = it.fields || [];
+    fields.forEach(f=>{
+      const fnode = makeFieldRow(f);
+      fieldsList.appendChild(fnode);
+    });
+
+    // set type_of_service checkboxes if present
+    try {
+      const tosChecksInit = Array.from(node.querySelectorAll('.tos'));
+      const tarr = it.type_of_service || it.types_of_service || [];
+      if (Array.isArray(tarr) && tarr.length) {
+        tosChecksInit.forEach(c=> c.checked = tarr.includes(c.value));
+      } else {
+        // prefer URL segment for new cards
+        if ((!it || !it.pmc_slice_meta_id) && (!tarr || !tarr.length)) {
+          const urlSeg = new URLSearchParams(window.location.search).get('segment') || '';
+          tosChecksInit.forEach(c=>{
+            if (urlSeg.toLowerCase().includes('dpr') && c.value==='DPR') c.checked = true;
+            if (urlSeg.toLowerCase().includes('bms') && c.value==='BMS') c.checked = true;
+            if (urlSeg.toLowerCase().includes('execution') && c.value==='EXECUTION') c.checked = true;
+          });
+        }
+      }
+    } catch(e){}
+
+    // top add-field button inside the slice-card (keeps add-field visible)
+    const addFieldTopBtn = node.querySelector('.add-field-top');
+    if (addFieldTopBtn) addFieldTopBtn.addEventListener('click', ()=>fieldsList.appendChild(makeFieldRow()));
+    node.querySelector('.remove-slice').addEventListener('click', async (ev)=>{
+      try { ev.preventDefault(); } catch(e) {}
+      try {
+        const pname = (node.querySelector('.project_name')||{}).value || '';
+        const segParam = (it && it.segment) || new URLSearchParams(window.location.search).get('segment') || '';
+        const itemId = (node.querySelector('.pmc_slice_meta_id') || {}).value || '';
+
+        if (itemId) {
+          try {
+            const delUrl = `${apiBase}/item/${encodeURIComponent(itemId)}?segment=${encodeURIComponent(segParam)}&project_name=${encodeURIComponent(pname)}`;
+            const delRes = await fetch(delUrl, { method: 'DELETE' });
+            const delData = await delRes.json().catch(() => ({}));
+            // 404 means row already removed/not found on server; allow UI removal to proceed.
+            if ((delRes.status !== 404) && (!delRes.ok || !delData.ok)) {
+              alert('Failed to delete from DB');
+              return;
+            }
+          } catch (e) {
+            alert('Failed to delete from DB');
+            return;
+          }
+        }
+
+        // prefer opener function if available
+        if (window.opener && typeof window.opener.removeSliceFromCharts === 'function') {
+          try { window.opener.removeSliceFromCharts(pname, segParam); } catch(e) {}
+        } else if (window.opener) {
+          try { window.opener.postMessage({ type: 'pmc_slice_removed', project_name: pname, segment: segParam }, '*'); } catch(e) {}
+        } else if (window.parent && typeof window.parent.removeSliceFromCharts === 'function') {
+          try { window.parent.removeSliceFromCharts(pname, segParam); } catch(e) {}
+        } else if (window.parent && window.parent !== window) {
+          try { window.parent.postMessage({ type: 'pmc_slice_removed', project_name: pname, segment: segParam }, '*'); } catch(e) {}
+        } else if (typeof window.removeSliceFromCharts === 'function') {
+          try { window.removeSliceFromCharts(pname, segParam); } catch(e) {}
+        }
+
+        try {
+          localStorage.setItem('pmc_slice_changed', JSON.stringify({
+            type: 'removed',
+            segment: segParam,
+            project_name: pname,
+            at: Date.now(),
+          }));
+        } catch(e) {}
+      } catch(e) { /* ignore */ }
+      node.remove();
+    });
+    // wire checkboxes to display and opener updates
+    const tosChecks = Array.from(node.querySelectorAll('.tos'));
+    const tosSelectedEl = node.querySelector('.tos-selected');
+    function updateTosDisplay(){
+      const sel = tosChecks.filter(c=>c.checked).map(c=>c.value);
+      tosSelectedEl.textContent = sel.length ? sel.join(', ') : '(none)';
+      return sel;
+    }
+    tosChecks.forEach(ch=> ch.addEventListener('click', ()=>{
+      updateTosDisplay();
+    }));
+    try{ updateTosDisplay(); }catch(e){}
+
+    // when project name or capacity filled, notify opener (if available)
+    const pname = node.querySelector('.project_name');
+    const pcap = node.querySelector('.project_capacity');
+    function tryNotifyOpener(){
+      const name = (pname.value||'').trim();
+      const cap = parseFloat(pcap.value) || 0;
+      if (!name || !cap) return; // require both
+      const item = {
+        project_name: name,
+        project_capacity: cap,
+        fields: Array.from(node.querySelectorAll('.field-row')).map(fr=>({
+          name: fr.querySelector('.field-name').value,
+          value: fr.querySelector('.field-value').value,
+          unit: fr.querySelector('.field-unit').value
+        })),
+        types_of_service: updateTosDisplay()
+      };
+      try {
+        if (window.opener && typeof window.opener.addOrUpdateSliceToCharts === 'function') {
+          window.opener.addOrUpdateSliceToCharts(item);
+        }
+      } catch(e){/* ignore */}
+    }
+    pname.addEventListener('change', tryNotifyOpener);
+    pcap.addEventListener('change', tryNotifyOpener);
+
+    return node;
+  }
+
+  function makeFieldRow(f={}){
+    const tpl = document.getElementById('fieldTemplate');
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.querySelector('.field-name').value = f.name || '';
+    node.querySelector('.field-value').value = f.value || '';
+    node.querySelector('.field-unit').value = f.unit || '';
+    node.querySelector('.remove-field').addEventListener('click', ()=>node.remove());
+    return node;
+  }
+
+  // top add project button (duplicate for convenience)
+  try{
+    const topBtn = document.getElementById('addProjectTop');
+    if (topBtn) topBtn.addEventListener('click', (ev)=>{
+      try { ev.preventDefault(); } catch(e) {}
+      const container = document.getElementById('slices');
+      container.insertBefore(makeSliceCard(), container.firstChild);
+    });
+  }catch(e){}
+
+  document.getElementById('saveAll').addEventListener('click', async (ev)=>{
+    try { ev.preventDefault(); } catch(e) {}
+    const seg = new URLSearchParams(window.location.search).get('segment') || (document.getElementById('statistic_name')||{}).value || 'pmc';
+    const sliceNodes = Array.from(document.querySelectorAll('.slice-item'));
+    const items = sliceNodes.map(n=>{
+      return {
+        pmc_slice_meta_id: n.querySelector('.pmc_slice_meta_id').value || null,
+        segment: seg,
+        project_name: n.querySelector('.project_name').value,
+        project_capacity: parseFloat(n.querySelector('.project_capacity').value) || 0,
+        number_of_projects: ((seg || '').toLowerCase().includes('dpr') || (seg || '').toLowerCase().includes('bms'))
+          ? 1
+          : (parseInt(n.querySelector('.number_of_projects').value) || 0),
+        loa_date: n.querySelector('.loa_date').value || null,
+        scod: n.querySelector('.scod').value || null,
+        land: parseInt(n.querySelector('.land').value) || 0,
+        types_of_service: Array.from(n.querySelectorAll('.tos')).filter(c=>c.checked).map(c=>c.value),
+        fields: Array.from(n.querySelectorAll('.field-row')).map(fr=>({
+          name: fr.querySelector('.field-name').value,
+          value: fr.querySelector('.field-value').value,
+          unit: fr.querySelector('.field-unit').value
+        }))
+      };
+    });
+
+    const res = await fetch(`${apiBase}/save`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ segment: seg, replaceAll: true, items })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert('Saved');
+      try {
+        localStorage.setItem('pmc_slice_changed', JSON.stringify({
+          type: 'saved',
+          segment: seg,
+          at: Date.now(),
+        }));
+      } catch(e) {}
+      // First try to directly refresh charts in the opener (if opened via window.open)
+      try {
+        if (window.opener && window.opener !== window) {
+          try {
+            if (typeof window.opener.applySliceMetaToCharts === 'function') {
+              // prefer direct refresh on parent window
+              window.opener.applySliceMetaToCharts(seg);
+            } else if (typeof window.opener.addOrUpdateSliceToCharts === 'function') {
+              // fallback to per-item updater (best-effort)
+              // send each saved item to opener
+              (items || []).forEach(it => {
+                try { window.opener.addOrUpdateSliceToCharts(it); } catch(e) {/*ignore*/}
+              });
+            } else {
+              // final fallback: postMessage to let parent handle it
+              try { window.opener.postMessage({ type: 'pmc_slice_saved', segment: seg }, '*'); } catch(e){}
+            }
+          } catch(e) { /* ignore */ }
+        } else if (window.parent && window.parent !== window) {
+          try { if (typeof window.parent.applySliceMetaToCharts === 'function') window.parent.applySliceMetaToCharts(seg);
+          } catch(e){}
+        }
+      } catch (e) { /* ignore */ }
+    } else alert('Error: '+(data.error||'unknown'));
+    await loadSegment();
+  });
+
+  document.getElementById('cancelBtn').addEventListener('click', ()=>{
+    try{ window.close(); }catch(e){ /* ignore */ }
+  });
+
+  try{ const _segEl = document.getElementById('segment'); if (_segEl) _segEl.addEventListener('change', loadSegment); }catch(e){}
+  (function autoSelectSegment(){
+    const q = new URLSearchParams(window.location.search);
+    const seg = q.get('segment');
+    if (seg) {
+      const sel = document.getElementById('segment');
+      if (sel) {
+        if (seg.toLowerCase().includes('dpr')) sel.value = 'pmc_dpr';
+        else if (seg.toLowerCase().includes('bms')) sel.value = 'pmc-bms';
+        else if (seg.toLowerCase().includes('execution')) sel.value = 'pmc-execution';
+      }
+    }
+    loadSegment();
+  })();
+  
+  </script>
+</body>
+</html>

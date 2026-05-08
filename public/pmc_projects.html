@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PMC Project Details</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .tab-content {
+        margin-top: 20px;
+      }
+      .btn-add {
+        margin-bottom: 12px;
+      }
+      .nav-link.disabled {
+        color: #adb5bd !important;
+        cursor: not-allowed;
+        pointer-events: none;
+        background-color: #f8f9fa;
+      }
+      .nav-link.disabled:hover {
+        color: #adb5bd !important;
+      }
+    </style>
+  </head>
+
+  <body class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0">PMC Project Details</h2>
+      <a href="/pmc_performance.html" class="btn btn-secondary">Back to PMC Dashboard</a>
+    </div>
+
+    <div class="mb-3">
+      <h4 id="projectTitle" class="mb-1">Project</h4>
+      <h5 id="clientTitle" class="text-muted">Client</h5>
+    </div>
+
+    <ul class="nav nav-tabs" id="projectTabs" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="contract-docs-tab" data-bs-toggle="tab" data-bs-target="#contract-docs" type="button" role="tab">Contract Documents</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="dpr-tab" type="button" role="tab" title="Coming Soon">Daily Progress Report</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="mpr-tab" type="button" role="tab" title="Coming Soon">Monthly Progress Report</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="milestone-tab" data-bs-toggle="tab" data-bs-target="#milestones" type="button" role="tab">Milestone</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="corr-cont-tab" type="button" role="tab" title="Coming Soon">Correspondences with Contractors</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="corr-other-tab" data-bs-toggle="tab" data-bs-target="#corr-other" type="button" role="tab">Correspondences with other Stakeholders</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="key-issues-tab" type="button" role="tab" title="Coming Soon">Key Issues</button>
+      </li>
+    </ul>
+     
+
+    <div class="tab-content" id="projectTabContent">
+      <!-- Contract Documents Tab (table removed; documents stored via PMC C&E) -->
+      <div class="tab-pane fade show active" id="contract-docs" role="tabpanel">
+        <button id="addContractDocBtn" class="btn btn-sm btn-success mb-2">+ Add Contract Documents</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="contractDocsTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Document Name</th>
+                <th class="sortable">Dated</th>
+                <th>View Document</th>
+                <th class="sortable">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Milestones Tab -->
+      <div class="tab-pane fade" id="milestones" role="tabpanel">
+        <button id="addMilestoneBtn" class="btn btn-sm btn-success mb-2">+ Add Milestone</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="milestonesTable">
+            <thead>
+              <tr>
+                <th class="sortable">Sr No</th>
+                <th class="sortable">Milestone</th>
+                <th class="sortable">Stage Payment (%)</th>
+                <th class="sortable">Invoice Amount</th>
+                <th class="sortable">Invoice Raised</th>
+                <th class="sortable">Invoice Date</th>
+                <th class="sortable">Invoice Number</th>
+                <th class="sortable">Invoice Status</th>
+                <th>Bar</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Correspondences with other Stakeholders Tab (table removed; use PMC C&E storage) -->
+      <div class="tab-pane fade" id="corr-other" role="tabpanel">
+        <button id="addCorrOtherBtn" class="btn btn-sm btn-success mb-2">+ Add Correspondence</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="corrOtherTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Subject</th>
+                <th class="sortable">Dated</th>
+                <th class="sortable">From</th>
+                <th class="sortable">To</th>
+                <th class="sortable">Uploaded On</th>
+                <th>View</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./js/main.js"></script>
+    <script src="/js/pmc_projects.js"></script>
+  </body>
+</html>

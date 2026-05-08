@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "DB_USERNAME_HERE",
+    "password": "root0930@",
+    "database": "DB_NAME_HERE",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "DB_USERNAME_HERE",
+    "password": "root0930@",
+    "database": "DB_NAME_HERE",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "DB_USERNAME_HERE",
+    "password": "root0930@",
+    "database": "DB_NAME_HERE",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}

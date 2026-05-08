@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+    <script src="./js/auth_guard.js"></script>
+<title>Add/Edit PMC C&E Milestone</title>
+  <link href="/assets/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding: 30px; background: #f8f9fa; }
+    .form-card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 700px; margin: 0 auto; }
+    .form-title { margin-bottom: 25px; color: #333; }
+    .btn-submit { min-width: 120px; }
+  </style>
+</head>
+<body>
+  <div class="form-card">
+    <h2 class="form-title" id="formTitle">Add Milestone</h2>
+    <form id="milestoneForm">
+      <input type="hidden" id="pmc_ce_milestone_id" name="pmc_ce_milestone_id">
+      <input type="hidden" id="pmc_ce_entity_id" name="pmc_ce_entity_id">
+      
+      <div class="mb-3">
+        <label for="milestone" class="form-label">Milestone Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="milestone" name="milestone" required>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="stage_payment" class="form-label">Stage Payment (%)</label>
+          <input type="number" step="0.01" min="0" max="100" class="form-control" id="stage_payment" name="stage_payment" value="0">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="invoice_amount" class="form-label">Invoice Amount</label>
+          <input type="number" step="0.01" min="0" class="form-control" id="invoice_amount" name="invoice_amount" value="0">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="invoice_raised" class="form-label">Invoice Raised</label>
+          <input type="number" step="0.01" min="0" class="form-control" id="invoice_raised" name="invoice_raised" value="0">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="invoice_date" class="form-label">Invoice Date</label>
+          <input type="date" class="form-control" id="invoice_date" name="invoice_date">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="invoice_number" class="form-label">Invoice Number</label>
+          <input type="text" class="form-control" id="invoice_number" name="invoice_number">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="status" class="form-label">Status</label>
+          <select class="form-select" id="status" name="status">
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Received">Received</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="sr_no" class="form-label">Serial Number</label>
+          <input type="number" min="1" class="form-control" id="sr_no" name="sr_no" placeholder="Auto-assigned if empty">
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary btn-submit" id="submitBtn">Save Milestone</button>
+        <button type="button" class="btn btn-secondary" onclick="window.close()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="/assets/bootstrap.bundle.min.js"></script>
+  <script>
+    (function() {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams(window.location.search);
+      const entity_id = params.get('entity_id') || '';
+      const editId = params.get('edit') || '';
+      const isEdit = !!editId;
+
+      function authHeaders() {
+        return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+      }
+
+      // Set entity_id hidden field
+      document.getElementById('pmc_ce_entity_id').value = entity_id;
+
+      // If edit mode, fetch existing milestone data
+      if (isEdit) {
+        document.getElementById('formTitle').textContent = 'Edit Milestone';
+        document.getElementById('submitBtn').textContent = 'Update Milestone';
+        fetchMilestone(editId);
+      }
+
+      async function fetchMilestone(id) {
+        try {
+          const res = await fetch(`/api/data/pmc/ce/milestones/one/${id}`, { headers: authHeaders() });
+          if (!res.ok) throw new Error('Failed to fetch milestone');
+          const json = await res.json();
+          const m = json.data;
+          if (m) {
+            document.getElementById('pmc_ce_milestone_id').value = m.pmc_ce_milestone_id || '';
+            document.getElementById('pmc_ce_entity_id').value = m.pmc_ce_entity_id || entity_id;
+            document.getElementById('milestone').value = m.milestone || '';
+            document.getElementById('stage_payment').value = m.stage_payment || 0;
+            document.getElementById('invoice_amount').value = m.invoice_amount || 0;
+            document.getElementById('invoice_raised').value = m.invoice_raised || 0;
+            document.getElementById('invoice_date').value = m.invoice_date ? m.invoice_date.split('T')[0] : '';
+            document.getElementById('invoice_number').value = m.invoice_number || '';
+            document.getElementById('status').value = m.status || 'Pending';
+            document.getElementById('sr_no').value = m.sr_no || '';
+          }
+        } catch (err) {
+          console.error('fetchMilestone error:', err);
+          alert('Error loading milestone data');
+        }
+      }
+
+      document.getElementById('milestoneForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = {
+          pmc_ce_entity_id: document.getElementById('pmc_ce_entity_id').value,
+          milestone: document.getElementById('milestone').value,
+          stage_payment: parseFloat(document.getElementById('stage_payment').value) || 0,
+          invoice_amount: parseFloat(document.getElementById('invoice_amount').value) || 0,
+          invoice_raised: parseFloat(document.getElementById('invoice_raised').value) || 0,
+          invoice_date: document.getElementById('invoice_date').value || null,
+          invoice_number: document.getElementById('invoice_number').value || null,
+          status: document.getElementById('status').value,
+        };
+
+        const srNo = document.getElementById('sr_no').value;
+        if (srNo) formData.sr_no = parseInt(srNo);
+
+        try {
+          let url, method;
+          if (isEdit) {
+            url = `/api/data/pmc/ce/milestones/edit/${editId}`;
+            method = 'PUT';
+          } else {
+            url = '/api/data/pmc/ce/milestones/add';
+            method = 'POST';
+          }
+
+          const res = await fetch(url, {
+            method,
+            headers: authHeaders(),
+            body: JSON.stringify(formData),
+          });
+
+          const json = await res.json();
+          if (res.ok && json.success) {
+            alert(isEdit ? 'Milestone updated successfully!' : 'Milestone added successfully!');
+            window.opener && window.opener.location.reload();
+            window.close();
+          } else {
+            alert('Error: ' + (json.error || json.message || 'Failed to save milestone'));
+          }
+        } catch (err) {
+          console.error('Submit error:', err);
+          alert('Error saving milestone: ' + err.message);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

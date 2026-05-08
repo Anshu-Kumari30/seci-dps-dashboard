@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PMC DPR Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      .tab-content { margin-top: 20px; }
+      .btn-add { margin-bottom: 12px; }
+
+      .table-container {
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        border: 1px solid #e0e6ef;
+      }
+      #dprMilestoneTable { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+      #dprMilestoneTable thead tr:first-child th {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        border: none;
+        padding: 14px 10px;
+        text-align: center;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+      }
+      #dprMilestoneTable tbody tr { border-bottom: 1px solid #e0e6ef; }
+      #dprMilestoneTable tbody td {
+        padding: 12px 10px;
+        background: #fff;
+        color: #333;
+        font-size: 13px;
+        text-align: center;
+        vertical-align: middle;
+      }
+      #dprMilestoneTable tbody tr:nth-child(even) td { background: #f8fafc; }
+      #dprMilestoneTable tbody tr:hover td { background: #f0f8ff; }
+
+      .summary-bar { display: inline-flex; align-items: center; gap: 6px; }
+      .summary-bar-track { width: 70px; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+      .summary-bar-fill { height: 100%; border-radius: 4px; }
+      .summary-bar-green { background: linear-gradient(90deg, #198754, #20c997); }
+      .summary-bar-yellow { background: linear-gradient(90deg, #f0ad4e, #f7c948); }
+      .summary-bar-red { background: linear-gradient(90deg, #dc3545, #f06a6a); }
+      .summary-bar-orange { background: linear-gradient(90deg, #fd7e14, #f4a261); }
+      .summary-bar-value { font-size: 11px; font-weight: 600; color: #0b5ed7; }
+      .summary-bar-segment { height: 100%; }
+      .milestone-dropdown-row td { background: #f8fbff !important; padding: 0; }
+      .milestone-dropdown-container { padding: 12px; border-top: 1px solid #dbe6ff; }
+      .milestone-dropdown-title { font-size: 13px; font-weight: 600; color: #1f4e79; margin-bottom: 8px; }
+    </style>
+  </head>
+
+  <body class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="mb-0">PMC DPR</h2>
+      <a href="/home.html" class="btn btn-secondary">Back to Home</a>
+    </div>
+
+    <div class="mb-3">
+      <h4 id="statisticTitle" class="mb-1"></h4>
+      <h5 id="entityTitle" class="text-muted"></h5>
+    </div>
+
+    <ul class="nav nav-tabs" id="dprTabs" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="dpr-milestone-tab" data-bs-toggle="tab" data-bs-target="#dpr-milestones" type="button" role="tab">Milestone Status</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="dpr-contract-docs-tab" data-bs-toggle="tab" data-bs-target="#dpr-contract-docs" type="button" role="tab">Contract Documents</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="dpr-corr-cont-tab" type="button" role="tab" style="pointer-events:none;opacity:0.5;" title="Not available">Correspondences with Contractors</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="dpr-corr-other-tab" data-bs-toggle="tab" data-bs-target="#dpr-corr-other" type="button" role="tab">Correspondences with Stakeholders</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="dpr-dpr-tab" type="button" role="tab" style="pointer-events:none;opacity:0.5;" title="Not available">Daily Progress Report</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link disabled" id="dpr-mpr-tab" type="button" role="tab" style="pointer-events:none;opacity:0.5;" title="Not available">Monthly Progress Report</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="dpr-key-issues-tab" data-bs-toggle="tab" data-bs-target="#dpr-key-issues" type="button" role="tab">Key Issues</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="dprTabContent">
+      <!-- Milestone Tab -->
+      <div class="tab-pane fade show active" id="dpr-milestones" role="tabpanel">
+        <button id="dpr-addMilestoneBtn" class="btn btn-sm btn-success mb-2" onclick="openAddMilestone()">+ Add Milestone</button>
+        <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-bordered" id="dprMilestoneTable">
+            <thead>
+              <tr>
+                <th>S.No</th>
+                <th>Type of Service</th>
+                <th>Client</th>
+                <th>Project Details</th>
+                <th>LOA to SECI</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Target Date</th>
+                <th>P O Value</th>
+                <th>Invoice Raised</th>
+                <th>Amount Pending</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Milestones</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dprTableBody"></tbody>
+          </table>
+        </div>
+        </div>
+      </div>
+
+      <!-- Contract Documents Tab -->
+      <div class="tab-pane fade" id="dpr-contract-docs" role="tabpanel">
+        <button id="dpr-addContractDocBtn" class="btn btn-sm btn-success mb-2">+ Add Contract Documents</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="dprContractDocsTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Document Name</th>
+                <th class="sortable">Dated</th>
+                <th>View Document</th>
+                <th class="sortable">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+
+
+      <!-- Correspondences with other Stakeholders Tab -->
+      <div class="tab-pane fade" id="dpr-corr-other" role="tabpanel">
+        <button id="dpr-addCorrOtherBtn" class="btn btn-sm btn-success mb-2">+ Add Other Correspondence</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="dprCorrOtherTable">
+            <thead>
+              <tr>
+                <th class="sortable">S. No.</th>
+                <th class="sortable">Subject</th>
+                <th class="sortable">Dated</th>
+                <th class="sortable">From</th>
+                <th class="sortable">To</th>
+                <th class="sortable">Uploaded On</th>
+                <th>View</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Key Issues Tab -->
+      <div class="tab-pane fade" id="dpr-key-issues" role="tabpanel">
+        <button id="dpr-addIssueBtn" class="btn btn-sm btn-success mb-2">+ Add Issue</button>
+        <div class="table-responsive">
+          <table class="table table-bordered" id="dprIssuesTable">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort-key="sno">S. No.</th>
+                <th class="sortable" data-sort-key="issue_description">Issue Description</th>
+                <th class="sortable" data-sort-key="issue_pertaining_to">Issue Pertaining To</th>
+                <th class="sortable" data-sort-key="issue_date">Issue Date</th>
+                <th>View Issue Document</th>
+                <th class="sortable" data-sort-key="createdAt">Uploaded On</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      var dprProjects = [];
+      var currentVisibleProjects = [];
+      var queryParams = new URLSearchParams(window.location.search);
+      var pmcEntryId = queryParams.get('pmc_entry_id') || null;
+      var projectNameFilter = (queryParams.get('project_name') || '').trim();
+      var segmentParam = (queryParams.get('segment') || '').trim().toLowerCase();
+      // Accept both hyphen and underscore forms and map DPR/PFR variants to internal 'pmc_dpr' slice key
+      var sliceSegmentKey = 'pmc_dpr';
+      if (segmentParam === 'pmc_dpr' || segmentParam === 'dpr' || segmentParam === 'pmc_dpr_pfr' || segmentParam === 'pmc-dpr-pfr' || segmentParam === 'pmc_dpr-pfr') {
+        sliceSegmentKey = 'pmc_dpr';
+      }
+      var sliceEntryIdParam = null;
+      if (pmcEntryId && /^slice-/i.test(pmcEntryId)) {
+        sliceEntryIdParam = String(pmcEntryId);
+        pmcEntryId = null;
+      }
+      var openMilestoneDropdown = null;
+      var dprContractDocsItems = [];
+      var dprCorrItems = [];
+      var dprIssueItems = [];
+      var dprIssuesSort = { key: 'createdAt', order: 'desc' };
+
+      function matchesSliceEntryId(sliceItem) {
+        if (!sliceEntryIdParam) return true;
+        var sid = String(sliceItem.pmc_slice_meta_id || sliceItem.id || '');
+        return ('slice-' + sid).toLowerCase() === sliceEntryIdParam.toLowerCase();
+      }
+
+      function authFetch(url, options) {
+        options = options || {};
+        var token = localStorage.getItem('token');
+        var headers = Object.assign({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, options.headers || {});
+        return fetch(url, Object.assign({}, options, { headers: headers })).then(function (res) {
+          if (res.status === 401) { alert('Session expired.'); localStorage.clear(); window.location.href = '/'; throw new Error('Unauthorized'); }
+          return res;
+        });
+      }
+
+      function formatDate(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        return isNaN(d.getTime()) ? v : d.toLocaleDateString('en-IN');
+      }
+
+      function formatDateTime(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        return isNaN(d.getTime()) ? v : d.toLocaleString('en-IN');
+      }
+
+      function formatCurrency(v) {
+        var a = parseFloat(v) || 0;
+        return a ? a.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+      }
+
+      function toInputDate(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        if (isNaN(d.getTime())) return '';
+        return d.toISOString().slice(0, 10);
+      }
+
+      function initSortableTable(tableId) {
+        var table = document.getElementById(tableId);
+        if (!table) return;
+        var tbody = table.querySelector('tbody');
+        var headers = table.querySelectorAll('th.sortable');
+        headers.forEach(function (th, idx) {
+          th.style.cursor = 'pointer';
+          th.addEventListener('click', function () {
+            var current = th.getAttribute('data-order') || 'desc';
+            var next = current === 'asc' ? 'desc' : 'asc';
+            headers.forEach(function (h) { h.removeAttribute('data-order'); });
+            th.setAttribute('data-order', next);
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+              var av = (a.children[idx] && a.children[idx].innerText || '').trim();
+              var bv = (b.children[idx] && b.children[idx].innerText || '').trim();
+              var ad = Date.parse(av);
+              var bd = Date.parse(bv);
+              if (!isNaN(ad) && !isNaN(bd)) return next === 'asc' ? ad - bd : bd - ad;
+              return next === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+            });
+            rows.forEach(function (r) { tbody.appendChild(r); });
+          });
+        });
+      }
+
+      function buildSliceContextId() {
+        if (!projectNameFilter) return null;
+        return 'slicectx:pmc_dpr:' + projectNameFilter.toLowerCase();
+      }
+
+      function getContextProjectName() {
+        if (projectNameFilter) return String(projectNameFilter).trim();
+        if (pmcEntryId) {
+          var byId = (currentVisibleProjects || []).find(function (p) {
+            return String(p.pmc_entry_id || '') === String(pmcEntryId);
+          });
+          if (byId) return String(byId.projectName || byId.client || byId.projectDetails || '').trim();
+        }
+        if (currentVisibleProjects.length === 1) {
+          return String(currentVisibleProjects[0].projectName || currentVisibleProjects[0].client || currentVisibleProjects[0].projectDetails || '').trim();
+        }
+        return '';
+      }
+
+      function getActiveProjectIds() {
+        return (currentVisibleProjects || [])
+          .map(function (p) { return String(p.pmc_entry_id || ''); })
+          .filter(function (id) { return id && !/^slice-/i.test(id); });
+      }
+
+      function getPreferredProjectId() {
+        if (pmcEntryId && !/^slice-/i.test(String(pmcEntryId))) return pmcEntryId;
+        var ids = getActiveProjectIds();
+        return ids.length === 1 ? ids[0] : null;
+      }
+
+      function getContextEntityId() {
+        return getPreferredProjectId() || buildSliceContextId();
+      }
+
+      function getPublicFileHref(storagePath) {
+        if (!storagePath) return '';
+        var p = String(storagePath).replace(/\\/g, '/');
+        var lower = p.toLowerCase();
+        var idx = lower.lastIndexOf('/uploads/');
+        if (idx >= 0) return p.substring(idx);
+        if (lower.indexOf('uploads/') === 0) return '/' + p;
+        if (p.charAt(0) !== '/') return '/' + p;
+        return p;
+      }
+
+      function toSortableValue(item, key, index) {
+        if (key === 'sno') return index + 1;
+        if (key === 'issue_date' || key === 'createdAt') {
+          var d = new Date(item && item[key] ? item[key] : null);
+          return isNaN(d.getTime()) ? 0 : d.getTime();
+        }
+        return String((item && item[key]) || '').toLowerCase();
+      }
+
+      function renderDprIssuesRows(items) {
+        var tbody = document.querySelector('#dprIssuesTable tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (!items.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No issues found</td></tr>';
+          return;
+        }
+        items.forEach(function (it, i) {
+          var issueHref = getPublicFileHref(it.storage_path);
+          var viewLink = issueHref ? '<a href="' + issueHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>' : '-';
+          var issueId = it.issue_id || it.id || '';
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>' + (i + 1) + '</td>' +
+            '<td>' + (it.issue_description || '') + '</td>' +
+            '<td>' + (it.issue_pertaining_to || '') + '</td>' +
+            '<td>' + (it.issue_date ? new Date(it.issue_date).toLocaleDateString('en-IN') : '') + '</td>' +
+            '<td>' + viewLink + ' <button class="btn btn-sm btn-secondary ms-1" onclick="editDprIssue(\'' + issueId + '\')">Edit</button></td>' +
+            '<td>' + (it.createdAt ? new Date(it.createdAt).toLocaleString('en-IN') : '') + '</td>' +
+            '<td><button class="btn btn-danger btn-sm" onclick="deleteDprIssue(\'' + issueId + '\')">Delete</button></td>';
+          tbody.appendChild(tr);
+        });
+      }
+
+      function applyDprIssuesSort() {
+        var key = dprIssuesSort.key;
+        var order = dprIssuesSort.order;
+        var sorted = (dprIssueItems || []).slice().sort(function (a, b) {
+          var ai = dprIssueItems.indexOf(a);
+          var bi = dprIssueItems.indexOf(b);
+          var av = toSortableValue(a, key, ai);
+          var bv = toSortableValue(b, key, bi);
+          if (av < bv) return order === 'asc' ? -1 : 1;
+          if (av > bv) return order === 'asc' ? 1 : -1;
+          return 0;
+        });
+        renderDprIssuesRows(sorted);
+      }
+
+      function initDprIssuesSorting() {
+        var table = document.getElementById('dprIssuesTable');
+        if (!table) return;
+        var headers = table.querySelectorAll('th.sortable');
+        headers.forEach(function (th) {
+          th.addEventListener('click', function () {
+            var key = th.getAttribute('data-sort-key');
+            if (!key) return;
+            if (dprIssuesSort.key === key) {
+              dprIssuesSort.order = dprIssuesSort.order === 'asc' ? 'desc' : 'asc';
+            } else {
+              dprIssuesSort.key = key;
+              dprIssuesSort.order = 'asc';
+            }
+            headers.forEach(function (h) { h.removeAttribute('data-order'); });
+            th.setAttribute('data-order', dprIssuesSort.order);
+            applyDprIssuesSort();
+          });
+        });
+        var active = table.querySelector('th.sortable[data-sort-key="' + dprIssuesSort.key + '"]');
+        if (active) active.setAttribute('data-order', dprIssuesSort.order);
+      }
+
+      // Fallback navigation helper — ensures Add Milestone always opens Add form
+      function openAddMilestone() {
+        try {
+          var href = '/add_pmc_entry.html?from=dpr&segment=pmc_dpr';
+          var contextProject = getContextProjectName();
+          if (contextProject) href += '&project_name=' + encodeURIComponent(contextProject);
+          window.location.href = href;
+        } catch (e) {
+          console.error('openAddMilestone error', e);
+        }
+      }
+
+      // ---- Contract Documents ----
+      function fetchContractDocs() {
+        var tbody = document.querySelector('#dprContractDocsTable tbody');
+        if (!tbody) return;
+        var url = '/api/data/documents/dpr/documents';
+        var targetEntityId = getContextEntityId();
+        var contextProjectName = getContextProjectName();
+        var activeIds = getActiveProjectIds();
+        if (targetEntityId) url += '?entity_id=' + encodeURIComponent(targetEntityId);
+        if (contextProjectName) url += (url.indexOf('?') === -1 ? '?' : '&') + 'project_name=' + encodeURIComponent(contextProjectName);
+        authFetch(url)
+          .then(function (res) { if (!res.ok) throw new Error('Failed'); return res.json(); })
+          .then(function (docs) {
+            docs = Array.isArray(docs) ? docs : [];
+            dprContractDocsItems = docs.slice();
+            if (!targetEntityId && activeIds.length > 1) {
+              docs = docs.filter(function (d) {
+                var id = String(d.pmc_entry_id || '');
+                return activeIds.indexOf(id) !== -1;
+              });
+            }
+            tbody.innerHTML = '';
+            if (!docs.length) {
+              tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No documents found</td></tr>';
+              return;
+            }
+            docs.forEach(function (d, i) {
+              var docHref = getPublicFileHref(d.storage_path);
+              var viewLink = docHref
+                ? '<a href="' + docHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
+                : '-';
+              var tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (d.description || d.original_name || '') + '</td>' +
+                '<td>' + formatDate(d.doc_date) + '</td>' +
+                '<td>' + viewLink + '</td>' +
+                '<td>' + formatDateTime(d.createdAt) + '</td>' +
+                '<td><button class="btn btn-danger btn-sm" onclick="deleteDprDoc(' + d.id + ')">Delete</button></td>';
+              tbody.appendChild(tr);
+            });
+          })
+          .catch(function (err) {
+            console.error('fetchContractDocs error:', err);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Failed to load documents</td></tr>';
+          });
+      }
+
+      window.deleteDprDoc = function (id) {
+        if (!confirm('Are you sure you want to delete this document?')) return;
+        authFetch('/api/data/documents/dpr/document/' + id, { method: 'DELETE' })
+          .then(function (res) {
+            if (res.ok) { alert('Document deleted'); fetchContractDocs(); }
+            else alert('Error deleting document');
+          })
+          .catch(function (err) { console.error(err); alert('Error deleting document'); });
+      };
+
+      window.editDprDoc = function (id) {
+        var d = (dprContractDocsItems || []).find(function (x) { return String(x.id) === String(id); });
+        if (!d) return alert('Document not found');
+        var href = '/add_contract_document_dpr.html?edit_id=' + encodeURIComponent(d.id);
+        if (d.pmc_entry_id) href += '&entity_id=' + encodeURIComponent(d.pmc_entry_id);
+        var contextProjectName = getContextProjectName();
+        if (contextProjectName) href += '&project_name=' + encodeURIComponent(contextProjectName);
+        href += '&segment=pmc_dpr';
+        href += '&doc_name=' + encodeURIComponent(d.description || d.original_name || '');
+        href += '&doc_date=' + encodeURIComponent(toInputDate(d.doc_date));
+        window.location.href = href;
+      };
+
+      // ---- Correspondences with other Stakeholders ----
+      function fetchCorrespondences() {
+        var tbody = document.querySelector('#dprCorrOtherTable tbody');
+        if (!tbody) return;
+        var url = '/api/data/documents/dpr/correspondences';
+        var targetEntityId = getContextEntityId();
+        var contextProjectName = getContextProjectName();
+        var activeIds = getActiveProjectIds();
+        if (targetEntityId) url += '?entity_id=' + encodeURIComponent(targetEntityId);
+        if (contextProjectName) url += (url.indexOf('?') === -1 ? '?' : '&') + 'project_name=' + encodeURIComponent(contextProjectName);
+        authFetch(url)
+          .then(function (res) { if (!res.ok) throw new Error('Failed'); return res.json(); })
+          .then(function (items) {
+            items = Array.isArray(items) ? items : [];
+            dprCorrItems = items.slice();
+            if (!targetEntityId && activeIds.length > 1) {
+              items = items.filter(function (c) {
+                var id = String(c.pmc_entry_id || '');
+                return activeIds.indexOf(id) !== -1;
+              });
+            }
+            tbody.innerHTML = '';
+            if (!items.length) {
+              tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No correspondences found</td></tr>';
+              return;
+            }
+            items.forEach(function (c, i) {
+              var fromVal = c.sender || '';
+              var toVal = c.recipient || '';
+              if (!fromVal && !toVal && c.correspondent) {
+                var parts = c.correspondent.split(' -> ');
+                fromVal = parts[0] || '';
+                toVal = parts[1] || '';
+              }
+              var corrHref = getPublicFileHref(c.storage_path);
+              var viewLink = corrHref
+                ? '<a href="' + corrHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
+                : '-';
+              var tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (c.subject || '') + '</td>' +
+                '<td>' + formatDate(c.correspondence_date) + '</td>' +
+                '<td>' + fromVal + '</td>' +
+                '<td>' + toVal + '</td>' +
+                '<td>' + formatDateTime(c.createdAt) + '</td>' +
+                '<td>' + viewLink + '</td>' +
+                '<td><button class="btn btn-danger btn-sm" onclick="deleteDprCorr(' + c.id + ')">Delete</button></td>';
+              tbody.appendChild(tr);
+            });
+            // ensure issues are fetched after correspondences
+            fetchDprIssues();
+          })
+          .catch(function (err) {
+            console.error('fetchCorrespondences error:', err);
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Failed to load correspondences</td></tr>';
+            // Keep issues tab functional even if correspondences endpoint fails.
+            fetchDprIssues();
+          });
+      }
+
+      window.deleteDprCorr = function (id) {
+        if (!confirm('Are you sure you want to delete this correspondence?')) return;
+        authFetch('/api/data/documents/dpr/correspondence/' + id, { method: 'DELETE' })
+          .then(function (res) {
+            if (res.ok) { alert('Correspondence deleted'); fetchCorrespondences(); }
+            else alert('Error deleting correspondence');
+          })
+          .catch(function (err) { console.error(err); alert('Error deleting correspondence'); });
+      };
+
+      window.editDprCorr = function (id) {
+        var c = (dprCorrItems || []).find(function (x) { return String(x.id) === String(id); });
+        if (!c) return alert('Correspondence not found');
+        var href = '/add_correspondence_other_dpr.html?edit_id=' + encodeURIComponent(c.id);
+        if (c.pmc_entry_id) href += '&entity_id=' + encodeURIComponent(c.pmc_entry_id);
+        var contextProjectName = getContextProjectName();
+        if (contextProjectName) href += '&project_name=' + encodeURIComponent(contextProjectName);
+        href += '&segment=pmc_dpr';
+        href += '&subject=' + encodeURIComponent(c.subject || '');
+        href += '&from=' + encodeURIComponent(c.sender || '');
+        href += '&to=' + encodeURIComponent(c.recipient || '');
+        href += '&correspondence_date=' + encodeURIComponent(toInputDate(c.correspondence_date));
+        window.location.href = href;
+      };
+
+      // ---- DPR Key Issues ----
+      function fetchDprIssues() {
+        var tbody = document.querySelector('#dprIssuesTable tbody');
+        if (!tbody) return;
+        var url = '/api/data/issues/dpr/issues';
+        var targetEntityId = getContextEntityId();
+        var contextProjectName = getContextProjectName();
+        if (targetEntityId) url += '?entity_id=' + encodeURIComponent(targetEntityId);
+        if (contextProjectName) url += (url.indexOf('?') === -1 ? '?' : '&') + 'project_name=' + encodeURIComponent(contextProjectName);
+        authFetch(url)
+          .then(function (res) { if (!res.ok) throw new Error('Failed'); return res.json(); })
+          .then(function (items) {
+            dprIssueItems = Array.isArray(items) ? items : [];
+            applyDprIssuesSort();
+          })
+          .catch(function (err) { console.error('fetchDprIssues error', err); tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Failed to load issues</td></tr>'; });
+      }
+
+      window.editDprIssue = function (id) {
+        var issue = (dprIssueItems || []).find(function (x) { return String(x.issue_id || x.id || '') === String(id); });
+        if (!issue) {
+          alert('Issue not found');
+          return;
+        }
+        var href = '/add_issues.html?context=pmc_dpr&edit_id=' + encodeURIComponent(issue.issue_id || issue.id || '');
+        if (issue.pmc_entry_id) href += '&pmc_dpr_entity_id=' + encodeURIComponent(issue.pmc_entry_id);
+        var contextProjectName = getContextProjectName();
+        if (contextProjectName) href += '&project_name=' + encodeURIComponent(contextProjectName);
+        href += '&issue_description=' + encodeURIComponent(issue.issue_description || '');
+        href += '&issue_pertaining_to=' + encodeURIComponent(issue.issue_pertaining_to || '');
+        href += '&issue_date=' + encodeURIComponent(toInputDate(issue.issue_date));
+        window.location.href = href;
+      };
+
+      window.deleteDprIssue = function (id) {
+        if (!confirm('Are you sure you want to delete this issue?')) return;
+        authFetch('/api/data/issues/dpr/issue/' + encodeURIComponent(id), { method: 'DELETE' })
+          .then(function (res) { if (res.ok) { alert('Issue deleted'); fetchDprIssues(); } else alert('Error deleting issue'); })
+          .catch(function (err) { console.error(err); alert('Error deleting issue'); });
+      };
+
+      // ---- Milestones (PMC Projects) ----
+      // Get color coding for service type/project categorization
+      function getServiceTypeColor(serviceType) {
+        var st = String(serviceType || '').trim().toUpperCase();
+        if (st === 'BMS') return { bg: '#a85dc0', text: '#fff', label: 'BMS' };
+        if (st === 'DPR') return { bg: '#0b5ed7', text: '#fff', label: 'DPR' };
+        if (st === 'EXECUTION' || st === 'C&E') return { bg: '#17a2b8', text: '#fff', label: 'Execution' };
+        return { bg: '#6c757d', text: '#fff', label: st };
+      }
+
+      function getMilestoneBarClass(invoiceAmount, invoiceRaised, invoiceStatus) {
+        var raised = parseFloat(invoiceRaised) || 0;
+        var st = String(invoiceStatus || '').trim().toLowerCase();
+        if (raised <= 0 && (st === 'pending' || st === 'delayed' || st === 'delay')) return 'summary-bar-orange';
+        if (raised > 0 && st === 'pending') return 'summary-bar-yellow';
+        if (raised > 0 && st === 'received') return 'summary-bar-green';
+        return 'summary-bar-orange';
+      }
+
+      function getProgressBarMarkup(ia, ir, is) {
+        var amt = parseFloat(ia) || 0;
+        var raised = parseFloat(ir) || 0;
+        var pct = amt > 0 ? Math.min(100, (raised / amt) * 100) : 0;
+        var cls = getMilestoneBarClass(ia, ir, is);
+        return '<div class="summary-bar" style="justify-content:center;"><div class="summary-bar-track"><div class="summary-bar-fill ' + cls + '" style="width:' + pct + '%;"></div></div><span class="summary-bar-value">' + pct.toFixed(1) + '%</span></div>';
+      }
+
+      function renderSummaryBar(project) {
+        var milestones = project.milestones || [];
+        var total = parseFloat(project.totalAmount) || 0;
+        var received = parseFloat(project.amountReceived) || 0;
+        var pct = total > 0 ? Math.min(100, (received / total) * 100) : 0;
+        if (!milestones.length) return '<div class="summary-bar"><div class="summary-bar-track"><div class="summary-bar-fill summary-bar-orange" style="width:100%;"></div></div><span class="summary-bar-value">0.0%</span></div>';
+        var totalMA = milestones.reduce(function (s, m) { return s + (parseFloat(m.invoice_amount) || 0); }, 0);
+        var weights = totalMA > 0 ? milestones.map(function (m) { return (parseFloat(m.invoice_amount) || 0) / totalMA; }) : milestones.map(function () { return 1 / milestones.length; });
+        var segs = milestones.map(function (m, i) { return '<div class="summary-bar-segment ' + getMilestoneBarClass(m.invoice_amount, m.invoice_raised, m.status) + '" style="width:' + Math.max(0, weights[i] * 100) + '%;"></div>'; }).join('');
+        return '<div class="summary-bar"><div class="summary-bar-track" style="display:flex;">' + segs + '</div><span class="summary-bar-value">' + pct.toFixed(1) + '%</span></div>';
+      }
+
+      function buildMilestoneDropdownTable(project) {
+        var ms = (project && project.milestones) ? project.milestones : [];
+        if (!ms.length) return '<div style="text-align:center;padding:12px;color:#999;">No milestones available</div>';
+        var typeColor = getServiceTypeColor(project.serviceType);
+        var rows = ms.map(function (m, i) {
+          return '<tr>' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + (m.milestone || '') + '</td>' +
+            '<td>' + (m.stage_payment != null ? m.stage_payment : '') + '</td>' +
+            '<td>' + formatCurrency(m.invoice_amount) + '</td>' +
+            '<td>' + formatCurrency(m.invoice_raised) + '</td>' +
+            '<td>' + formatDate(m.invoice_date) + '</td>' +
+            '<td>' + (m.invoice_number || '') + '</td>' +
+            '<td>' + (m.status || '') + '</td>' +
+            '<td>' + getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status) + '</td>' +
+            '</tr>';
+        }).join('');
+        return '<div style="overflow-x:auto;">' +
+          '<div style="padding:8px; background:' + typeColor.bg + '; color:' + typeColor.text + '; font-weight:600; margin-bottom:8px; border-radius:4px;">Service Type: ' + typeColor.label + '</div>' +
+          '<table class="table table-bordered mb-0"><thead><tr>' +
+          '<th>Sr no</th><th>Milestone</th><th>Stage Payment</th><th>Invoice Amount</th><th>Invoice Raised</th><th>Invoice Date</th><th>Invoice Number</th><th>Invoice Status</th><th>Progress</th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      }
+
+      function toggleMilestones(btn, projectId) {
+        var project = dprProjects.find(function (p) { return p.pmc_entry_id === projectId; });
+        if (!project) return;
+        var parentRow = btn.closest('tr');
+        if (!parentRow) return;
+        if (openMilestoneDropdown && openMilestoneDropdown.row) {
+          var same = openMilestoneDropdown.projectId === projectId;
+          openMilestoneDropdown.row.remove();
+          openMilestoneDropdown = null;
+          if (same) return;
+        }
+        var dr = document.createElement('tr');
+        dr.className = 'milestone-dropdown-row';
+        dr.innerHTML = '<td colspan="15"><div class="milestone-dropdown-container"><div class="milestone-dropdown-title">Milestones - ' + (project.serviceType || '') + ' / ' + (project.client || '') + '</div>' + buildMilestoneDropdownTable(project) + '</div></td>';
+        parentRow.parentNode.insertBefore(dr, parentRow.nextSibling);
+        openMilestoneDropdown = { row: dr, projectId: projectId };
+      }
+
+      function fetchDPRData() {
+        var tbody = document.getElementById('dprTableBody');
+        if (!tbody) return;
+        // Fetch projects only from pmc_project endpoint
+        var allUrl = '/api/data/pmc/entry/all?segment=' + encodeURIComponent(sliceSegmentKey);
+        if (projectNameFilter) allUrl += '&project_name=' + encodeURIComponent(projectNameFilter);
+        authFetch(allUrl).then(function (res) { if (!res.ok) throw new Error('Failed'); return res.json(); }).then(processDPRResults).catch(function (err) { console.error(err); tbody.innerHTML = '<tr><td colspan="15" class="text-center text-muted">Failed to load data</td></tr>'; });
+      }
+
+      function processDPRResults(payload) {
+        var tbody = document.getElementById('dprTableBody');
+        if (!tbody) return;
+        var projects = Array.isArray(payload.data) ? payload.data : [];
+            // Normalize raw project objects: prefer stored total_amount from DB, fallback to milestone sums
+            dprProjects = projects.map(function (p) {
+              var ms = Array.isArray(p.milestones) ? p.milestones : [];
+              var milestoneInvoiceSum = ms.reduce(function (s, m) { return s + (parseFloat(m.invoice_amount) || 0); }, 0);
+              var milestoneRaisedSum = ms.reduce(function (s, m) { return s + (parseFloat(m.invoice_raised) || 0); }, 0);
+              // Prefer explicit stored totals on the entry, otherwise use milestone-derived totals
+              var storedTotal = (p.total_amount != null && p.total_amount !== '') ? Number(p.total_amount) : (p.totalAmount != null ? Number(p.totalAmount) : null);
+              var totalAmt = Number.isFinite(storedTotal) && storedTotal >= 0 ? storedTotal : milestoneInvoiceSum;
+              var amtReceived = (p.amount_received != null && p.amount_received !== '') ? Number(p.amount_received) : (p.amountReceived != null ? Number(p.amountReceived) : milestoneRaisedSum);
+              // Normalize service type to predictable labels
+              var svc = (p.service_type || p.serviceType || '').toString().trim();
+              if (/c\s*&\s*e/i.test(svc)) svc = 'Execution';
+              // keep original case where possible
+              return {
+                pmc_entry_id: p.pmc_entry_id,
+                projectName: p.project_name || '',
+                serviceType: svc || '',
+                client: p.client || p.project_name || p.client_name || '',
+                projectDetails: p.project_details || p.projectDetails || p.project_name || '',
+                loaDate: formatDate(p.loa_date),
+                startDate: formatDate(p.start_date),
+                endDate: formatDate(p.end_date),
+                targetDate: formatDate(p.target_date),
+                totalAmount: totalAmt || 0,
+                amountReceived: amtReceived || 0,
+                amountPending: (p.amount_pending != null) ? Number(p.amount_pending) : Math.max(0, (totalAmt || 0) - (amtReceived || 0)),
+                status: p.status || '',
+                milestones: ms,
+              };
+            });
+
+            // Compute display status from milestones when appropriate and ensure numeric totals consistent
+            dprProjects = dprProjects.map(function (project) {
+              var invoiceAmountTotal = (project.milestones || []).reduce(function (s, m) { return s + (parseFloat(m.invoice_amount) || 0); }, 0);
+              var invoiceRaisedTotal = (project.milestones || []).reduce(function (s, m) { return s + (parseFloat(m.invoice_raised) || 0); }, 0);
+              var statusToShow = project.status || '';
+              if (Array.isArray(project.milestones) && project.milestones.length) {
+                // Priority rule: if invoice_raised has value, status must be that milestone name
+                var raised = project.milestones.filter(function (m) { return parseFloat(m.invoice_raised || m.invoiceRaised || 0) > 0; });
+                if (raised.length) {
+                  statusToShow = raised[raised.length - 1].milestone || statusToShow;
+                }
+              }
+              var finalTotal = (project.totalAmount && project.totalAmount > 0) ? project.totalAmount : invoiceAmountTotal;
+              var finalRaised = (project.amountReceived && project.amountReceived > 0) ? project.amountReceived : invoiceRaisedTotal;
+              return Object.assign({}, project, { totalAmount: finalTotal, amountReceived: finalRaised, amountPending: Math.max(0, finalTotal - finalRaised), status: statusToShow });
+            });
+
+            var visible = [];
+            if (pmcEntryId) {
+              // If a specific pmc_entry_id is requested, show only that saved project (if present)
+              visible = dprProjects.filter(function (p) { return String(p.pmc_entry_id || '') === String(pmcEntryId); });
+            } else {
+              // Normal listing: show projects whose service type maps to DPR
+              visible = dprProjects.filter(function (p) {
+                var st = String(p.serviceType || '').trim().toUpperCase();
+                return st === 'DPR';
+              });
+
+              // Filter by project name/client from donut click if provided (allow partial match)
+              if (projectNameFilter) {
+                var q = projectNameFilter.toLowerCase();
+                visible = visible.filter(function (p) {
+                  var name = String(p.projectName || '').toLowerCase();
+                  var client = String(p.client || '').toLowerCase();
+                  var details = String(p.projectDetails || '').toLowerCase();
+                  return name === q || client === q || details === q || name.indexOf(q) !== -1 || client.indexOf(q) !== -1 || details.indexOf(q) !== -1;
+                });
+              }
+            }
+
+            if (!pmcEntryId && projectNameFilter) {
+              var seenProject = {};
+              visible = visible.filter(function (p) {
+                var key = String(p.projectName || p.client || p.projectDetails || p.pmc_entry_id || '').trim().toLowerCase();
+                if (!key) return true;
+                if (seenProject[key]) return false;
+                seenProject[key] = true;
+                return true;
+              });
+            }
+
+            // No slice-editor fallback: only show projects from pmc_project
+            
+            dprProjects = visible;
+            currentVisibleProjects = visible;
+            fetchContractDocs();
+            fetchCorrespondences();
+            fetchDprIssues();
+
+            if (!visible.length) {
+              tbody.innerHTML = '<tr><td colspan="15" class="text-center text-muted">No DPR projects available</td></tr>';
+              return;
+            }
+
+            tbody.innerHTML = '';
+            visible.forEach(function (project, i) {
+              var tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (project.serviceType || '') + '</td>' +
+                '<td>' + (project.client || '') + '</td>' +
+                '<td>' + (project.projectDetails || '') + '</td>' +
+                '<td>' + (project.loaDate || '') + '</td>' +
+                '<td>' + (project.startDate || '') + '</td>' +
+                '<td>' + (project.endDate || '') + '</td>' +
+                '<td>' + (project.targetDate || '') + '</td>' +
+                '<td>' + formatCurrency(project.totalAmount) + '</td>' +
+                '<td>' + formatCurrency(project.amountReceived) + '</td>' +
+                '<td>' + formatCurrency(project.amountPending) + '</td>' +
+                '<td>' + (project.status || '') + '</td>' +
+                '<td>' + renderSummaryBar(project) + '</td>' +
+                '<td><button class="btn btn-sm btn-primary" onclick="toggleMilestones(this,\'' + project.pmc_entry_id + '\')">View</button></td>' +
+                '<td><button class="btn btn-sm btn-secondary me-1" onclick="editEntry(\'' + project.pmc_entry_id + '\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEntry(\'' + project.pmc_entry_id + '\')">Delete</button></td>';
+              tbody.appendChild(tr);
+              });
+
+            // Auto-expand project if pmc_entry_id present in URL
+            if (pmcEntryId) {
+              setTimeout(function () {
+                try {
+                  var selector = '#dprTableBody button[onclick*="toggleMilestones(this,\'' + pmcEntryId + '\')"]';
+                  var btn = document.querySelector(selector);
+                  if (btn) btn.click();
+                } catch (e) { /* ignore */ }
+              }, 80);
+            }
+      }
+
+      function editEntry(pid) {
+        if (pid && /^slice-/i.test(String(pid))) {
+          var p = (currentVisibleProjects || []).find(function (x) { return String(x.pmc_entry_id || '') === String(pid); }) || {};
+          var contextProject = (p.projectName || p.client || p.projectDetails || projectNameFilter || '').trim();
+          var  href = '/add_pmc_entry.html?from=dpr&segment=pmc_dpr';
+          if (contextProject) href += '&project_name=' + encodeURIComponent(contextProject);
+          window.location.href = href;
+          return;
+        }
+        window.location.href = '/add_pmc_entry.html?edit=' + encodeURIComponent(pid) + '&from=dpr';
+      }
+
+      function deleteEntry(pid) {
+        if (!pid || /^slice-/i.test(String(pid))) {
+          alert('Only saved milestone entries can be deleted.');
+          return;
+        }
+        if (!confirm('Are you sure you want to delete this milestone entry?')) return;
+        authFetch('/api/data/pmc/entry/delete/' + encodeURIComponent(pid), { method: 'DELETE' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('Delete failed');
+            alert('Milestone entry deleted successfully');
+            fetchDPRData();
+          })
+          .catch(function (err) {
+            console.error(err);
+            alert('Failed to delete milestone entry');
+          });
+      }
+
+      // ---- Init ----
+      document.addEventListener('DOMContentLoaded', function () {
+        initDprIssuesSorting();
+        initSortableTable('dprContractDocsTable');
+        initSortableTable('dprCorrOtherTable');
+        fetchContractDocs();
+        fetchCorrespondences();
+        fetchDprIssues();
+        fetchDPRData();
+
+        document.getElementById('dpr-addContractDocBtn').addEventListener('click', function () {
+          var href = '/add_contract_document_dpr.html';
+          var targetEntityId = getContextEntityId();
+          var contextProject = getContextProjectName();
+          if (targetEntityId) href += '?entity_id=' + encodeURIComponent(targetEntityId);
+          if (contextProject) href += (href.indexOf('?') === -1 ? '?' : '&') + 'project_name=' + encodeURIComponent(contextProject);
+          href += (href.indexOf('?') === -1 ? '?' : '&') + 'segment=pmc_dpr_pfr';
+          window.location.href = href;
+        });
+
+        var addMilestoneBtn = document.getElementById('dpr-addMilestoneBtn');
+        addMilestoneBtn.addEventListener('click', function () {
+          // Always open Add form (not edit) so saving creates a new milestone row.
+          // Do not force serviceType here; only DPR is applicable for this segment.
+          var href = '/add_pmc_entry.html?from=dpr&segment=pmc_dpr_pfr';
+          var contextProject = getContextProjectName();
+          if (contextProject) href += '&project_name=' + encodeURIComponent(contextProject);
+          window.location.href = href;
+        });
+
+        document.getElementById('dpr-addCorrOtherBtn').addEventListener('click', function () {
+          var href = '/add_correspondence_other_dpr.html';
+          var targetEntityId = getContextEntityId();
+          var contextProject = getContextProjectName();
+          if (targetEntityId) href += '?entity_id=' + encodeURIComponent(targetEntityId);
+          if (contextProject) href += (href.indexOf('?') === -1 ? '?' : '&') + 'project_name=' + encodeURIComponent(contextProject);
+          href += (href.indexOf('?') === -1 ? '?' : '&') + 'segment=pmc_dpr_pfr';
+          window.location.href = href;
+        });
+
+        // Key Issues: open add_issues.html with resolved dept/statistic/entity context
+        document.getElementById('dpr-addIssueBtn').addEventListener('click', function () {
+          var targetEntityId = getContextEntityId() || getPreferredProjectId();
+          if (!targetEntityId) {
+            alert('No project/context selected to add an issue.');
+            return;
+          }
+
+          console.log('dpr: add issue -> targetEntityId=', targetEntityId);
+
+          function openAddIssuesWithCtx(ctxObj) {
+            var href = '/add_issues.html';
+            if (ctxObj.dept_id) href += '?dept_id=' + encodeURIComponent(ctxObj.dept_id);
+            if (ctxObj.statistic_id) href += (href.indexOf('?') === -1 ? '?' : '&') + 'statistic_id=' + encodeURIComponent(ctxObj.statistic_id);
+            if (ctxObj.entity_id) href += '&entity_id=' + encodeURIComponent(ctxObj.entity_id);
+            href += '&context=pmc_dpr&pmc_dpr_entity_id=' + encodeURIComponent(targetEntityId);
+            window.open(href, '_blank');
+          }
+
+          if (String(targetEntityId || '').indexOf('slicectx:') === 0) {
+            try {
+              var parts = String(targetEntityId).split(':');
+              var projectName = parts[parts.length - 1] || '';
+              console.log('dpr: resolving slice context, projectName=', projectName);
+              var entriesUrl = '/api/data/pmc/entry/all?segment=' + encodeURIComponent(sliceSegmentKey) + '&project_name=' + encodeURIComponent(projectName);
+              authFetch(entriesUrl).then(function (res) {
+                if (!res.ok) throw new Error('Failed to lookup project entries');
+                return res.json();
+              }).then(function (payload) {
+                var list = Array.isArray(payload.data) ? payload.data : [];
+                if (list.length === 0) {
+                  var fallbackHref = '/add_issues.html?project_name=' + encodeURIComponent(projectName) + '&context=pmc_dpr&pmc_dpr_entity_id=' + encodeURIComponent(targetEntityId);
+                  console.warn('dpr: no saved entry found, opening add_issues fallback', fallbackHref);
+                  window.open(fallbackHref, '_blank');
+                  return;
+                }
+                var resolvedId = String(list[0].pmc_entry_id || '');
+                console.log('dpr: resolved slice to pmc_entry_id=', resolvedId);
+                authFetch('/api/data/entities/context/' + encodeURIComponent(resolvedId)).then(function (res2) {
+                  if (!res2.ok) throw new Error('Failed to resolve context for resolved id: ' + res2.status);
+                  return res2.json();
+                }).then(function (ctx) {
+                  ctx.entity_id = ctx.entity_id || resolvedId;
+                  openAddIssuesWithCtx(ctx);
+                }).catch(function (err) { console.error('dpr: resolve context error after entry lookup', err); alert('Failed to resolve entity context'); });
+              }).catch(function (err) {
+                console.error('dpr: entry lookup error', err);
+                var fallbackHref = '/add_issues.html?project_name=' + encodeURIComponent(projectName) + '&context=pmc_dpr&pmc_dpr_entity_id=' + encodeURIComponent(targetEntityId);
+                console.warn('dpr: entry lookup failed, opening add_issues fallback', fallbackHref);
+                window.open(fallbackHref, '_blank');
+              });
+            } catch (e) { console.error('dpr: slice-resolve exception', e); alert('Failed to resolve slice context'); }
+          } else {
+            // Normal path: open Add Issue page with project/slice context and let the add form handle resolution
+            try {
+              var href = '/add_issues.html';
+              var contextProject = getContextProjectName();
+              if (contextProject) href += '?project_name=' + encodeURIComponent(contextProject);
+              href += (href.indexOf('?') === -1 ? '?' : '&') + 'context=pmc_dpr&pmc_dpr_entity_id=' + encodeURIComponent(targetEntityId);
+              window.open(href, '_blank');
+            } catch (e) {
+              console.error('dpr: open add issues fallback error', e);
+              alert('Failed to open Add Issue page');
+            }
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

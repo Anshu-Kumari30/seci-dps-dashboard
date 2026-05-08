@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+  <script src="./js/auth_guard.js"></script>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const deptId = urlParams.get("dept_id");
+      const statisticId = urlParams.get("statistic_id");
+      const entityId = urlParams.get("entity_id");
+
+      const normalizedDept = deptId && deptId !== 'null' ? deptId : '';
+      const normalizedStat = statisticId && statisticId !== 'null' ? statisticId : '';
+      const normalizedEntity = entityId && entityId !== 'null' ? entityId : '';
+
+      // Resolve dept/stat/entity if missing. Try PMC C&E resolver first, then fallback.
+      (async function tryResolveIds(){
+        if ((!normalizedDept || !normalizedStat) && normalizedEntity) {
+          try {
+            let json = null;
+            try {
+              const res = await authFetch(`/api/data/pmc/ce/context/id/${normalizedEntity}`);
+              if (res.ok) json = await res.json();
+            } catch (e) {}
+            if (!json) {
+              try {
+                const res2 = await authFetch(`/api/data/entities/context/${normalizedEntity}`);
+                if (res2.ok) json = await res2.json();
+              } catch (e) {}
+            }
+            if (json && json.dept_id) {
+              normalizedDept = normalizedDept || json.dept_id || '';
+              normalizedStat = normalizedStat || json.statistic_id || '';
+              const resolvedEntity = json.dept_entity_id || json.entity_id || '';
+              normalizedEntity = resolvedEntity || normalizedEntity;
+            }
+          } catch (err) { console.error('Could not resolve dept/stat from entity_id', err); }
+        }
+        document.getElementById("deptId").value = normalizedDept;
+        document.getElementById("statisticId").value = normalizedStat;
+        document.getElementById("entityId").value = normalizedEntity;
+        document.getElementById("docType").value = 'dpr';
+      })();
+
+      const submitBtn = document.querySelector('.btn-save');
+      if (!normalizedDept || !normalizedStat || !normalizedEntity) {
+        submitBtn.disabled = true;
+        submitBtn.title = 'Open this form from the PMC C&E page to prefill project identifiers.';
+        const warn = document.createElement('div');
+        warn.className = 'alert alert-warning'; warn.style.marginBottom='16px';
+        warn.innerText = 'Missing project identifiers (dept/statistic/entity). Please open this form from the PMC C&E page for the selected entity.';
+        document.querySelector('.form-card').insertBefore(warn, document.getElementById('addDPRForm'));
+      }
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem('token');
+        const defaultHeaders = { Authorization: `Bearer ${token}` };
+        return fetch(url, { ...options, headers: { ...defaultHeaders, ...(options.headers||{}) } }).then(res => {
+          if (res.status === 401) { localStorage.clear(); window.location.href = '/'; throw new Error('Unauthorized'); }
+          return res;
+        });
+      }
+
+      document.getElementById('addDPRForm').addEventListener('submit', async function(e){
+        e.preventDefault();
+        if (!normalizedDept || !normalizedStat || !normalizedEntity) { alert('Cannot submit: missing identifiers'); return; }
+        const formData = new FormData(this);
+        try {
+          const res = await authFetch('/api/data/pmc/ce/documents', { method: 'POST', body: formData });
+          if (!res.ok) throw new Error('Failed');
+          alert('Saved');
+          window.location.href = `/pmc_ce_custom.html?dept_id=${normalizedDept}&statistic_id=${normalizedStat}&entity_id=${normalizedEntity}&tab=dpr&_ts=${Date.now()}`;
+        } catch(err) { console.error(err); alert('Save failed'); }
+      });
+    </script>
+        document.getElementById('docType').value = 'dpr';
+
+        const submitBtn = document.querySelector('.btn-save');
+        const fallback = document.getElementById('fallbackIds');
+        const deptInput = document.getElementById('deptIdInput');
+        const statInput = document.getElementById('statisticIdInput');
+        const entInput = document.getElementById('entityIdInput');
+
+        function refreshUI(){
+          const d = document.getElementById('deptId').value.trim();
+          const s = document.getElementById('statisticId').value.trim();
+          const e = document.getElementById('entityId').value.trim();
+          if(!d || !s || !e){
+            if(fallback) fallback.style.display = 'block';
+            if(deptInput) deptInput.value = d;
+            if(statInput) statInput.value = s;
+            if(entInput) entInput.value = e;
+            submitBtn.disabled = true;
+            submitBtn.title = 'Provide identifiers or open from PMC C&E page to enable saving.';
+            const existingWarn = document.querySelector('.form-card .alert-warning');
+            if(!existingWarn){
+              const warn = document.createElement('div'); warn.className='alert alert-warning'; warn.style.marginBottom='16px';
+              warn.innerText = 'Missing project identifiers (dept/statistic/entity). You can enter them below to enable Save.';
+              document.querySelector('.form-card').insertBefore(warn, document.getElementById('addDPRForm'));
+            }
+          } else {
+            if(fallback) fallback.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.title = '';
+            const existingWarn = document.querySelector('.form-card .alert-warning');
+            if(existingWarn) existingWarn.remove();
+          }
+        }
+
+        [deptInput, statInput, entInput].forEach(inp => {
+          if(!inp) return;
+          inp.addEventListener('input', () => {
+            const hid = document.getElementById(inp.id.replace('Input',''));
+            if(hid) hid.value = inp.value.trim();
+            refreshUI();
+          });
+        });
+
+        refreshUI();
+
+        function authFetch(url, options = {}) {
+          const token = localStorage.getItem('token');
+          const defaultHeaders = { Authorization: `Bearer ${token}` };
+          return fetch(url, { ...options, headers: { ...defaultHeaders, ...(options.headers||{}) } }).then(res => {
+            if (res.status === 401) { localStorage.clear(); window.location.href = '/'; throw new Error('Unauthorized'); }
+            return res;
+          });
+        }
+
+        document.getElementById('addDPRForm').addEventListener('submit', async function(e){
+          e.preventDefault();
+          const currentDept = document.getElementById('deptId').value.trim();
+          const currentStat = document.getElementById('statisticId').value.trim();
+          const currentEnt = document.getElementById('entityId').value.trim();
+          if(!currentDept || !currentStat || !currentEnt){ alert('Please provide dept_id, statistic_id, and entity_id before saving.'); return; }
+          const formData = new FormData(this);
+          try {
+            const res = await authFetch('/api/data/pmc/ce/documents', { method: 'POST', body: formData });
+            if(!res.ok){ const txt = await res.text(); console.error('Save failed:', res.status, txt); throw new Error('Failed'); }
+            alert('Saved');
+            window.location.href = `/pmc_ce_custom.html?dept_id=${encodeURIComponent(currentDept)}&statistic_id=${encodeURIComponent(currentStat)}&entity_id=${encodeURIComponent(currentEnt)}&tab=dpr`;
+          } catch(err){ console.error(err); alert('Save failed'); }
+        });
+      })();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

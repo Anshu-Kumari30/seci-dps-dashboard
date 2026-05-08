@@ -1,0 +1,557 @@
+<html>
+  <head>
+    <style>
+      body {
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        margin: 20px;
+        background: #f7f9fc;
+        color: #333;
+      }
+
+      /* Dropdown & button container */
+      .controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      select {
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #c5ccd6;
+        border-radius: 4px;
+      }
+
+      button {
+        padding: 8px 16px;
+        background: #004b89;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #003b6b;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 35px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+        overflow: hidden;
+        transition: opacity 0.4s ease, transform 0.4s ease;
+      }
+
+      th,
+      td {
+        padding: 10px 12px;
+        text-align: center;
+        border: 1px solid #d9e0e8;
+      }
+
+      th {
+        background: #004b89;
+        color: #fff;
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      tr:nth-child(1) th {
+        background: #003b6b;
+        font-size: 16px;
+      }
+
+      tr:nth-child(2) th {
+        background: #005fa3;
+      }
+
+      tr:nth-child(3) th {
+        background: #0a6fc2;
+      }
+
+      tr:nth-child(4) th {
+        background: #1b7fd3;
+      }
+
+      /* Last 7 days table headers */
+      table:nth-of-type(2) tr:nth-child(1) th {
+        background: #003b6b;
+        font-size: 16px;
+      }
+      table:nth-of-type(2) tr:nth-child(2) th {
+        background: #005fa3;
+      }
+      table:nth-of-type(2) tr:nth-child(3) th {
+        background: #0a6fc2;
+      }
+
+      tbody tr:nth-child(even) {
+        background: #f2f6fb;
+      }
+
+      /* Hidden class */
+      .hidden {
+        opacity: 0;
+        transform: scale(0.98);
+        pointer-events: none;
+        height: 0;
+        overflow: hidden;
+      }
+
+      @media (max-width: 900px) {
+        table {
+          font-size: 12px;
+        }
+        th,
+        td {
+          padding: 6px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <h1 id="pageHeader">O&M Solar + BESS Project</h1>
+    </div>
+    <!-- Dropdown + Back to Home -->
+    <div class="controls">
+      <input
+        type="date"
+        onchange="changeDataInTablesAccordingToDateSelector()"
+        id="datePicker"
+        name="date"
+      />
+
+      <!-- <select
+        id="dateSelector"
+        onchange="changeDataInTablesAccordingToDateSelector()"
+      ></select> -->
+
+      <p>
+        <b
+          >Note: Any data you upload for this project will be appended to the
+          current one. Any duplicate entries will not be added.</b
+        >
+      </p>
+
+      <!-- input to upload files -->
+      <input
+        type="file"
+        id="excelInput"
+        accept=".xlsx, .xls"
+        style="display: none"
+      />
+      <button id="uploadBtn">Upload Data for this project</button>
+      <button id="addEditSolarBESSEntry">Add or Edit an entry</button>
+      <button onclick="location.href='/home.html'">Back to Home</button>
+    </div>
+
+    <!-- Table 1 -->
+    <table id="table1">
+      <tr>
+        <th colspan="14">Project name</th>
+      </tr>
+      <tr>
+        <th colspan="6">As on Date</th>
+        <th colspan="4">Year Till Date</th>
+        <th colspan="4">Last FY Performance</th>
+      </tr>
+
+      <tr>
+        <th colspan="4">Solar</th>
+        <th colspan="2">BESS</th>
+        <th colspan="2">Solar</th>
+        <th colspan="2">BESS</th>
+        <th colspan="2">Solar</th>
+        <th colspan="2">BESS</th>
+      </tr>
+
+      <tr>
+        <th>GHI<br />(Kwh/sq. m)</th>
+        <th>Exported generation<br />(MU)</th>
+        <th>CUF<br />(%)</th>
+        <th>Peak Power<br />(MW)</th>
+
+        <th>Net Energy Export<br />(MWh)</th>
+        <th>Net Energy FED<br />(MWh)</th>
+
+        <th>Exported generation<br />(MU)</th>
+        <th>CUF<br />(%)</th>
+
+        <th>Net Energy Export<br />(MWh)</th>
+        <th>Net Energy FED<br />(MWh)</th>
+
+        <th>Exported generation<br />(MU)</th>
+        <th>CUF<br />(%)</th>
+
+        <th>Net Energy Export<br />(MWh)</th>
+        <th>Net Energy FED<br />(MWh)</th>
+      </tr>
+    </table>
+
+    <!-- Table 2 -->
+    <table id="table2">
+      <tr>
+        <th colspan="13">Generation data for previous days</th>
+      </tr>
+
+      <tr>
+        <th rowspan="3">Date</th>
+        <th colspan="4">Solar</th>
+        <th colspan="2">BESS</th>
+        <th colspan="4">Solar</th>
+        <th colspan="2">BESS</th>
+      </tr>
+
+      <tr>
+        <th>GHI<br />(Kwh/sq. m)</th>
+        <th>Exported generation<br />(KWh)</th>
+        <th>CUF<br />(%)</th>
+        <th>Peak Power (MW)</th>
+        <th>Net Export<br />(MWh)</th>
+        <th>Net Energy FED<br />(MWh)</th>
+
+        <th>GHI<br />(Kwh/sq. m)</th>
+        <th>Exported generation<br />(KWh)</th>
+        <th>CUF<br />(%)</th>
+        <th>Peak Power (MW)</th>
+        <th>Net Export<br />(MWh)</th>
+        <th>Net Energy FED<br />(MWh)</th>
+      </tr>
+
+      <tr>
+        <th colspan="6">Current Year</th>
+        <th colspan="6">Previous Year</th>
+      </tr>
+    </table>
+
+    <!-- JavaScript to toggle tables -->
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const dept_id = params.get("dept_id");
+      const statistic_id = params.get("statistic_id");
+      const entity_id = params.get("entity_id");
+      let omSolarBESSData = [];
+      document.addEventListener("DOMContentLoaded", async function () {
+        //attach event listener to the add entry button
+        document
+          .getElementById("addEditSolarBESSEntry")
+          .addEventListener("click", function () {
+            window.location.href = `/add_om_solar_bess_entry_old.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+          });
+        //attach event listener to the upload button
+        document
+          .getElementById("uploadBtn")
+          .addEventListener("click", function () {
+            document.getElementById("excelInput").click();
+          });
+
+        // handle file upload
+        document
+          .getElementById("excelInput")
+          .addEventListener("change", function (event) {
+            const file = event.target.files[0]; // get the selected file
+
+            if (!file) return;
+
+            // send the selected file to the server to be processed
+            const formData = new FormData();
+            formData.append("excelFile", file);
+
+            fileAuthFetch(
+              `api/data/om/solar/bess/upsert?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+              {
+                method: "POST",
+                body: formData,
+              }
+            )
+              .then((data) => {
+                alert("O&M Solar + BESS Data has been uploaded ");
+                window.location.reload();
+              })
+              .catch((error) => {
+                console.error("Upload error:", error);
+              });
+          });
+
+        let response = await authFetch(
+          `/api/data/project/find/name?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`
+        );
+        let responseJSON = await response.json();
+        let entityName = responseJSON.project_name;
+
+        document.getElementById(
+          "pageHeader"
+        ).textContent = `O&M Solar + BESS Project - ${entityName}`;
+
+        const table1TitleCell = document.querySelector(
+          "#table1 tr:first-child th"
+        );
+        if (table1TitleCell) {
+          table1TitleCell.textContent = `${entityName} - Overview`;
+        }
+
+        let omSolarBESSResponse = await authFetch(
+          `/api/data/om/solar_bess/all?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`
+        );
+        let omSolarBESSDataJSON = await omSolarBESSResponse.json();
+        omSolarBESSData = omSolarBESSDataJSON.data;
+
+        // const selectElement = document.getElementById("dateSelector");
+        // if (
+        //   omSolarBESSData &&
+        //   Array.isArray(omSolarBESSData) &&
+        //   omSolarBESSData.length > 0
+        // ) {
+        //   // Loop through the data and create <option> elements
+        //   omSolarBESSData.forEach((data, index) => {
+        //     const option = document.createElement("option");
+        //     option.value = data.date; // Assuming om_dgr_solar_id is unique for each record
+        //     option.textContent = formatDateToDDMMYYYY(data.date); // Customize this text as needed
+        //     selectElement.appendChild(option);
+        //   });
+        // } else {
+        //   // If no data, add a default "No Data Available" option
+        //   const option = document.createElement("option");
+        //   option.value = "";
+        //   option.textContent = "No Data Available";
+        //   selectElement.appendChild(option);
+        // }
+      });
+
+      function formatDateToDDMMYYYY(dateString) {
+        const date = new Date(dateString);
+
+        const day = String(date.getDate()).padStart(2, "0"); // Ensure 2-digit day
+        const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+        const year = date.getFullYear();
+
+        return `${day}/${month}/${year}`;
+      }
+      function toYYYYMMDD(date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        return d.toISOString().slice(0, 10);
+      }
+
+      function formatDateToDDMonth(dateString) {
+        const date = new Date(dateString);
+
+        const day = String(date.getDate()).padStart(2, "0"); // Ensure 2-digit day
+        const month = date.toLocaleString("default", { month: "long" }); // Get full month name
+
+        return `${day} ${month}`;
+      }
+
+      function changeDataInTablesAccordingToDateSelector() {
+        const selectedDateValue = document.getElementById("datePicker").value;
+
+        if (!selectedDateValue) {
+          alert("Please select a valid date.");
+          return;
+        }
+
+        const selectedDateKey = selectedDateValue;
+
+        omSolarBESSData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        const selectedEntry = omSolarBESSData.find(
+          (d) => toYYYYMMDD(d.date) === selectedDateKey
+        );
+
+        console.log("selectedEntry", selectedEntry);
+
+        if (!selectedEntry) {
+          alert("No data available for the selected date.");
+          return;
+        }
+
+        updateTable1(selectedEntry);
+
+        if (!selectedEntry) {
+          alert("No data available for the selected date.");
+          return;
+        }
+
+        // Update table 1
+        updateTable1(selectedEntry);
+
+        // Current year window
+        const currentStart = new Date(selectedDateValue);
+        currentStart.setDate(currentStart.getDate() - 7);
+
+        // Previous year window
+        const prevYearDate = new Date(selectedDateValue);
+        prevYearDate.setFullYear(prevYearDate.getFullYear() - 1);
+
+        const prevStart = new Date(prevYearDate);
+        prevStart.setDate(prevStart.getDate() - 7);
+
+        // Current year last 7 days
+        const currentYearData = omSolarBESSData.filter((d) => {
+          const dDate = new Date(d.date);
+          return dDate >= currentStart && dDate <= selectedDateValue;
+        });
+
+        // Previous year same 7-day window
+        const previousYearData = omSolarBESSData.filter((d) => {
+          const dDate = new Date(d.date);
+          return dDate >= prevStart && dDate <= prevYearDate;
+        });
+
+        updateTable2({
+          currentYearWindow: currentYearData,
+          previousYearWindow: previousYearData,
+        });
+      }
+
+      function updateTable1(d) {
+        const table1 = document.getElementById("table1");
+
+        while (table1.rows.length > 4) {
+          table1.deleteRow(4);
+        }
+        const row = table1.insertRow(-1);
+
+        const cells = [
+          d.radiation ?? "-",
+          (d.generation / 1e6).toFixed(2),
+          d.daily_cuf_worc,
+          d.peak_power,
+          d.bess_export,
+          d.bess_import,
+          (d.cumulative_generation / 1e6).toFixed(2),
+          d.cuf_till_date,
+          d.cumulative_bess_export,
+          d.cumulative_bess_import,
+          "-",
+          "-",
+          "-",
+          "-",
+        ];
+
+        cells.forEach((val, i) => {
+          row.insertCell(i).textContent = val;
+        });
+      }
+
+      function updateTable2(selectedOMSolarBESSData) {
+        const table2 = document.getElementById("table2");
+        const rowCount = table2.rows.length;
+
+        // clear existing rows
+        for (let i = rowCount - 1; i >= 4; i--) {
+          table2.deleteRow(i);
+        }
+
+        for (
+          let i = 0;
+          i < selectedOMSolarBESSData.previousYearWindow.length;
+          i++
+        ) {
+          const row = table2.insertRow(-1);
+          const cell0 = formatDateToDDMonth(
+            selectedOMSolarBESSData.currentYearWindow[i].date
+          );
+          const cell1 = selectedOMSolarBESSData.currentYearWindow[i].radiation; // GHI
+          const cell2 = (
+            selectedOMSolarBESSData.currentYearWindow[i].generation / 1e6
+          ).toFixed(2); // Exported generation (in MU)
+          const cell3 =
+            selectedOMSolarBESSData.currentYearWindow[i].daily_cuf_worc; // CUF (Capacity Utilization Factor)
+          const cell4 = selectedOMSolarBESSData.currentYearWindow[i].peak_power; // Peak Power
+          const cell5 =
+            selectedOMSolarBESSData.currentYearWindow[i].bess_export; // BESS Exported Energy
+          const cell6 =
+            selectedOMSolarBESSData.currentYearWindow[i].bess_import; // BESS Imported Energy
+
+          // table 2 data
+          const cell7 = selectedOMSolarBESSData.previousYearWindow[i].radiation; // GHI
+          const cell8 = (
+            selectedOMSolarBESSData.previousYearWindow[i].generation / 1e6
+          ).toFixed(2); // Exported generation (in MU)
+          const cell9 =
+            selectedOMSolarBESSData.previousYearWindow[i].daily_cuf_worc; // CUF (Capacity Utilization Factor)
+          const cell10 =
+            selectedOMSolarBESSData.previousYearWindow[i].peak_power; // Peak Power
+          const cell11 =
+            selectedOMSolarBESSData.previousYearWindow[i].bess_export; // BESS Exported Energy
+          const cell12 =
+            selectedOMSolarBESSData.previousYearWindow[i].bess_import; // BESS Imported Energy
+          const cells = [
+            cell0,
+            cell1,
+            cell2,
+            cell3,
+            cell4,
+            cell5,
+            cell6,
+            cell7,
+            cell8,
+            cell9,
+            cell10,
+            cell11,
+            cell12,
+          ];
+          cells.forEach((cellData, index) => {
+            const cell = row.insertCell(index); // Insert a new cell at each index
+            cell.textContent = cellData; // Set the cell's text content to the corresponding data
+          });
+        }
+      }
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      function fileAuthFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+    </script>
+  </body>
+</html>

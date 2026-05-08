@@ -1,0 +1,1290 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>PMC Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Helper: hide/show main page content when a project is opened in the embedded frame
+        function setMainVisibilityForProject(hide) {
+          const selectors = ['.toolbar-container', '.section-header', '#performanceTabs', '#performanceTabContent', '.table-container'];
+          selectors.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (!el) return;
+            el.style.display = hide ? 'none' : '';
+          });
+        }
+
+      function activateHostTab(tabId) {
+        try {
+          const btn = document.getElementById(tabId);
+          if (!btn) return;
+          if (window.bootstrap && typeof window.bootstrap.Tab === 'function') {
+            new window.bootstrap.Tab(btn).show();
+          } else {
+            // fallback
+            document.querySelectorAll('#performanceTabs .nav-link').forEach(n => n.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('#performanceTabContent .tab-pane').forEach(p => p.classList.remove('show', 'active'));
+            const target = btn.getAttribute('data-bs-target');
+            if (target) {
+              const pane = document.querySelector(target);
+              if (pane) pane.classList.add('show', 'active');
+            }
+          }
+        } catch (e) { console.debug('activateHostTab failed', e); }
+      }
+
+      // If the URL contains pmc_entry_id, embed the project details page
+      (function() {
+        function qs(key) { return new URL(window.location.href).searchParams.get(key) || ''; }
+        const pmc_entry_id = qs('pmc_entry_id');
+        const segment = qs('segment') || '';
+        const openTab = qs('open_tab') || '';
+        if (pmc_entry_id) {
+          const container = document.getElementById('projectDetailsContainer');
+          const iframe = document.getElementById('projectDetailsFrame');
+          const closeBtn = document.getElementById('closeProjectDetails');
+          // choose which tab the embedded project should open based on active host tab
+          let hostActive = document.querySelector('#performanceTabs .nav-link.active');
+          let hostId = hostActive ? hostActive.id : '';
+          let openTabParam = 'milestones';
+          if (hostId === 'p-contract-docs-tab') openTabParam = 'contract-docs';
+          else if (hostId === 'p-corr-other-tab') openTabParam = 'corr-other';
+          const src = `/pmc_projects.html?pmc_entry_id=${encodeURIComponent(pmc_entry_id)}${segment ? `&segment=${encodeURIComponent(segment)}` : ''}&open_tab=${openTabParam}`;
+          iframe.src = src;
+          container.style.display = 'block';
+            // hide the page-level tabs/table so embedded project looks like the project's page
+            setMainVisibilityForProject(true);
+          // If caller asked to open milestones, activate the host Milestone tab so user sees milestones immediately
+          if (openTab.toLowerCase() === 'milestones') {
+            activateHostTab('p-milestone-tab');
+            // populate host milestone area after a short delay
+            setTimeout(() => {
+              const pid = pmc_entry_id;
+              if (!pid) return;
+              fetchPMCData().then(() => {
+                const proj = pmcProjects.find(p => p.pmc_entry_id === pid);
+                const milestonesWrap = document.getElementById('p-milestones-table-wrap');
+                const milestonesNote = document.getElementById('p-milestones-note');
+                if (proj && milestonesWrap) {
+                  milestonesWrap.innerHTML = buildMilestoneDropdownTable(proj);
+                  milestonesWrap.style.display = 'block';
+                  if (milestonesNote) milestonesNote.style.display = 'none';
+                }
+              }).catch(() => {});
+            }, 250);
+          }
+          closeBtn.addEventListener('click', () => { container.style.display = 'none'; iframe.src = ''; history.replaceState({}, document.title, window.location.pathname + (segment ? `?segment=${encodeURIComponent(segment)}` : '')); });
+          // scroll into view
+          setTimeout(() => container.scrollIntoView({ behavior: 'smooth' }), 200);
+        }
+      })();
+    </script>
+
+    <style>
+      body {
+        background: #f3f6fb;
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        color: #333;
+      }
+      
+
+      /* Improved container */
+      .container-fluid {
+        padding: 20px 24px;
+        max-width: 1600px;
+      }
+
+      /* Header section */
+      .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #0b5ed7;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .page-title i {
+        color: #0b5ed7;
+        font-size: 26px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+        color: #6c757d;
+        margin-left: 10px;
+        font-weight: 400;
+      }
+
+      /* Section headers */
+      .section-header {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: #fff;
+        padding: 12px 16px;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: left;
+        margin-top: 30px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .section-header i {
+        font-size: 16px;
+      }
+
+      /* Toolbar improvements */
+      .toolbar-container {
+        background: #fff;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e0e6ef;
+      }
+
+      .toolbar-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: #f8fafc;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .toolbar-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #4a5568;
+        margin-right: 4px;
+        white-space: nowrap;
+      }
+
+      .toolbar-divider {
+        width: 1px;
+        height: 30px;
+        background: #d0d7e2;
+        margin: 0 6px;
+      }
+
+      /* Form controls */
+      .form-control-sm {
+        height: 36px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .form-control-sm:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+      }
+
+      /* Buttons */
+      .btn-sm {
+        height: 36px;
+        padding: 6px 14px;
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 4px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #0b5ed7, #1f4e79);
+        border: none;
+      }
+
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #0a58ca, #1a4066);
+        transform: translateY(-1px);
+        transition: all 0.2s;
+      }
+
+      .btn-success {
+        background: linear-gradient(135deg, #198754, #146c43);
+        border: none;
+      }
+
+      .btn-success:hover {
+        background: linear-gradient(135deg, #157347, #104930);
+        transform: translateY(-1px);
+        transition: all 0.2s;
+      }
+
+      .btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border: none;
+      }
+
+      /* Tables */
+      .table-container {
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        border: 1px solid #e0e6ef;
+      }
+
+      table {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+
+      /* Header styling */
+      thead tr:first-child th {
+        background: linear-gradient(135deg, #1f4e79, #0b5ed7);
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+        /* text-transform: uppercase; */
+        border: none;
+        padding: 14px 10px;
+        text-align: center;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+      }
+
+      /* Body styling */
+      tbody tr {
+        border-bottom: 1px solid #e0e6ef;
+      }
+
+      tbody td {
+        padding: 12px 10px;
+        background: #fff;
+        color: #333;
+        font-size: 13px;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      tbody tr:nth-child(even) td {
+        background: #f8fafc;
+      }
+
+      tbody tr:hover td {
+        background: #f0f8ff;
+      }
+
+      .group-row td {
+        background: #eaf2ff;
+        color: #0b5ed7;
+        font-weight: 700;
+        text-transform: uppercase;
+        text-align: center;
+        vertical-align: middle;
+        padding: 10px 12px;
+        border-bottom: 1px solid #dbe6ff;
+      }
+
+      .summary-bar {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .summary-bar-track {
+        width: 70px;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .summary-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+      }
+      <!---->
+
+      .summary-bar-green { background: linear-gradient(90deg, #198754, #20c997); }
+      .summary-bar-yellow { background: linear-gradient(90deg, #f0ad4e, #f7c948); }
+      .summary-bar-red { background: linear-gradient(90deg, #dc3545, #f06a6a); }
+      .summary-bar-orange { background: linear-gradient(90deg, #fd7e14, #f4a261); }
+       
+      .summary-bar-value {
+        font-size: 11px;
+        font-weight: 600;
+        color: #0b5ed7;
+      }
+
+      .summary-bar-segment {
+        height: 100%;
+      }
+
+      .milestone-dropdown-row td {
+        background: #f8fbff !important;
+        padding: 0;
+      }
+
+      .milestone-dropdown-container {
+        padding: 12px;
+        border-top: 1px solid #dbe6ff;
+      }
+
+      .milestone-dropdown-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1f4e79;
+        margin-bottom: 8px;
+      }
+
+      .note {
+        font-size: 12px;
+        color: #6c757d;
+        padding: 10px 15px;
+        background: #f8f9fa;
+        border-radius: 0 0 8px 8px;
+        border-top: 1px solid #e9ecef;
+        line-height: 1.5;
+      }
+
+      .note i {
+        margin-right: 5px;
+      }
+
+      @media (max-width: 1400px) {
+        .container-fluid {
+          padding: 16px;
+        }
+
+        .table-container {
+          overflow-x: auto;
+        }
+
+        table {
+          min-width: 1200px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .page-title {
+          font-size: 22px;
+        }
+
+        .section-header {
+          font-size: 16px;
+          padding: 10px 12px;
+        }
+
+        .btn-sm {
+          padding: 6px 10px;
+          font-size: 13px;
+        }
+
+        .form-control-sm {
+          width: 100% !important;
+        }
+
+        .toolbar-group {
+          flex-wrap: wrap;
+        }
+
+        .toolbar-container {
+          padding: 12px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container-fluid px-3 py-3">
+      <!-- Page Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <div class="page-title">
+            <i class="fas fa-chart-line"></i>
+            PMC Dashboard
+          </div>
+        </div>
+
+        <button
+          class="btn btn-secondary btn-sm"
+          onclick="window.location.href = '/home.html'"
+        >
+          <i class="fas fa-arrow-left"></i> Back to Home
+        </button>
+      </div>
+
+      <!-- Toolbar Section - Only Add/Edit Data Button -->
+      <div class="toolbar-container">
+        <div class="row g-3">
+          <div class="col-md-12">
+            <div
+              class="d-flex align-items-center justify-content-end flex-wrap gap-3"
+            >
+              <a
+                href="add_pmc_entry.html"
+                class="btn btn-success btn-sm"
+              >
+                <i class="fas fa-plus-circle"></i> Add / Edit Data
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Data Section -->
+      <div class="section-header">
+        <i class="fas fa-table"></i>
+        PMC Projects
+      </div>
+
+      <!-- Top-level tabs for performance view -->
+      <ul class="nav nav-tabs mb-3" id="performanceTabs" role="tablist">
+        <li class="nav-item">
+          <button class="nav-link active" id="p-contract-docs-tab" data-bs-toggle="tab" data-bs-target="#p-contract-docs" type="button" role="tab">Contract Documents</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link disabled" id="p-dpr-tab" type="button" role="tab">Daily Progress Report</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link disabled" id="p-mpr-tab" type="button" role="tab">Monthly Progress Report</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" id="p-milestone-tab" data-bs-toggle="tab" data-bs-target="#p-milestones" type="button" role="tab">Milestone</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link disabled" id="p-corr-cont-tab" type="button" role="tab">Correspondences with Contractors</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" id="p-corr-other-tab" data-bs-toggle="tab" data-bs-target="#p-corr-other" type="button" role="tab">Correspondences with other Stakeholders</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link disabled" id="p-key-issues-tab" type="button" role="tab">Key Issues</button>
+        </li>
+      </ul>
+
+      <div class="tab-content mb-3" id="performanceTabContent">
+        <div class="tab-pane fade show active" id="p-contract-docs" role="tabpanel">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-muted">Upload and view contract documents for selected project.</div>
+            <button id="p-addContractDocBtn" class="btn btn-sm btn-success">+ Add Contract Documents</button>
+          </div>
+          <div id="p-contract-upload-area" style="display:none; margin-top:8px;">
+            <button id="p-openContractUploadBtn" class="btn btn-success">Open contract document upload</button>
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="p-milestones" role="tabpanel">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-muted">Project milestone listing for the selected project.</div>
+            <button id="p-addMilestoneBtn" class="btn btn-sm btn-success">+ Add Milestone</button>
+          </div>
+          <div id="p-milestones-content">
+            <div class="text-muted" id="p-milestones-note">Select a project (click View) then open the Milestone tab to load milestones.</div>
+            <!-- milestone table will be shown only when Milestone tab is activated -->
+            <div id="p-milestones-table-wrap" style="display:none; margin-top:12px;"></div>
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="p-corr-other" role="tabpanel">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-muted">Correspondences addressed to other stakeholders for selected project.</div>
+            <button id="p-addCorrOtherBtn" class="btn btn-sm btn-success">+ Add Correspondence</button>
+          </div>
+          <div id="p-corr-other-note" class="text-muted">Select a project (click View) to add correspondences.</div>
+        </div>
+      </div>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-bordered mb-0">
+            <thead>
+              <tr>
+                <th>S.No</th>
+                <th>Type of Service</th>
+                <th>Client</th>
+                <th>Project Details</th>
+                <th>LOA to SECI</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Target Date</th>
+                <th>P O  Value</th>
+                <th>Invoice Raised</th>
+                <th>Amount Pending</th>
+                <th>Status</th>
+                <th>Bar</th>
+                <th>Milestones</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pmcTableBody">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        <div class="note">
+          <i class="fas fa-info-circle"></i> PMC Project data summary and tracking information
+        </div>
+      </div>
+
+      <!-- Milestones Modal -->
+      <div class="modal fade" id="milestonesModal" tabindex="-1" aria-labelledby="milestonesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1f4e79, #0b5ed7); color: #fff;">
+              <h5 class="modal-title" id="milestonesModalLabel">
+                <i class="fas fa-flag-checkered"></i> Project Milestones
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+              <div style="overflow-x: auto;">
+                <table class="table table-bordered mb-0">
+                  <thead>
+                    <tr style="background: linear-gradient(135deg, #1f4e79, #0b5ed7); color: #fff;">
+                      <th style="text-align: center; padding: 12px;">Sr no</th>
+                      <th style="text-align: center; padding: 12px;">Milestone</th>
+                      <th style="text-align: center; padding: 12px;">Stage Payment</th>
+                      <th style="text-align: center; padding: 12px;">Invoice Amount</th>
+                      <th style="text-align: center; padding: 12px;">Invoice Raised</th>
+                      <th style="text-align: center; padding: 12px;">Invoice Date</th>
+                      <th style="text-align: center; padding: 12px;">Invoice Number</th>
+                      <th style="text-align: center; padding: 12px;">Invoice Status</th>
+                      <th style="text-align: center; padding: 12px;">Bar</th>
+                    </tr>
+                  </thead>
+                  <tbody id="milestonesTableBody">
+                    <!-- Milestone data will be populated here -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Embedded Project Details (shown when pmc_entry_id provided). Placed here so it appears like the project's page. -->
+      <div id="projectDetailsContainer" style="display:none; margin-top:8px;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h4 class="mb-0">Project Details</h4>
+          <div>
+            <button id="closeProjectDetails" class="btn btn-sm btn-secondary">Close</button>
+          </div>
+        </div>
+        <iframe id="projectDetailsFrame" src="" style="width:100%; height:820px; border:1px solid #e0e6ef; border-radius:8px;"></iframe>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      let pmcProjects = [];
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      function formatDateForTable(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toISOString().split("T")[0];
+      }
+
+      function getSelectedSegment() {
+        const segment = new URLSearchParams(window.location.search).get('segment');
+        const normalized = String(segment || '').trim().toUpperCase();
+        // Accept common typo 'FPR' and map it to 'PFR'
+        // Removed PFR segment: only allow BMS and DPR
+        const normalizedMapped = normalized;
+        const allowedSegments = ['BMS', 'DPR'];
+        return allowedSegments.includes(normalizedMapped) ? normalizedMapped : '';
+      }
+
+      // Initialize on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        // If the requested segment is BMS, redirect to the dedicated PMC BMS page
+        try {
+          const seg = getSelectedSegment();
+          if (seg === 'BMS') {
+            window.location.href = '/pmc_bms_projects.html';
+            return;
+          }
+          // If segment is DPR, redirect to the dedicated DPR page (preserve pmc_entry_id if present)
+          if (seg === 'DPR') {
+            const params = new URLSearchParams(window.location.search);
+            const pid = params.get('pmc_entry_id');
+            let url = '/pmc_dpr_projects.html';
+            if (pid) url += `?pmc_entry_id=${encodeURIComponent(pid)}&segment=${encodeURIComponent(seg)}`;
+            else url += `?segment=${encodeURIComponent(seg)}`;
+            window.location.href = url;
+            return;
+          }
+        } catch (e) { /* ignore */ }
+        // Load PMC project data from server
+        fetchPMCData();
+        // Setup performance tabs and handlers
+        try { setupPerformanceTabs(); } catch(e) { console.debug('setupPerformanceTabs not available', e); }
+        // If pmc_entry_id present in URL, mark selected and show embedded details
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const pid = params.get('pmc_entry_id');
+          const segment = params.get('segment') || '';
+          if (pid) {
+            window.__pmc_selected_project = pid;
+            try { updatePerformanceTabState(); } catch(e) { /* ignore */ }
+            const container = document.getElementById('projectDetailsContainer');
+            const iframe = document.getElementById('projectDetailsFrame');
+            if (container && iframe) {
+              // open embedded project with the tab matching the active host tab (contract / correspondences / milestones)
+              let hostActiveBtn = document.querySelector('#performanceTabs .nav-link.active');
+              let hostBtnId = hostActiveBtn ? hostActiveBtn.id : '';
+              let openTabForView = 'milestones';
+              if (hostBtnId === 'p-contract-docs-tab') openTabForView = 'contract-docs';
+              else if (hostBtnId === 'p-corr-other-tab') openTabForView = 'corr-other';
+              iframe.src = `/pmc_projects.html?pmc_entry_id=${encodeURIComponent(pid)}${segment ? `&segment=${encodeURIComponent(segment)}` : ''}&open_tab=${openTabForView}`;
+              container.style.display = 'block';
+                setMainVisibilityForProject(true);
+            }
+          }
+        } catch (e) { console.debug('initial pmc_entry_id handling failed', e); }
+        // attach close handler for embedded project details (if present)
+        try {
+          const closeBtn = document.getElementById('closeProjectDetails');
+          const container = document.getElementById('projectDetailsContainer');
+          const iframe = document.getElementById('projectDetailsFrame');
+          if (closeBtn && container && iframe) {
+            closeBtn.addEventListener('click', () => {
+              container.style.display = 'none';
+              iframe.src = '';
+              // remove pmc_entry_id from URL while keeping segment
+              const params = new URLSearchParams(window.location.search);
+              const segment = params.get('segment');
+              const newUrl = window.location.pathname + (segment ? `?segment=${encodeURIComponent(segment)}` : '');
+              history.replaceState({}, document.title, newUrl);
+                // restore main page UI
+                setMainVisibilityForProject(false);
+            });
+          }
+        } catch (e) { console.debug('attach close handler failed', e); }
+
+          // Wire add buttons so users can go directly to PMC C&E details to add items
+          try {
+            const addContractBtn = document.getElementById('p-addContractDocBtn');
+            const addCorrBtn = document.getElementById('p-addCorrOtherBtn');
+            if (addContractBtn) {
+              addContractBtn.addEventListener('click', () => {
+                // Open PMC C&E page where documents can be added and managed
+                window.location.href = '/pmc_ce_projects.html';
+              });
+            }
+            if (addCorrBtn) {
+              addCorrBtn.addEventListener('click', () => {
+                // Open the focused Contract/Correspondence landing page we created
+                window.location.href = '/contract_correspondence.html';
+              });
+            }
+          } catch (e) { console.debug('add button wiring failed', e); }
+      });
+
+      function fetchPMCData() {
+        const tbody = document.getElementById('pmcTableBody');
+        if (!tbody) return;
+
+        authFetch('/api/data/pmc/entry/all')
+          .then((res) => {
+            if (!res.ok) throw new Error('Failed to load PMC entries.');
+            return res.json();
+          })
+          .then((payload) => {
+            const projects = Array.isArray(payload.data) ? payload.data : [];
+            pmcProjects = projects.map((p) => ({
+              pmc_entry_id: p.pmc_entry_id,
+              serviceType: p.service_type,
+              client: p.client,
+              projectDetails: p.project_details,
+              loaDate: formatDateForTable(p.loa_date),
+              startDate: formatDateForTable(p.start_date),
+              endDate: formatDateForTable(p.end_date),
+              targetDate: formatDateForTable(p.target_date),
+              totalAmount: p.total_amount,
+              amountReceived: p.amount_received,
+              amountPending: p.amount_pending,
+              status: p.status,
+              milestones: Array.isArray(p.milestones) ? p.milestones : [],
+            }));
+
+            pmcProjects = pmcProjects.map((project) => {
+              const invoiceAmountTotal = (project.milestones || []).reduce(
+                (sum, milestone) => sum + (parseFloat(milestone.invoice_amount) || 0),
+                0
+              );
+              const invoiceRaisedTotal = (project.milestones || []).reduce(
+                (sum, milestone) => sum + (parseFloat(milestone.invoice_raised) || 0),
+                0
+              );
+
+                // Determine status from milestone invoice data:
+                // - If there are milestones with invoice_status 'received', use the last such milestone's name
+                // - Else if there are milestones where invoice_raised has a value (>0), use the last such milestone's name and mark as Pending
+                // - Otherwise fall back to project.status
+                let statusToShow = project.status;
+                if (Array.isArray(project.milestones) && project.milestones.length) {
+                  const received = project.milestones.filter(m => String(m.invoice_status || '').toLowerCase() === 'received');
+                  const raised = project.milestones.filter(m => parseFloat(m.invoice_raised) > 0);
+
+                  if (received.length) {
+                    statusToShow = received[received.length - 1].milestone || project.status;
+                  } else if (raised.length) {
+                    // Use the last milestone name where invoice_raised > 0 (do not append "(Pending)")
+                    statusToShow = raised[raised.length - 1].milestone || project.status;
+                  }
+                }
+                return {
+                  ...project,
+                  totalAmount: invoiceAmountTotal,
+                  amountReceived: invoiceRaisedTotal,
+                  amountPending: Math.max(0, invoiceAmountTotal - invoiceRaisedTotal),
+                  status: statusToShow,
+                };
+            });
+
+            const selectedSegment = getSelectedSegment();
+              const clientFilter = new URLSearchParams(window.location.search).get('client');
+            let visibleProjects;
+            // If segment is DPR, show DPR projects
+            if (selectedSegment === 'DPR') {
+              visibleProjects = pmcProjects.filter(p => {
+                const t = String(p.serviceType || '').trim().toUpperCase();
+                return t === 'DPR';
+              });
+            } else {
+              visibleProjects = selectedSegment
+                ? pmcProjects.filter(
+                    (project) => String(project.serviceType || '').trim().toUpperCase() === selectedSegment
+                  )
+                : pmcProjects;
+            }
+
+            // If a client query parameter is present, filter down to that client (case-insensitive)
+            if (clientFilter && String(clientFilter).trim()) {
+              const cf = String(clientFilter).trim().toLowerCase();
+              visibleProjects = visibleProjects.filter(p => String(p.client || '').trim().toLowerCase() === cf);
+            }
+
+            if (!visibleProjects.length) {
+              tbody.innerHTML = '<tr><td colspan="15" style="text-align: center; padding: 30px; color: #999;">No data available</td></tr>';
+              return;
+            }
+
+            // Group DPR projects under 'DPR'
+            const grouped = visibleProjects.reduce((acc, item) => {
+              const raw = (item.serviceType || 'Other').toUpperCase();
+              const key = (raw === 'DPR') ? 'DPR' : raw;
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(item);
+              return acc;
+            }, {});
+
+            const groupOrder = ['BMS', 'DPR'];
+            const remainingGroups = Object.keys(grouped).filter(key => !groupOrder.includes(key));
+            const orderedGroups = [...groupOrder, ...remainingGroups];
+
+            tbody.innerHTML = '';
+
+            orderedGroups.forEach(groupKey => {
+              const items = grouped[groupKey];
+              if (!items || !items.length) return;
+
+              const groupRow = document.createElement('tr');
+              groupRow.className = 'group-row';
+              const displayKey = groupKey === 'DPR/PFR' ? 'DPR / PFR' : groupKey;
+              groupRow.innerHTML = `<td colspan="15">${displayKey}</td>`;
+              tbody.appendChild(groupRow);
+
+              // If this is the combined DPR/PFR group, ensure DPR rows come first then PFR
+              const orderedItems = groupKey === 'DPR/PFR'
+                ? items.slice().sort((a, b) => {
+                    const ta = String(a.serviceType || '').toUpperCase();
+                    const tb = String(b.serviceType || '').toUpperCase();
+                    if (ta === tb) return 0;
+                    if (ta === 'DPR') return -1;
+                    if (tb === 'DPR') return 1;
+                    if (ta === 'PFR') return -1;
+                    if (tb === 'PFR') return 1;
+                    return 0;
+                  })
+                : items;
+
+              orderedItems.forEach((project, rowIndex) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                  <td>${rowIndex + 1}</td>
+                  <td>${project.serviceType || ''}</td>
+                  <td>${project.client || ''}</td>
+                  <td>${project.projectDetails || ''}</td>
+                  <td>${project.loaDate || ''}</td>
+                  <td>${project.startDate || ''}</td>
+                  <td>${project.endDate || ''}</td>
+                  <td>${project.targetDate || ''}</td>
+                  <td>${formatCurrency(project.totalAmount)}</td>
+                  <td>${formatCurrency(project.amountReceived)}</td>
+                  <td>${formatCurrency(project.amountPending)}</td>
+                  <td>${project.status || ''}</td>
+                  <td>${renderSummaryBar(project)}</td>
+                  <td>
+                      <button class="btn btn-sm btn-primary" onclick="handleRowView(this, '${project.pmc_entry_id}')">
+                        View
+                      </button>
+                    </td>
+                  <td>
+                    <button class="btn btn-sm btn-secondary" onclick="editEntry('${project.pmc_entry_id}')">Edit</button>
+                  </td>
+                `;
+                tbody.appendChild(tr);
+              });
+            });
+            // After table rendered, update tab state (in case pmc_entry_id was present)
+            try { updatePerformanceTabState(); } catch (e) { /* ignore */ }
+          })
+          .catch((error) => {
+            console.error(error);
+            tbody.innerHTML = '<tr><td colspan="15" style="text-align: center; padding: 30px; color: #999;">Failed to load data</td></tr>';
+          });
+      }
+
+      function formatCurrency(value) {
+        const amount = parseFloat(value) || 0;
+        return amount ? amount.toFixed(2) : '0.00';
+      }
+
+      function getMilestoneBarClass(invoiceAmountValue, invoiceRaisedValue, invoiceStatusValue) {
+        const invoiceAmount = parseFloat(invoiceAmountValue) || 0;
+        const invoiceRaised = parseFloat(invoiceRaisedValue) || 0;
+        const invoiceStatus = String(invoiceStatusValue || '').trim().toLowerCase();
+
+        const isPending = invoiceStatus === 'pending';
+        const isDelayed = invoiceStatus === 'delayed' || invoiceStatus === 'delay';
+        const isReceived = invoiceStatus === 'received';
+
+        if (invoiceRaised <= 0 && (isPending || isDelayed)) {
+          return 'summary-bar-orange';
+        }
+
+        if (invoiceRaised > 0 && isPending) {
+          return 'summary-bar-yellow';
+        }
+
+        if (invoiceRaised > 0 && isReceived) {
+          return 'summary-bar-green';
+        }
+
+        if (invoiceAmount <= 0 && invoiceRaised <= 0) {
+          return 'summary-bar-orange';
+        }
+
+        return 'summary-bar-orange';
+      }
+
+      function renderSummaryBar(project) {
+        const milestones = Array.isArray(project.milestones) ? project.milestones : [];
+        const total = parseFloat(project.totalAmount) || 0;
+        const received = parseFloat(project.amountReceived) || 0;
+        const progressPercent = total > 0 ? Math.min(100, (received / total) * 100) : 0;
+
+        if (!milestones.length) {
+          return `
+            <div class="summary-bar">
+              <div class="summary-bar-track">
+                <div class="summary-bar-fill summary-bar-orange" style="width: 100%;"></div>
+              </div>
+              <span class="summary-bar-value">0.0%</span>
+            </div>
+          `;
+        }
+
+        const totalMilestoneAmount = milestones.reduce(
+          (sum, milestone) => sum + (parseFloat(milestone.invoice_amount) || 0),
+          0
+        );
+
+        const segmentWeight = totalMilestoneAmount > 0
+          ? milestones.map((milestone) => (parseFloat(milestone.invoice_amount) || 0) / totalMilestoneAmount)
+          : milestones.map(() => 1 / milestones.length);
+
+        const segmentsMarkup = milestones
+          .map((milestone, index) => {
+            const widthPercent = Math.max(0, segmentWeight[index] * 100);
+            const segmentClass = getMilestoneBarClass(
+              milestone.invoice_amount,
+              milestone.invoice_raised,
+              milestone.status
+            );
+            return `<div class="summary-bar-segment ${segmentClass}" style="width: ${widthPercent}%;"></div>`;
+          })
+          .join('');
+
+        return `
+          <div class="summary-bar">
+            <div class="summary-bar-track" style="display:flex;">
+              ${segmentsMarkup}
+            </div>
+            <span class="summary-bar-value">${progressPercent.toFixed(1)}%</span>
+          </div>
+        `;
+      }
+
+      let openMilestoneDropdown = null;
+
+      function getProgressBarMarkup(invoiceAmountValue, invoiceRaisedValue, invoiceStatusValue) {
+        const invoiceAmount = parseFloat(invoiceAmountValue) || 0;
+        const invoiceRaised = parseFloat(invoiceRaisedValue) || 0;
+        const percent = invoiceAmount > 0
+          ? Math.min(100, (invoiceRaised / invoiceAmount) * 100)
+          : 0;
+
+        const barClass = getMilestoneBarClass(
+          invoiceAmountValue,
+          invoiceRaisedValue,
+          invoiceStatusValue
+        );
+
+        return `
+          <div class="summary-bar" style="justify-content:center;">
+            <div class="summary-bar-track">
+              <div class="summary-bar-fill ${barClass}" style="width: ${percent}%;"></div>
+            </div>
+            <span class="summary-bar-value">${percent.toFixed(1)}%</span>
+          </div>
+        `;
+      }
+
+      function buildMilestoneDropdownTable(project) {
+        const milestones = (project && project.milestones) ? project.milestones : [];
+
+        if (!milestones.length) {
+          return '<div style="text-align:center; padding: 12px; color: #999;">No milestones available</div>';
+        }
+
+        const rows = milestones
+          .map((m, index) => `
+            <tr>
+              <td style="text-align:center; padding: 10px;">${index + 1}</td>
+              <td style="text-align:center; padding: 10px;">${m.milestone || ''}</td>
+              <td style="text-align:center; padding: 10px;">${m.stage_payment ?? ''}</td>
+              <td style="text-align:center; padding: 10px;">${formatCurrency(m.invoice_amount)}</td>
+              <td style="text-align:center; padding: 10px;">${formatCurrency(m.invoice_raised)}</td>
+              <td style="text-align:center; padding: 10px;">${formatDateForTable(m.invoice_date) || ''}</td>
+              <td style="text-align:center; padding: 10px;">${m.invoice_number || ''}</td>
+              <td style="text-align:center; padding: 10px;">${m.status || ''}</td>
+              <td style="text-align:center; padding: 10px;">${getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status)}</td>
+            </tr>
+          `)
+          .join('');
+
+        return `
+          <div style="overflow-x: auto;">
+            <table class="table table-bordered mb-0">
+              <thead>
+                <tr style="background: linear-gradient(135deg, #1f4e79, #0b5ed7); color: #fff;">
+                  <th style="text-align: center; padding: 10px;">Sr no</th>
+                  <th style="text-align: center; padding: 10px;">Milestone</th>
+                  <th style="text-align: center; padding: 10px;">Stage Payment</th>
+                  <th style="text-align: center; padding: 10px;">Invoice Amount</th>
+                  <th style="text-align: center; padding: 10px;">Invoice Raised</th>
+                  <th style="text-align: center; padding: 10px;">Invoice Date</th>
+                  <th style="text-align: center; padding: 10px;">Invoice Number</th>
+                  <th style="text-align: center; padding: 10px;">Invoice Status</th>
+                  <th style="text-align: center; padding: 10px;">Bar</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      // Setup the performance page tabs and add-button behavior
+      function setupPerformanceTabs() {
+        const segment = getSelectedSegment();
+        // Disable non-permitted tabs when a segment is present
+        if (segment) {
+          const allowed = new Set(['p-contract-docs-tab', 'p-milestone-tab', 'p-corr-other-tab']);
+          const tabButtons = document.querySelectorAll('#performanceTabs .nav-link');
+          tabButtons.forEach(btn => {
+            const id = btn.id || '';
+            // normalize ids used in this page
+            if (!allowed.has(id) && !id.startsWith('p-') ) return;
+            if (!allowed.has(id)) {
+              btn.classList.add('disabled');
+              btn.removeAttribute('data-bs-toggle');
+              btn.removeAttribute('data-bs-target');
+              btn.style.pointerEvents = 'none';
+              btn.title = 'Not available for this segment';
+            }
+          });
+        }
+
+        // Wire add buttons
+        const addMilestone = document.getElementById('p-addMilestoneBtn');
+        if (addMilestone) addMilestone.addEventListener('click', () => {
+          const pid = window.__pmc_selected_project || new URLSearchParams(window.location.search).get('pmc_entry_id');
+          if (!pid) return alert('Select a project (click View) before adding a milestone.');
+          // open project edit page in edit mode so milestone can be added
+          const url = new URL('/add_pmc_entry.html', window.location.origin);
+          url.searchParams.set('edit', pid);
+          url.searchParams.set('context', 'pmc');
+          window.open(url.toString(), '_blank');
+        });
+
+        // Contract upload button toggles a small upload area instead of immediately opening the form
+        const addContract = document.getElementById('p-addContractDocBtn');
+        const contractUploadArea = document.getElementById('p-contract-upload-area');
+        const openContractUploadBtn = document.getElementById('p-openContractUploadBtn');
+        if (addContract) addContract.addEventListener('click', () => {
+          const pid = window.__pmc_selected_project || new URLSearchParams(window.location.search).get('pmc_entry_id');
+          if (!pid) return alert('Select a project (click View) before adding a contract document.');
+          if (contractUploadArea) {
+            contractUploadArea.style.display = contractUploadArea.style.display === 'none' ? 'block' : 'none';
+          }
+        });
+        if (openContractUploadBtn) openContractUploadBtn.addEventListener('click', () => {
+          const pid = window.__pmc_selected_project || new URLSearchParams(window.location.search).get('pmc_entry_id');
+          if (!pid) return alert('Select a project (click View) before adding a contract document.');
+          const url = new URL('/add_contract_document.html', window.location.origin);
+          url.searchParams.set('entity_id', pid);
+          url.searchParams.set('context', 'pmc');
+          window.open(url.toString(), '_blank');
+        });
+
+        const addCorrOther = document.getElementById('p-addCorrOtherBtn');
+        if (addCorrOther) addCorrOther.addEventListener('click', () => {
+          // Redirect to the dedicated contract/correspondence landing page
+          window.location.href = '/contract_correspondence.html';
+        });
+
+        // initial state update
+        updatePerformanceTabState();
+
+        // populate milestones only when milestone tab is shown
+        try {
+          const milestoneTabBtn = document.getElementById('p-milestone-tab');
+          if (milestoneTabBtn) {
+            milestoneTabBtn.addEventListener('shown.bs.tab', function () {
+              const pid = window.__pmc_selected_project || new URLSearchParams(window.location.search).get('pmc_entry_id');
+              if (!pid) return;
+              const proj = pmcProjects.find(p => p.pmc_entry_id === pid);
+              const milestonesWrap = document.getElementById('p-milestones-table-wrap');
+              const milestonesNote = document.getElementById('p-milestones-note');
+              if (proj && milestonesWrap) {
+                milestonesWrap.innerHTML = buildMilestoneDropdownTable(proj);
+                milestonesWrap.style.display = 'block';
+                if (milestonesNote) milestonesNote.style.display = 'none';
+              }
+            });
+            // hide milestones and remove any inline milestone dropdown when other tabs are activated
+            const otherTabBtns = document.querySelectorAll('#performanceTabs .nav-link');
+            otherTabBtns.forEach(btn => {
+              if (btn.id !== 'p-milestone-tab') {
+                btn.addEventListener('shown.bs.tab', function () {
+                  const milestonesWrap = document.getElementById('p-milestones-table-wrap');
+                  const milestonesNote = document.getElementById('p-milestones-note');
+                  if (milestonesWrap) { milestonesWrap.style.display = 'none'; milestonesWrap.innerHTML = ''; }
+                  if (milestonesNote) milestonesNote.style.display = 'block';
+                  // remove any open inline milestone dropdown in the main table
+                  try {
+                    if (openMilestoneDropdown && openMilestoneDropdown.row) {
+                      openMilestoneDropdown.row.remove();
+                      openMilestoneDropdown = null;
+                    }
+                  } catch (e) { /* ignore */ }
+                });
+              }
+            });
+          }
+        } catch (e) { console.debug('milestone tab handlers not attached', e); }
+
+        // Hide the main project table when the "Correspondences with other Stakeholders" tab is active
+        try {
+          const corrOtherTabBtn = document.getElementById('p-corr-other-tab');
+          if (corrOtherTabBtn) {
+            corrOtherTabBtn.addEventListener('shown.bs.tab', function () {
+              const tableContainer = document.querySelector('.table-container');
+              if (tableContainer) tableContainer.style.display = 'none';
+            });
+            // When any other tab is shown, restore the table
+            const otherTabBtns = document.querySelectorAll('#performanceTabs .nav-link');
+            otherTabBtns.forEach(btn => {
+              if (btn.id !== 'p-corr-other-tab') {
+                btn.addEventListener('shown.bs.tab', function () {
+                  const tableContainer = document.querySelector('.table-container');
+                  if (tableContainer) tableContainer.style.display = '';
+                });
+              }
+            });
+          }
+        } catch (e) { console.debug('corr-other tab handlers not attached', e); }
+      }
+
+      function updatePerformanceTabState() {
+        const pid = window.__pmc_selected_project || new URLSearchParams(window.location.search).get('pmc_entry_id');
+        const addMilestone = document.getElementById('p-addMilestoneBtn');
+        const addContract = document.getElementById('p-addContractDocBtn');
+        const addCorrOther = document.getElementById('p-addCorrOtherBtn');
+        const milestonesWrap = document.getElementById('p-milestones-table-wrap');
+        const milestonesNote = document.getElementById('p-milestones-note');
+
+        if (pid) {
+          if (addMilestone) addMilestone.disabled = false;
+          if (addContract) addContract.disabled = false;
+          if (addCorrOther) addCorrOther.disabled = false;
+            // Do not auto-populate milestones here; populate only when the Milestone tab is activated
+        } else {
+          if (addMilestone) addMilestone.disabled = true;
+          // Allow adding contract documents and correspondences even when no project is selected
+          if (addContract) addContract.disabled = false;
+          if (addCorrOther) addCorrOther.disabled = false;
+          if (milestonesWrap) {
+            milestonesWrap.style.display = 'none';
+            milestonesWrap.innerHTML = '';
+          }
+          if (milestonesNote) milestonesNote.style.display = 'block';
+        }
+      }
+
+      function toggleMilestones(buttonElement, projectId) {
+        const project = pmcProjects.find((item) => item.pmc_entry_id === projectId);
+        if (!project) return;
+
+        const parentRow = buttonElement.closest('tr');
+        if (!parentRow) return;
+
+        if (openMilestoneDropdown && openMilestoneDropdown.row) {
+          const isSameProject = openMilestoneDropdown.projectId === projectId;
+          openMilestoneDropdown.row.remove();
+          openMilestoneDropdown = null;
+          if (isSameProject) return;
+        }
+
+        const dropdownRow = document.createElement('tr');
+        dropdownRow.className = 'milestone-dropdown-row';
+        dropdownRow.innerHTML = `
+          <td colspan="15">
+            <div class="milestone-dropdown-container">
+              <div class="milestone-dropdown-title">Milestones - ${project.serviceType || ''} / ${project.client || ''}</div>
+              ${buildMilestoneDropdownTable(project)}
+            </div>
+          </td>
+        `;
+
+        parentRow.parentNode.insertBefore(dropdownRow, parentRow.nextSibling);
+        openMilestoneDropdown = {
+          row: dropdownRow,
+          projectId,
+        };
+      }
+
+      function viewProject(projectId) {
+          const segment = new URLSearchParams(window.location.search).get('segment') || '';
+          // set iframe and show project details
+          try {
+            const container = document.getElementById('projectDetailsContainer');
+            const iframe = document.getElementById('projectDetailsFrame');
+            if (container && iframe) {
+              iframe.src = `/pmc_projects.html?pmc_entry_id=${encodeURIComponent(projectId)}${segment ? `&segment=${encodeURIComponent(segment)}` : ''}&open_tab=milestones`;
+              container.style.display = 'block';
+              // Mark the performance tabs as reflecting a selected project
+              window.__pmc_selected_project = projectId;
+              updatePerformanceTabState();
+              // If the host Milestone tab is currently active, populate its table immediately
+              try {
+                const milestoneBtn = document.getElementById('p-milestone-tab');
+                if (milestoneBtn && milestoneBtn.classList.contains('active')) {
+                  // Refresh project list so milestones are up-to-date
+                  fetchPMCData().then(() => {
+                    const proj = pmcProjects.find(p => p.pmc_entry_id === projectId);
+                    const milestonesWrap = document.getElementById('p-milestones-table-wrap');
+                    const milestonesNote = document.getElementById('p-milestones-note');
+                    if (proj && milestonesWrap) {
+                      milestonesWrap.innerHTML = buildMilestoneDropdownTable(proj);
+                      milestonesWrap.style.display = 'block';
+                      if (milestonesNote) milestonesNote.style.display = 'none';
+                    }
+                  }).catch(err => console.debug('refresh after view failed', err));
+                }
+              } catch (e) { console.debug('populate milestones after view failed', e); }
+              setTimeout(() => container.scrollIntoView({ behavior: 'smooth' }), 150);
+              return;
+            }
+          } catch (e) { console.debug('embed viewProject failed', e); }
+
+          // fallback navigation
+          window.location.href = `/pmc_projects.html?pmc_entry_id=${projectId}`;
+      }
+
+      // Handle the table row View button: if host Milestone tab is active toggle dropdown, otherwise open embedded project
+      function handleRowView(buttonElement, projectId) {
+        try {
+          const milestoneBtn = document.getElementById('p-milestone-tab');
+          const isMilestoneActive = milestoneBtn && milestoneBtn.classList.contains('active');
+          if (isMilestoneActive) {
+            // show dropdown under the row
+            toggleMilestones(buttonElement, projectId);
+            // also open the embedded project details
+            viewProject(projectId);
+            return;
+          }
+        } catch (e) { console.debug('handleRowView check failed', e); }
+        // default: open embedded project
+        viewProject(projectId);
+      }
+
+      function editEntry(projectId) {
+        window.location.href = `/add_pmc_entry.html?edit=${projectId}`;
+      }
+
+      // Back to home button already handled in HTML
+    </script>
+</body>
+</html>

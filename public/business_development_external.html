@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Business Development</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #3498db;
+      --success-color: #27ae60;
+      --warning-color: #f39c12;
+      --danger-color: #e74c3c;
+      --light-bg: #f8f9fa;
+      --border-color: #dee2e6;
+    }
+
+    body {
+      background-color: #f5f7fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, var(--primary-color), #34495e);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .page-header h2 {
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .nav-tabs {
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .nav-tabs .nav-link {
+      border: none;
+      color: #6c757d;
+      font-weight: 500;
+      padding: 0.75rem 1.5rem;
+      margin-right: 0.5rem;
+      border-radius: 8px 8px 0 0;
+      transition: all 0.3s ease;
+    }
+
+    .nav-tabs .nav-link:hover {
+      color: var(--primary-color);
+      background-color: rgba(44, 62, 80, 0.05);
+    }
+
+    .nav-tabs .nav-link.active {
+      color: var(--primary-color);
+      background-color: white;
+      border-bottom: 3px solid var(--secondary-color);
+      font-weight: 600;
+    }
+
+    .table-container {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+
+    .table {
+      margin-bottom: 0;
+    }
+
+    .table thead th {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 1rem;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+
+    .table tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+      background-color: rgba(52, 152, 219, 0.05);
+    }
+
+    .table tbody td {
+      padding: 0.75rem 1rem;
+      vertical-align: middle;
+      border-color: var(--border-color);
+    }
+
+    .sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sortable:hover {
+      background-color: rgba(44, 62, 80, 0.9);
+    }
+
+    .sortable i {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-left: 0.5rem;
+    }
+
+    .btn-action-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm {
+      padding: 0.25rem 0.75rem;
+      font-size: 0.875rem;
+      border-radius: 6px;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-sm:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .btn-primary {
+      background-color: var(--secondary-color);
+      border-color: var(--secondary-color);
+    }
+
+    .btn-primary:hover {
+      background-color: #2980b9;
+      border-color: #2980b9;
+    }
+
+    .btn-warning {
+      background-color: var(--warning-color);
+      border-color: var(--warning-color);
+      color: white;
+    }
+
+    .btn-danger {
+      background-color: var(--danger-color);
+      border-color: var(--danger-color);
+    }
+
+    .btn-info {
+      background-color: #17a2b8;
+      border-color: #17a2b8;
+    }
+
+    .btn-success {
+      background-color: var(--success-color);
+      border-color: var(--success-color);
+    }
+
+    .search-container {
+      position: relative;
+      max-width: 300px;
+    }
+
+    .search-container .form-control {
+      border-radius: 20px;
+      padding-left: 2.5rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .search-container .form-control:focus {
+      box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+      border-color: var(--secondary-color);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6c757d;
+      pointer-events: none;
+    }
+
+    .milestones-section {
+      background-color: var(--light-bg);
+      border-left: 4px solid var(--secondary-color);
+    }
+
+    .milestones-content {
+      padding: 1.5rem;
+    }
+
+    .milestones-content h5 {
+      color: var(--primary-color);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .milestones-table {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .milestones-table th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .badge-completed {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .badge-in-progress {
+      background-color: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .capacity-cell {
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 3rem;
+      color: #6c757d;
+    }
+
+    .no-data i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .modal-content {
+      border-radius: 10px;
+      border: none;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .modal-header {
+      background-color: var(--primary-color);
+      color: white;
+      border-radius: 10px 10px 0 0;
+    }
+
+    .loader-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255,255,255,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loader {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid var(--secondary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .btn-action-group {
+        flex-direction: column;
+      }
+      
+      .search-container {
+        max-width: 100%;
+        margin-bottom: 1rem;
+      }
+      
+      .page-header {
+        text-align: center;
+      }
+      
+      .page-header .d-flex {
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+  </style>
+</head>
+
+<body class="p-3 p-md-4">
+  <!-- Loader -->
+  <div id="globalLoader" class="loader-overlay" style="display: none;">
+    <div class="loader"></div>
+  </div>
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+      <h2><i class="bi bi-briefcase me-2"></i>Business Development</h2>
+      <div class="d-flex gap-2 mt-2 mt-md-0">
+        <a href="/home.html" class="btn btn-outline-light">
+          <i class="bi bi-arrow-left me-1"></i>Back to Home
+        </a>
+        <a href="/add_bd_entry.html" class="btn btn-light text-primary">
+          <i class="bi bi-plus-circle me-1"></i>Add Entry
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container-fluid">
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="dataTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="bd-tab" data-bs-toggle="tab" data-bs-target="#bd-entries" type="button"
+          role="tab" aria-controls="bd-entries" aria-selected="true">
+          <i class="bi bi-table me-1"></i>Business Development Entries
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="dataTabsContent">
+      <div class="tab-pane fade show active" id="bd-entries" role="tabpanel" aria-labelledby="bd-tab">
+        <!-- Search and Controls -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 mt-4 gap-2">
+          <div class="search-container w-100 w-md-auto">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="tableSearch" class="form-control" placeholder="Search entries..." />
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" id="refreshBtn">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="btn btn-outline-secondary" id="exportBtn">
+              <i class="bi bi-download"></i> Export
+            </button>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-container" id="tableContainer">
+          <!-- Table will be generated here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Entry</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editForm">
+            <input type="hidden" id="editEntryId">
+            <div class="mb-3">
+              <label class="form-label">Business Partner</label>
+              <input type="text" class="form-control" id="editBusinessPartner" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Location</label>
+              <input type="text" class="form-control" id="editLocation" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Action Plan</label>
+              <textarea class="form-control" id="editActionPlan" rows="3" required></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Pending With</label>
+              <input type="text" class="form-control" id="editPendingWith" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Capacity (MW)</label>
+              <input type="number" class="form-control" id="editCapacity" step="0.01" required>
+              <small class="text-muted">Convert MWh to MW by dividing MWh by hours</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Target</label>
+              <input type="text" class="form-control" id="editTarget" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveChangesBtn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    // Global variables
+    let allEntries = [];
+    let currentSortColumn = null;
+    let sortDirection = 'asc';
+
+    // Global loader functions
+    const GlobalLoader = {
+      show: () => $('#globalLoader').show(),
+      hide: () => $('#globalLoader').hide()
+    };
+
+    // Authentication fetch wrapper
+    function authFetch(url, options = {}) {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "/";
+        return Promise.reject("No token found");
+      }
+
+      const defaultHeaders = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...defaultHeaders,
+          ...(options.headers || {}),
+        },
+      }).then((res) => {
+        if (res.status === 401) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Session Expired',
+            text: 'Please login again.',
+            confirmButtonText: 'Login'
+          }).then(() => {
+            localStorage.clear();
+            window.location.href = "/";
+          });
+          throw new Error("Unauthorized");
+        }
+        return res;
+      });
+    }
+
+    // Format date to IST
+    function formatToISTDate(dateString) {
+      if (!dateString) return "-";
+      try {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      } catch {
+        return dateString;
+      }
+    }
+
+    // Date to input format
+    function formatDateToInput(dateString) {
+      if (!dateString.includes("/")) return dateString;
+      const [day, month, year] = dateString.split("/");
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Initialize when DOM is loaded
+    $(document).ready(function() {
+      initializePage();
+    });
+
+    function initializePage() {
+      fetchBusinessDevelopmentEntries();
+      setupEventListeners();
+      initializeTooltips();
+    }
+
+    function setupEventListeners() {
+      // Search functionality
+      $('#tableSearch').on('keyup', function() {
+        const value = this.value.toLowerCase();
+        $('#bdTable tbody tr').each(function() {
+          const text = $(this).text().toLowerCase();
+          $(this).toggle(text.indexOf(value) > -1);
+        });
+      });
+
+      // Refresh button
+      $('#refreshBtn').click(fetchBusinessDevelopmentEntries);
+
+      // Export button
+      $('#exportBtn').click(exportToCSV);
+
+      // Save changes in modal
+      $('#saveChangesBtn').click(saveEntryChanges);
+    }
+
+    function fetchBusinessDevelopmentEntries() {
+      GlobalLoader.show();
+      authFetch("/api/data/bd/entry/all")
+        .then((res) => res.json())
+        .then((resObj) => {
+          if (resObj.success) {
+            allEntries = resObj.data || [];
+            renderDataTable(allEntries);
+          } else {
+            throw new Error(resObj.message || "Failed to load entries");
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching entries:", err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to load entries. Please try again.',
+          });
+        })
+        .finally(() => GlobalLoader.hide());
+    }
+
+    function renderDataTable(items) {
+      const tableContainer = $("#tableContainer");
+      tableContainer.empty();
+
+      if (!Array.isArray(items) || items.length === 0) {
+        tableContainer.html(`
+          <div class="no-data">
+            <i class="bi bi-inbox"></i>
+            <h5>No entries found</h5>
+            <p>Click "Add Entry" to create your first business development entry</p>
+          </div>
+        `);
+        return;
+      }
+
+      const table = $(`
+        <table class="table table-hover" id="bdTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="index">#</th>
+              <th class="sortable" data-sort="business_partner">Business Partner</th>
+              <th class="sortable" data-sort="location">Location</th>
+              <th>Status and Action Plan</th>
+              <th class="sortable" data-sort="action_pending_with">Pending With</th>
+              <th class="sortable" data-sort="anticipated_capacity" 
+                  data-bs-toggle="tooltip" 
+                  title="Please convert MWh into MW by dividing MWh by hours">
+                Capacity (MW)
+              </th>
+              <th class="sortable" data-sort="target">Target</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item, index) => `
+              <tr data-entry-id="${item.bd_entry_id}">
+                <td>${index + 1}</td>
+                <td><strong>${escapeHtml(item.business_partner || '')}</strong></td>
+                <td>${escapeHtml(item.location || '')}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge-pending status-badge">Active</span>
+                    <span class="text-truncate" style="max-width: 200px;">${escapeHtml(item.action_plan || '')}</span>
+                  </div>
+                </td>
+                <td>${escapeHtml(item.action_pending_with || '')}</td>
+                <td class="capacity-cell">${item.anticipated_capacity || '0'} MW</td>
+                <td>${escapeHtml(item.target || '')}</td>
+                <td>
+                  <div class="btn-action-group">
+                    <button class="btn btn-sm btn-info view-milestones-btn" 
+                            data-entry-id="${item.bd_entry_id}"
+                            data-business-partner="${escapeHtml(item.business_partner || '')}">
+                      <i class="bi bi-flag"></i> Milestones
+                    </button>
+                    <button class="btn btn-sm btn-warning edit-entry-btn" 
+                            data-entry-id="${item.bd_entry_id}">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-entry-btn" 
+                            data-entry-id="${item.bd_entry_id}">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `);
+
+      tableContainer.append(table);
+
+      // Add sort functionality
+      table.find('.sortable').click(function() {
+        const column = $(this).data('sort');
+        sortTable(column);
+      });
+
+      // Add event listeners to buttons
+      table.find('.view-milestones-btn').click(function() {
+        const entryId = $(this).data('entry-id');
+        const partner = $(this).data('business-partner');
+        toggleMilestones(entryId, partner, this);
+      });
+
+      table.find('.edit-entry-btn').click(function() {
+        const entryId = $(this).data('entry-id');
+        showEditModal(entryId);
+      });
+
+      table.find('.delete-entry-btn').click(function() {
+        const entryId = $(this).data('entry-id');
+        deleteEntry(entryId);
+      });
+
+      initializeTooltips();
+    }
+
+    function sortTable(column) {
+      if (!allEntries.length) return;
+
+      // Toggle sort direction if clicking same column
+      if (currentSortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortColumn = column;
+        sortDirection = 'asc';
+      }
+
+      // Sort the array
+      allEntries.sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+
+        if (column === 'anticipated_capacity') {
+          valA = parseFloat(valA) || 0;
+          valB = parseFloat(valB) || 0;
+        } else if (column === 'index') {
+          valA = allEntries.indexOf(a);
+          valB = allEntries.indexOf(b);
+        }
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      renderDataTable(allEntries);
+
+      // Update sort indicators
+      $('#bdTable th').removeClass('sorted-asc sorted-desc');
+      const header = $(`[data-sort="${column}"]`);
+      header.addClass(sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    }
+
+    function toggleMilestones(entryId, partner, button) {
+      const $button = $(button);
+      const $row = $button.closest('tr');
+      
+      // Toggle existing milestones
+      if ($row.next().hasClass('milestones-row')) {
+        $row.next().remove();
+        $button.html('<i class="bi bi-flag"></i> Milestones');
+        return;
+      }
+
+      // Remove other milestones
+      $('.milestones-row').remove();
+      $('.view-milestones-btn').html('<i class="bi bi-flag"></i> Milestones');
+
+      GlobalLoader.show();
+      authFetch(`/api/data/bd/milestone/one/${entryId}`)
+        .then(res => res.json())
+        .then(resObj => {
+          const milestones = resObj.data || [];
+          const milestonesHtml = createMilestonesHtml(milestones, entryId, partner);
+          
+          const milestonesRow = $(`
+            <tr class="milestones-row">
+              <td colspan="8" class="milestones-section">
+                ${milestonesHtml}
+              </td>
+            </tr>
+          `);
+          
+          $row.after(milestonesRow);
+          $button.html('<i class="bi bi-flag-fill"></i> Hide Milestones');
+        })
+        .catch(err => {
+          console.error("Error loading milestones:", err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to load milestones',
+          });
+        })
+        .finally(() => GlobalLoader.hide());
+    }
+
+    function createMilestonesHtml(milestones, entryId, partner) {
+      let rows = milestones.map((milestone, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${escapeHtml(milestone.milestone_name)}</strong></td>
+          <td>${formatToISTDate(milestone.milestone_date)}</td>
+          <td>
+            <div class="btn-action-group">
+              <button class="btn btn-sm btn-warning edit-milestone-btn" 
+                      data-milestone-id="${milestone.milestone_id}">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-danger delete-milestone-btn" 
+                      data-milestone-id="${milestone.milestone_id}"
+                      data-entry-id="${entryId}">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      if (!rows) {
+        rows = `
+          <tr>
+            <td colspan="4" class="text-center text-muted py-3">
+              <i class="bi bi-inbox me-2"></i>No milestones found
+            </td>
+          </tr>
+        `;
+      }
+
+      return `
+        <div class="milestones-content">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+              <i class="bi bi-flag me-2"></i>${escapeHtml(partner)} - Milestones
+            </h5>
+            <a href="/add_bd_milestone.html?bd_entry_id=${entryId}" 
+               class="btn btn-sm btn-success">
+              <i class="bi bi-plus-circle me-1"></i>Add Milestone
+            </a>
+          </div>
+          <div class="milestones-table">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Milestone Name</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function showEditModal(entryId) {
+      const entry = allEntries.find(e => e.bd_entry_id === entryId);
+      if (!entry) {
+        Swal.fire('Error', 'Entry not found', 'error');
+        return;
+      }
+
+      $('#editEntryId').val(entryId);
+      $('#editBusinessPartner').val(entry.business_partner || '');
+      $('#editLocation').val(entry.location || '');
+      $('#editActionPlan').val(entry.action_plan || '');
+      $('#editPendingWith').val(entry.action_pending_with || '');
+      $('#editCapacity').val(entry.anticipated_capacity || '');
+      $('#editTarget').val(entry.target || '');
+
+      const modal = new bootstrap.Modal(document.getElementById('editModal'));
+      modal.show();
+    }
+
+    function saveEntryChanges() {
+      const entryId = $('#editEntryId').val();
+      const formData = {
+        business_partner: $('#editBusinessPartner').val().trim(),
+        location: $('#editLocation').val().trim(),
+        action_plan: $('#editActionPlan').val().trim(),
+        action_pending_with: $('#editPendingWith').val().trim(),
+        anticipated_capacity: parseFloat($('#editCapacity').val()) || 0,
+        target: $('#editTarget').val().trim()
+      };
+
+      // Validate
+      if (!formData.business_partner || !formData.location) {
+        Swal.fire('Error', 'Business Partner and Location are required', 'error');
+        return;
+      }
+
+      GlobalLoader.show();
+      authFetch(`/api/data/bd/entry/edit/${entryId}`, {
+        method: 'PUT',
+        body: JSON.stringify(formData)
+      })
+        .then(res => res.json())
+        .then(resObj => {
+          if (resObj.success) {
+            $('#editModal').modal('hide');
+            Swal.fire('Success', 'Entry updated successfully', 'success');
+            fetchBusinessDevelopmentEntries();
+          } else {
+            throw new Error(resObj.message || 'Update failed');
+          }
+        })
+        .catch(err => {
+          console.error('Error updating entry:', err);
+          Swal.fire('Error', 'Failed to update entry: ' + err.message, 'error');
+        })
+        .finally(() => GlobalLoader.hide());
+    }
+
+    function deleteEntry(entryId) {
+      Swal.fire({
+        title: 'Are you sure?',
+        text: "This entry and all its milestones will be deleted!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          GlobalLoader.show();
+          authFetch(`/api/data/bd/entry/delete/${entryId}`, {
+            method: 'DELETE'
+          })
+            .then(res => res.json())
+            .then(resObj => {
+              if (resObj.success) {
+                Swal.fire('Deleted!', 'Entry has been deleted.', 'success');
+                fetchBusinessDevelopmentEntries();
+              } else {
+                throw new Error(resObj.message || 'Delete failed');
+              }
+            })
+            .catch(err => {
+              console.error('Error deleting entry:', err);
+              Swal.fire('Error', 'Failed to delete entry: ' + err.message, 'error');
+            })
+            .finally(() => GlobalLoader.hide());
+        }
+      });
+    }
+
+    // Event delegation for dynamically created milestone buttons
+    $(document).on('click', '.edit-milestone-btn', function() {
+      const milestoneId = $(this).data('milestone-id');
+      editMilestone(milestoneId);
+    });
+
+    $(document).on('click', '.delete-milestone-btn', function() {
+      const milestoneId = $(this).data('milestone-id');
+      const entryId = $(this).data('entry-id');
+      deleteMilestone(milestoneId, entryId);
+    });
+
+    function editMilestone(milestoneId) {
+      // Find milestone in currently opened milestones
+      const milestoneRow = $(`[data-milestone-id="${milestoneId}"]`).closest('tr');
+      const currentName = milestoneRow.find('td:nth-child(2) strong').text();
+      const currentDate = milestoneRow.find('td:nth-child(3)').text();
+
+      Swal.fire({
+        title: 'Edit Milestone',
+        html: `
+          <input id="milestoneName" class="swal2-input" placeholder="Milestone Name" value="${escapeHtml(currentName)}">
+          <input id="milestoneDate" class="swal2-input" type="date" placeholder="Date" value="${formatDateToInput(currentDate)}">
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => {
+          const name = $('#milestoneName').val().trim();
+          const date = $('#milestoneDate').val();
+          
+          if (!name || !date) {
+            Swal.showValidationMessage('Please fill all fields');
+            return false;
+          }
+          
+          return { name, date };
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          updateMilestone(milestoneId, result.value);
+        }
+      });
+    }
+
+    function updateMilestone(milestoneId, data) {
+      GlobalLoader.show();
+      authFetch(`/api/data/bd/milestone/edit/${milestoneId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          milestone_name: data.name,
+          milestone_date: data.date
+        })
+      })
+        .then(res => res.json())
+        .then(resObj => {
+          if (resObj.success) {
+            Swal.fire('Success', 'Milestone updated successfully', 'success');
+            // Refresh the milestones section
+            const $button = $('.view-milestones-btn').filter((i, btn) => 
+              $(btn).html().includes('Hide Milestones')
+            );
+            if ($button.length) {
+              const entryId = $button.data('entry-id');
+              const partner = $button.data('business-partner');
+              toggleMilestones(entryId, partner, $button[0]);
+              setTimeout(() => toggleMilestones(entryId, partner, $button[0]), 300);
+            }
+          } else {
+            throw new Error(resObj.message || 'Update failed');
+          }
+        })
+        .catch(err => {
+          console.error('Error updating milestone:', err);
+          Swal.fire('Error', 'Failed to update milestone', 'error');
+        })
+        .finally(() => GlobalLoader.hide());
+    }
+
+    function deleteMilestone(milestoneId, entryId) {
+      Swal.fire({
+        title: 'Delete Milestone?',
+        text: "This action cannot be undone!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Delete'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          GlobalLoader.show();
+          authFetch(`/api/data/bd/milestone/delete/${milestoneId}`, {
+            method: 'DELETE'
+          })
+            .then(res => res.json())
+            .then(resObj => {
+              if (resObj.success) {
+                Swal.fire('Deleted!', 'Milestone has been deleted.', 'success');
+                // Refresh the milestones section
+                const $button = $(`[data-entry-id="${entryId}"]`).find('.view-milestones-btn');
+                if ($button.length) {
+                  const partner = $button.data('business-partner');
+                  toggleMilestones(entryId, partner, $button[0]);
+                  setTimeout(() => toggleMilestones(entryId, partner, $button[0]), 300);
+                }
+              } else {
+                throw new Error(resObj.message || 'Delete failed');
+              }
+            })
+            .catch(err => {
+              console.error('Error deleting milestone:', err);
+              Swal.fire('Error', 'Failed to delete milestone', 'error');
+            })
+            .finally(() => GlobalLoader.hide());
+        }
+      });
+    }
+
+    function exportToCSV() {
+      if (!allEntries.length) {
+        Swal.fire('Info', 'No data to export', 'info');
+        return;
+      }
+
+      const headers = [
+        'Business Partner',
+        'Location',
+        'Action Plan',
+        'Pending With',
+        'Capacity (MW)',
+        'Target'
+      ];
+
+      const csvRows = [
+        headers.join(','),
+        ...allEntries.map(entry => [
+          `"${escapeCsv(entry.business_partner || '')}"`,
+          `"${escapeCsv(entry.location || '')}"`,
+          `"${escapeCsv(entry.action_plan || '')}"`,
+          `"${escapeCsv(entry.action_pending_with || '')}"`,
+          entry.anticipated_capacity || '0',
+          `"${escapeCsv(entry.target || '')}"`
+        ].join(','))
+      ];
+
+      const csvString = csvRows.join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `business-development-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+
+    function initializeTooltips() {
+      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+      });
+    }
+
+    // Utility functions
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function escapeCsv(str) {
+      return (str || '').replace(/"/g, '""');
+    }
+  </script>
+</body>
+
+</html>

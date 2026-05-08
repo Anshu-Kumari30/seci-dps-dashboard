@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <script src="./js/auth_guard.js"></script>
+<title>Add Contract Document (Custom)</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #eef2f7;
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        color: #1f2937;
+      }
+
+      .page-wrap {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+
+      .page-container {
+        width: 100%;
+        max-width: 760px;
+      }
+
+      .page-title {
+        text-align: center;
+        font-size: 42px;
+        font-weight: 700;
+        color: #0b5ed7;
+        margin-bottom: 6px;
+      }
+
+      .page-subtitle {
+        text-align: center;
+        color: #6b7280;
+        font-size: 21px;
+        margin-bottom: 28px;
+      }
+
+      .form-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+        padding: 28px;
+      }
+
+      .section-title {
+        color: #0b5ed7;
+        font-size: 26px;
+        font-weight: 700;
+        margin-bottom: 18px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #0b5ed7;
+      }
+
+      .form-label {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 8px;
+      }
+
+      .form-control {
+        border-radius: 8px;
+        border: 1px solid #cfd8e3;
+        min-height: 46px;
+      }
+
+      .form-control:focus {
+        border-color: #0b5ed7;
+        box-shadow: 0 0 0 0.15rem rgba(11, 94, 215, 0.2);
+      }
+
+      .helper-text {
+        font-size: 13px;
+        color: #6b7280;
+      }
+
+      .form-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 26px;
+      }
+
+      .btn-save {
+        background: linear-gradient(135deg, #0b5ed7, #1f4e79);
+        border: none;
+        color: #fff;
+        padding: 10px 30px;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+
+      .btn-cancel {
+        background: #6c757d;
+        border: none;
+        color: #fff;
+        padding: 10px 26px;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrap">
+      <div class="page-container">
+        <h1 class="page-title">Add Contract Document</h1>
+        <p class="page-subtitle">Upload and manage contract documents</p>
+
+        <div class="form-card">
+          <h2 class="section-title">Document Details</h2>
+
+          <form id="addContractDocumentForm">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="docName" class="form-label">Document Name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="docName"
+                  name="doc_name"
+                  placeholder="Enter document name"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label for="docDate" class="form-label">Document Date</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  id="docDate"
+                  name="doc_date"
+                  required
+                />
+              </div>
+
+              <div class="col-12">
+                <label for="docFile" class="form-label">Upload Document</label>
+                <div class="helper-text mb-2">
+                  Maximum file size allowed: <strong>50 MB</strong>.
+                </div>
+                <input
+                  type="file"
+                  class="form-control"
+                  id="docFile"
+                  name="doc_file"
+                  required
+                />
+              </div>
+            </div>
+
+            <input type="hidden" id="deptId" name="dept_id" />
+            <input type="hidden" id="statisticId" name="statistic_id" />
+            <input type="hidden" id="entityId" name="entity_id" />
+            <input
+              type="hidden"
+              id="docType"
+              name="doc_type"
+              value="cdoc"
+            />
+
+            
+
+            <div class="form-actions">
+              <button type="submit" class="btn-save">Save</button>
+              <button type="button" class="btn-cancel" onclick="window.history.back()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Restore original guard behavior for contract document form
+      const urlParams = new URLSearchParams(window.location.search);
+      const deptId = urlParams.get("dept_id");
+      const statisticId = urlParams.get("statistic_id");
+      const entityId = urlParams.get("entity_id");
+
+      let normalizedDept = deptId && deptId !== "null" ? deptId : "";
+      let normalizedStat = statisticId && statisticId !== "null" ? statisticId : "";
+      let normalizedEntity = entityId && entityId !== "null" ? entityId : "";
+
+      document.getElementById("deptId").value = normalizedDept;
+      document.getElementById("statisticId").value = normalizedStat;
+      document.getElementById("entityId").value = normalizedEntity;
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+        return fetch(url, { ...options, headers: { ...defaultHeaders, ...(options.headers||{}) } }).then(res => {
+          if (res.status === 401) { alert('Session expired. Redirecting to login...'); localStorage.clear(); window.location.href = '/'; throw new Error('Unauthorized'); }
+          return res;
+        });
+      }
+
+      const submitBtn = document.querySelector('.btn-save');
+      let warnEl = null;
+
+      function showWarning() {
+        if (warnEl) return;
+        warnEl = document.createElement('div');
+        warnEl.className = 'alert alert-warning';
+        warnEl.style.marginBottom = '16px';
+        warnEl.innerText = 'Missing project identifiers (dept/statistic/entity). Please open this form from the PMC C&E page for the selected entity.';
+        document.querySelector('.form-card').insertBefore(warnEl, document.getElementById('addContractDocumentForm'));
+      }
+
+      function removeWarning() {
+        if (!warnEl) return;
+        warnEl.remove();
+        warnEl = null;
+      }
+
+      function updateGuard() {
+        if (!normalizedDept || !normalizedStat || !normalizedEntity) {
+          submitBtn.disabled = true;
+          submitBtn.title = 'Open this form from the PMC C&E page to prefill project identifiers.';
+          showWarning();
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.title = '';
+          removeWarning();
+        }
+      }
+
+      // If dept/stat are missing but entity_id is present, try to resolve them from server.
+      // Try PMC C&E resolver first (pmc_ce_entity_id), then fallback to entity context resolver.
+      (async function tryResolveIds(){
+        if ((!normalizedDept || !normalizedStat) && normalizedEntity) {
+          try {
+            // Try PMC C&E context resolver (handles pmc_ce_entity_id)
+            let json = null;
+            try {
+              const res = await authFetch(`/api/data/pmc/ce/context/id/${normalizedEntity}`);
+              if (res.ok) json = await res.json();
+            } catch (e) {
+              // ignore and try fallback
+            }
+
+            // Fallback: resolve regular entity -> dept/statistic mapping
+            if (!json) {
+              try {
+                const res2 = await authFetch(`/api/data/entities/context/${normalizedEntity}`);
+                if (res2.ok) json = await res2.json();
+              } catch (e) {
+                // final fallback - leave unresolved
+              }
+            }
+
+            if (json && json.dept_id) {
+              normalizedDept = normalizedDept || json.dept_id || '';
+              normalizedStat = normalizedStat || json.statistic_id || '';
+              // if PMC C&E resolver returns dept_entity_id, use that as entity_id for submissions
+              const resolvedEntity = json.dept_entity_id || json.entity_id || '';
+              normalizedEntity = resolvedEntity || normalizedEntity;
+              document.getElementById('deptId').value = normalizedDept;
+              document.getElementById('statisticId').value = normalizedStat;
+              document.getElementById('entityId').value = normalizedEntity;
+            }
+          } catch (err) { console.error('Could not resolve dept/stat from entity_id', err); }
+          updateGuard();
+        }
+      })();
+
+      document.getElementById("docType").value = "cdoc";
+
+      // initial guard evaluation
+      updateGuard();
+
+      document.getElementById('addContractDocumentForm').addEventListener('submit', async function(e){
+        e.preventDefault();
+        if (!normalizedDept || !normalizedStat || !normalizedEntity) { alert('Cannot submit: missing dept/statistic/entity identifiers. Open this from the PMC C&E page.'); return; }
+        const formData = new FormData(this);
+        try {
+          const response = await authFetch('/api/data/pmc/ce/documents', { method: 'POST', body: formData });
+          if (!response.ok) {
+            const txt = await response.text().catch(() => null);
+            console.error('Upload failed:', response.status, txt);
+            throw new Error('Failed to add Contract Document document.');
+          }
+          alert('Contract Document document added successfully!');
+          window.location.href = `/pmc_ce_custom.html?dept_id=${normalizedDept}&statistic_id=${normalizedStat}&entity_id=${normalizedEntity}&tab=cdoc&_ts=${Date.now()}`;
+        } catch (err) {
+          console.error(err);
+          alert('Error adding Contract Document document.');
+        }
+      });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

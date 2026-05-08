@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Add / Edit Discom Payments</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    
+    <script src="./js/auth_guard.js"></script>
+<style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #f4f6f9 0%, #e8ecf1 100%);
+            padding: 20px;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #0b5ed7;
+            font-weight: 700;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .form-container {
+            max-width: 800px;
+            margin: auto;
+            background: #ffffff;
+            padding: 35px 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px 30px;
+        }
+
+        .form-section {
+            grid-column: span 2;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #0b5ed7;
+            color: #0b5ed7;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .required::after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            border: 1px solid #cfd4da;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #0b5ed7;
+            box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.15);
+        }
+
+        .full-width {
+            grid-column: span 2;
+        }
+
+        .existing-file {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .existing-file a {
+            color: #0b5ed7;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .existing-file a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+            grid-column: span 2;
+        }
+
+        button {
+            padding: 12px 32px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 140px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(to right, #0b5ed7, #0a58ca);
+            color: #fff;
+            box-shadow: 0 4px 6px rgba(11, 94, 215, 0.2);
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(to right, #0a58ca, #0950b8);
+            box-shadow: 0 6px 12px rgba(11, 94, 215, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-cancel {
+            background: linear-gradient(to right, #6c757d, #5c636a);
+            color: #fff;
+            box-shadow: 0 4px 6px rgba(108, 117, 125, 0.2);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 12px;
+            border-radius: 5px;
+        }
+
+        .btn-cancel:hover {
+            background: linear-gradient(to right, #5c636a, #495057);
+            box-shadow: 0 6px 12px rgba(108, 117, 125, 0.3);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            form {
+                grid-template-columns: 1fr;
+            }
+
+            .form-section,
+            .full-width,
+            .btn-group {
+                grid-column: span 1;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            button,
+            .btn-cancel {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1 id="pageTitle">Add Discom Payments</h1>
+    <p class="subtitle">Upload and manage developer payment documents</p>
+
+    <div class="form-container">
+
+        <form id="devPayForm">
+
+            <div class="form-section">Document Details</div>
+
+            <div class="form-group">
+                <label class="required">Document Name</label>
+                <input type="text" name="document_name" required />
+            </div>
+
+            <div class="form-group">
+                <label class="required">Document Date</label>
+                <input type="date" name="document_date" required />
+            </div>
+
+            <div class="form-group full-width">
+                <label>Upload File</label>
+                <input type="file" name="file" id="fileInput" />
+                <div id="existingFile" class="existing-file"></div>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn-submit">Save</button>
+                <a href="/energy_management.html" class="btn-cancel">Cancel</a>
+            </div>
+
+        </form>
+
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get("id");
+        const project = params.get("project");
+        const tab = params.get("tab") || "dpod";
+
+        function buildEnergyManagementBackUrl() {
+            const q = new URLSearchParams();
+            if (project) q.set("project", project);
+            if (tab) q.set("tab", tab);
+            return "/energy_management.html" + (q.toString() ? `?${q.toString()}` : "");
+        }
+
+        // preserve cancel link to include project filter when present
+        const cancelLink = document.querySelector('.btn-cancel');
+        if (cancelLink) cancelLink.href = buildEnergyManagementBackUrl();
+
+        const form = document.getElementById("devPayForm");
+        const title = document.getElementById("pageTitle");
+        const existingFileText = document.getElementById("existingFile");
+
+        if (id) {
+            title.innerText = "Edit Discom Payments";
+
+            authFetch(`/api/data/discom-payments/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    form.document_name.value = data.document_name;
+                    form.document_date.value = data.document_date;
+
+                    existingFileText.innerHTML = `
+        Existing File:
+        <a href="/${data.document_path}" target="_blank">View</a>
+      `;
+                });
+        }
+
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            if (!project) {
+                alert("Please open this form from a project in Energy Management.");
+                return;
+            }
+
+            const formData = new FormData(form);
+            formData.set("project_name", project);
+
+            let url = "/api/data/discom-payments";
+            let method = "POST";
+
+            if (id) {
+                url = `/api/data/discom-payments/${id}`;
+                method = "PUT";
+            }
+
+            fetch(url, {
+                method,
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                },
+                body: formData
+            })
+                .then(async (res) => {
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        throw new Error(data.error || data.message || "Failed to save discom payment");
+                    }
+                    return data;
+                })
+                .then(() => {
+                    alert(id ? "Updated successfully" : "Added successfully");
+                    window.location.href = buildEnergyManagementBackUrl();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert(err.message || "Failed to save discom payment");
+                });
+        });
+
+        function authFetch(url) {
+            return fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+        }
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <script src="./js/auth_guard.js"></script>
+    <script src="./js/main.js"></script>
+<title>Add Contract Document (DPR/PFR)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      body { margin: 0; background: #eef2f7; font-family: "Segoe UI", Roboto, Arial, sans-serif; color: #1f2937; }
+      .page-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
+      .page-container { width: 100%; max-width: 760px; }
+      .page-title { text-align: center; font-size: 42px; font-weight: 700; color: #0b5ed7; margin-bottom: 6px; }
+      .page-subtitle { text-align: center; color: #6b7280; font-size: 21px; margin-bottom: 28px; }
+      .form-card { background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 8px 22px rgba(15,23,42,0.08); padding: 28px; }
+      .section-title { color: #0b5ed7; font-size: 26px; font-weight: 700; margin-bottom: 18px; padding-bottom: 8px; border-bottom: 2px solid #0b5ed7; }
+      .form-label { font-weight: 600; color: #1f2937; margin-bottom: 8px; }
+      .form-control { border-radius: 8px; border: 1px solid #cfd8e3; min-height: 46px; }
+      .form-control:focus { border-color: #0b5ed7; box-shadow: 0 0 0 0.15rem rgba(11,94,215,0.2); }
+      .helper-text { font-size: 13px; color: #6b7280; }
+      .form-actions { display: flex; justify-content: center; gap: 12px; margin-top: 26px; }
+      .btn-save { background: linear-gradient(135deg, #0b5ed7, #1f4e79); border: none; color: #fff; padding: 10px 30px; border-radius: 8px; font-weight: 600; }
+      .btn-cancel { background: #6c757d; border: none; color: #fff; padding: 10px 26px; border-radius: 8px; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrap">
+      <div class="page-container">
+        <h1 class="page-title">Add Contract Document</h1>
+        <p class="page-subtitle">Upload and manage contract documents (PMC DPR/PFR)</p>
+        <div class="form-card">
+          <h2 class="section-title">Document Details</h2>
+          <form id="addContractDocumentForm">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="docName" class="form-label">Document Name</label>
+                <input type="text" class="form-control" id="docName" name="doc_name" placeholder="Enter document name" required />
+              </div>
+              <div class="col-md-6">
+                <label for="docDate" class="form-label">Document Date</label>
+                <input type="date" class="form-control" id="docDate" name="doc_date" required />
+              </div>
+              <div class="col-12">
+                <label for="docFile" class="form-label">Upload Document</label>
+                <div class="helper-text mb-2">Maximum file size allowed: <strong>50 MB</strong>.</div>
+                <input type="file" class="form-control" id="docFile" name="doc_file" required />
+              </div>
+            </div>
+            <input type="hidden" id="entityId" name="entity_id" />
+            <input type="hidden" name="doc_type" value="cdoc" />
+            <input type="hidden" name="context" value="pmc_dpr" />
+            <div class="form-actions">
+              <button type="submit" class="btn-save">Save</button>
+              <button type="button" class="btn-cancel" onclick="window.history.back()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const entityId = urlParams.get("entity_id") || urlParams.get("pmc_entry_id");
+      const editId = urlParams.get("edit_id") || "";
+      const projectName = urlParams.get("project_name") || "";
+      const segment = urlParams.get("segment") || "pmc-dpr-pfr";
+      if (entityId) document.getElementById("entityId").value = entityId;
+
+      if (editId) {
+        document.querySelector('.page-title').textContent = 'Edit Contract Document';
+        document.querySelector('.page-subtitle').textContent = 'Update contract document details (PMC DPR/PFR)';
+        document.getElementById('docName').value = urlParams.get('doc_name') || '';
+        document.getElementById('docDate').value = urlParams.get('doc_date') || '';
+        document.getElementById('docFile').required = false;
+      }
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        return fetch(url, { ...options, headers: { Authorization: "Bearer " + token, ...(options.headers || {}) } }).then(res => {
+          if (res.status === 401) { alert("Session expired."); localStorage.clear(); window.location.href = "/"; throw new Error("Unauthorized"); }
+          return res;
+        });
+      }
+
+      document.getElementById("addContractDocumentForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        if (projectName) formData.append('project_name', projectName);
+        try {
+          const endpoint = editId
+            ? "/api/data/documents/dpr/document/" + encodeURIComponent(editId)
+            : "/api/data/documents/dpr/document";
+          const method = editId ? "PUT" : "POST";
+          const response = await authFetch(endpoint, { method, body: formData });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) { alert(body.error || body.message || "Failed to save document."); return; }
+          alert(editId ? "Contract Document updated successfully!" : "Contract Document added successfully!");
+          if (projectName) {
+            window.location.href = "/pmc_dpr_projects.html?segment=" + encodeURIComponent(segment) + "&project_name=" + encodeURIComponent(projectName);
+          } else if (entityId) {
+            window.location.href = "/pmc_dpr_projects.html?pmc_entry_id=" + encodeURIComponent(entityId);
+          } else {
+            window.location.href = "/pmc_dpr_projects.html";
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error adding contract document.");
+        }
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

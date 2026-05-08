@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Contract Documents & Correspondences</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>Contract Documents & Correspondences</h3>
+      <a class="btn btn-secondary btn-sm" href="/pmc_performance.html">Back to PMC Dashboard</a>
+    </div>
+
+    <p class="text-muted">This page provides a focused entrypoint for adding or viewing Contract Documents and Correspondences with other stakeholders. The app uses the PMC C&E storage pages as the canonical UI for these items.</p>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Contract Documents</h5>
+            <p class="card-text">Manage contract documents stored via the PMC C&E module.</p>
+            <a class="btn btn-primary" href="/pmc_ce_projects.html">Open PMC C&E (Documents)</a>
+            <a class="btn btn-outline-success ms-2" href="/add_contract_document.html">Add Contract Document</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Correspondences with other Stakeholders</h5>
+            <p class="card-text">Manage correspondences via the PMC C&E module.</p>
+            <a class="btn btn-primary" href="/pmc_ce_projects.html">Open PMC C&E (Correspondence)</a>
+            <a class="btn btn-outline-success ms-2" href="/add_correspondence_other.html">Add Correspondence</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 text-muted small">
+      Note: This page is intentionally standalone so Contract Documents and Correspondences don't overlap with the milestone views in the PMC Dashboard.
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

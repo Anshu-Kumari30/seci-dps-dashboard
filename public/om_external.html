@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<title>O&M</title>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f5f6fa;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #container {
+    background: white;
+    padding: 30px 40px;
+    width: 400px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+
+  h1 {
+    margin-bottom: 10px;
+  }
+
+  h2 {
+    font-weight: normal;
+    color: #666;
+    margin-bottom: 20px;
+  }
+
+  select {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    margin-top: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+
+  button {
+    margin-top: 15px;
+    padding: 12px;
+    width: 100%;
+    background: #007bff;
+    border: none;
+    color: white;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #0069d9;
+  }
+</style>
+
+<body>
+  <div id="container">
+    <div id="entityNameContainer"></div>
+    <div id="typeNotAssignedMessage"></div>
+    <select id="projectTypeDropdown"></select>
+    <div id="assignButtonContainer"></div>
+  </div>
+</body>
+
+<script>
+ document.addEventListener("DOMContentLoaded", function () {  
+
+  const params = new URLSearchParams(window.location.search);
+  const dept_id = params.get("dept_id");
+  const statistic_id = params.get("statistic_id");
+  const entity_id = params.get("entity_id");
+
+  let foundProjectMapping = "";
+  let foundEntityName = "";
+
+  authFetch(`api/data/om/mapping/check?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`)
+  .then((res) => res.json())
+  .then((resObject) =>{ 
+    foundProjectMapping = resObject.data;
+    foundEntityName = resObject.entity_name;
+
+    if(!foundProjectMapping) {
+       document.getElementById("entityNameContainer").innerHTML = `<h1>${foundEntityName}</h1>`;
+       document.getElementById("typeNotAssignedMessage").innerHTML = "<h2>This project does not have a type assigned</h2>";
+
+       document.getElementById("projectTypeDropdown").innerHTML = `
+        <option value="">Select Type</option>
+        <option value="solar">Solar</option>
+        <option value="solar_bess">Solar + BESS</option>
+        <option value="solar_wind_bess">Solar + Wind + BESS</option>
+       `;
+
+      document.getElementById("assignButtonContainer").innerHTML = `<button id="assignButton">Assign Project Type</button>`;
+      
+      document.getElementById("assignButton").addEventListener("click", async function () {
+        const selectedOMProjectType = document.getElementById("projectTypeDropdown").value;
+        if (!selectedOMProjectType) {
+          alert("Please select a project type");
+          return;
+        }
+        await assignProjectType(dept_id, statistic_id, entity_id, selectedOMProjectType);
+        window.location.href = "/home.html";
+      });
+
+    } else {
+      const fetchedProjectMapping = foundProjectMapping.om_project_type;
+      if(fetchedProjectMapping === "solar") {
+        window.location.href = `/om_solar.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+      } else if(fetchedProjectMapping === "solar_bess") {
+        window.location.href = `/om_solar_bess.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+      } else if(fetchedProjectMapping === "solar_wind_bess") {
+        window.location.href = `/om_solar_wind_bess.html?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`;
+      }
+    }
+  });
+ });
+
+ function assignProjectType(dept_id, statistic_id, entity_id, selectedOMProjectType) {
+  authFetch(`api/data/om/mapping/assign?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}&om_project_type=${selectedOMProjectType}`);
+ }
+
+ function authFetch(url, options = {}) {
+    const token = localStorage.getItem("token");
+    const defaultHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...(options.headers || {}),
+      },
+    }).then((res) => {
+      if (res.status === 401) {
+        alert("Session expired. Redirecting to login...");
+        localStorage.clear();
+        window.location.href = "/";
+        throw new Error("Unauthorized");
+      }
+      return res;
+    });
+ }
+</script>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <script src="./js/auth_guard.js"></script>
+    <script src="./js/main.js"></script>
+<title>Add Issue</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+      body {
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        background: linear-gradient(135deg, #f4f6f9 0%, #e8ecf1 100%);
+        padding: 20px;
+        min-height: 100vh;
+        color: #333;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #0b5ed7;
+        font-weight: 700;
+        font-size: 28px;
+      }
+      .form-container {
+        max-width: 600px;
+        margin: auto;
+        background: #ffffff;
+        padding: 35px 40px;
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 18px;
+      }
+      label {
+        font-weight: 600;
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+      }
+      input, select, textarea {
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        border: 1px solid #cfd4da;
+        border-radius: 6px;
+        transition: all 0.3s;
+      }
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #0b5ed7;
+        box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.15);
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #0b5ed7, #146c43);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #146c43, #0b5ed7);
+      }
+      .form-text {
+        font-size: 12px;
+        color: #6c757d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="form-container">
+      <h1>Add Issues</h1>
+      <form id="addIssueForm">
+        <div class="mb-3">
+          <label for="issue_description" class="form-label">Issue Description</label>
+          <input
+            type="text"
+            class="form-control"
+            id="issue_description"
+            name="issue_description"
+            placeholder="Describe the issue"
+            required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="issue_pertaining_to" class="form-label">Issue Pertaining To</label>
+          <input
+            type="text"
+            class="form-control"
+            id="issue_pertaining_to"
+            name="issue_pertaining_to"
+            placeholder="What is this issue pertaining to?"
+            required
+          />
+        </div>
+        <div class="mb-3">
+            <label for="issue_pertaining_to" class="form-label">Issue Pertaining To</label>
+            <input
+              type="date"
+              class="form-control"
+              id="issue_date"
+              name="issue_date"
+              required
+            />
+          </div>
+        <div class="mb-3">
+          <label for="docFile" class="form-label">Upload Issue Document (Optional)</label>
+          <small class="form-text text-muted">
+            Maximum file size allowed: <strong>50 MB</strong>.
+          </small>
+          <input
+            type="file"
+            class="form-control"
+            id="docFile"
+            name="doc_file"
+          />
+        </div>
+
+        <!-- Department/statistic removed for PMC DPR/BMS flow. Context is passed via query params. -->
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      let deptId = urlParams.get("dept_id");
+      let statisticId = urlParams.get("statistic_id");
+      let entityId = urlParams.get("entity_id");
+      const pmcBmsEntity = urlParams.get('pmc_bms_entity_id');
+      const pmcDprEntity = urlParams.get('pmc_dpr_entity_id');
+      const pmcCeEntity = urlParams.get('pmc_ce_entity_id');
+      const editId = urlParams.get('edit_id') || '';
+
+      if (editId) {
+        document.querySelector('h1').textContent = 'Edit Issues';
+        document.getElementById('issue_description').value = urlParams.get('issue_description') || '';
+        document.getElementById('issue_pertaining_to').value = urlParams.get('issue_pertaining_to') || '';
+        document.getElementById('issue_date').value = urlParams.get('issue_date') || '';
+        document.getElementById('docFile').required = false;
+      }
+
+      // Note: dept/statistic/entity hidden fields were removed; we still keep local variables for non-PMC flows
+
+      // Try to resolve dept/statistic/entity when only a pmc slice context was passed
+      async function tryResolveFromPmcParam(pmcParam) {
+        if (!pmcParam) return null;
+        // If it's a direct id (UUID-like), try the entities context endpoint
+        if (!pmcParam.startsWith('slicectx:')) {
+          try {
+            const res = await authFetch('/api/data/entities/context/' + encodeURIComponent(pmcParam));
+            if (!res.ok) return null;
+            const ctx = await res.json();
+            return ctx;
+          } catch (e) { return null; }
+        }
+
+        // slicectx:segment:project_name -> try to lookup saved pmc entry
+        try {
+          const parts = pmcParam.split(':');
+          // format: slicectx:pmc-bms:projectname
+          const projectName = parts[parts.length - 1] || '';
+          const segmentPart = parts.length >= 3 ? parts[1] : '';
+          let segmentKey = 'pmc-dpr-pfr';
+          if (String(segmentPart).toLowerCase().indexOf('bms') !== -1) segmentKey = 'pmc-bms';
+          if (String(segmentPart).toLowerCase().indexOf('execution') !== -1) segmentKey = 'pmc-execution';
+          const entriesUrl = '/api/data/pmc/entry/all?segment=' + encodeURIComponent(segmentKey) + '&project_name=' + encodeURIComponent(projectName);
+          const res = await authFetch(entriesUrl);
+          if (!res.ok) return null;
+          const payload = await res.json();
+          const list = Array.isArray(payload.data) ? payload.data : [];
+          if (!list.length) return null;
+          const resolvedId = String(list[0].pmc_entry_id || '');
+          if (!resolvedId) return null;
+          const res2 = await authFetch('/api/data/entities/context/' + encodeURIComponent(resolvedId));
+          if (!res2.ok) return null;
+          const ctx = await res2.json();
+          return ctx;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      (async function resolveIfNeeded() {
+        // For PMC DPR/BMS flows we accept context from query params; try to auto-resolve pmc slicectx to a saved entry
+        // If params include pmc_*_entity_id, preserve them in local variables for submission
+        // nothing else to do here
+      })();
+
+      // Populate manual Dept/Statistic selectors when auto-resolution fails
+      async function loadDepartments() {
+        try {
+          const res = await authFetch('/api/data/departments');
+          if (!res.ok) return [];
+          const depts = await res.json();
+          return Array.isArray(depts) ? depts : (depts.data || []);
+        } catch (e) { return []; }
+      }
+
+      async function loadStatistics(deptId) {
+        try {
+          const res = await authFetch('/api/data/statistics/' + encodeURIComponent(deptId));
+          if (!res.ok) return [];
+          const stats = await res.json();
+          return Array.isArray(stats) ? stats : (stats.data || []);
+        } catch (e) { return []; }
+      }
+
+      // Manual dept/statistic UI removed per request
+
+
+      function authFetch(url, options = {}) {
+        const token = localStorage.getItem("token");
+        const defaultHeaders = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...defaultHeaders,
+            ...(options.headers || {}),
+          },
+        }).then((res) => {
+          if (res.status === 401) {
+            alert("Session expired. Redirecting to login...");
+            localStorage.clear();
+            window.location.href = "/";
+            throw new Error("Unauthorized");
+          }
+          return res;
+        });
+      }
+
+      function normalizeBmsSliceContext(value) {
+        var raw = String(value || '').trim();
+        if (!raw) return '';
+        if (/^slicectx:pmc-bms:/i.test(raw)) return raw.toLowerCase();
+        return 'slicectx:pmc-bms:' + raw.toLowerCase();
+      }
+
+      document
+        .getElementById("addIssueForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+            const formData = new FormData(this);
+            const params = new URLSearchParams(window.location.search);
+            const context = params.get('context');
+            const pmcDprEntityId = params.get('pmc_dpr_entity_id') || params.get('pmc_dpr_entity') || '';
+            const pmcBmsEntityId = params.get('pmc_bms_entity_id') || params.get('pmc_bms_entity') || '';
+            const pmcSlice = params.get('project_name') || params.get('pmc_slice_context') || '';
+            const normalizedBmsSlice = normalizeBmsSliceContext(pmcSlice);
+
+            // For non-PMC flow, ensure dept/statistic/entity are present
+            if (!context) {
+              const missing = !deptId || !statisticId || !entityId;
+              if (missing) {
+                alert('Missing required context. Open this page from the listing page.');
+                return;
+              }
+              formData.append('dept_id', deptId);
+              formData.append('statistic_id', statisticId);
+              formData.append('entity_id', entityId);
+            }
+
+            try {
+              let endpoint = '/api/data/issues/new';
+              let method = 'POST';
+              // If DPR/BMS context provided, post to dedicated endpoints
+              if (context && context.indexOf('pmc_dpr') === 0) {
+                endpoint = editId ? ('/api/data/issues/dpr/issue/' + encodeURIComponent(editId)) : '/api/data/issues/dpr/issues';
+                method = editId ? 'PUT' : 'POST';
+                if (pmcDprEntityId) formData.append('pmc_entry_id', pmcDprEntityId);
+                if (pmcSlice) formData.append('pmc_slice_context', pmcSlice);
+                if (pmcSlice) formData.append('project_name', pmcSlice);
+              } else if (context && context.indexOf('pmc_bms') === 0) {
+                endpoint = editId ? ('/api/data/issues/bms/issue/' + encodeURIComponent(editId)) : '/api/data/issues/bms/issues';
+                method = editId ? 'PUT' : 'POST';
+                if (pmcBmsEntityId) formData.append('pmc_entry_id', pmcBmsEntityId);
+                if (normalizedBmsSlice) formData.append('pmc_slice_context', normalizedBmsSlice);
+                if (pmcSlice) formData.append('project_name', pmcSlice);
+              }
+              
+
+              const response = await authFetch(endpoint, {
+                method,
+                body: formData,
+              });
+
+              if (!response.ok) throw new Error('Failed to save issue');
+              alert(editId ? 'Issue updated successfully!' : 'Issue added successfully!');
+
+              // Navigate back depending on context
+              if (context && context.indexOf('pmc_dpr') === 0) {
+                var dprBase = '/pmc_dpr_projects.html?segment=pmc_dpr';
+                if (pmcSlice) dprBase += '&project_name=' + encodeURIComponent(pmcSlice);
+                if (pmcDprEntityId) dprBase += '&pmc_entry_id=' + encodeURIComponent(pmcDprEntityId);
+                dprBase += '&t=' + Date.now();
+                window.location.href = dprBase;
+              } else if (context && context.indexOf('pmc_bms') === 0) {
+                if (pmcBmsEntityId) {
+                  window.location.href = '/pmc_bms_projects.html?pmc_entry_id=' + encodeURIComponent(pmcBmsEntityId);
+                } else {
+                  window.location.href = '/pmc_bms_projects.html?segment=pmc-bms&project_name=' + encodeURIComponent(pmcSlice || '') + '&t=' + Date.now();
+                }
+              } else {
+                window.location.href = '/external.html?dept_id=' + encodeURIComponent(deptId) + '&statistic_id=' + encodeURIComponent(statisticId) + '&entity_id=' + encodeURIComponent(entityId);
+              }
+            } catch (err) {
+              console.error(err);
+              alert('Error adding issue');
+            }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
