@@ -32,6 +32,9 @@
     "winston": "^3.19.0",
     "xlsx": "^0.18.5"
   },
+  "optionalDependencies": {
+    "nodemailer": "^6.10.1"
+  },
   "devDependencies": {
     "@types/sequelize": "^4.28.20",
     "@types/uuid": "^11.0.0",

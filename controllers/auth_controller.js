@@ -2,6 +2,8 @@ const { User, DeptMaster, UserEditAccess } = require("../models").models;
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const logger = require("../logger");
+const { sendMail } = require("../utils/mailer");
+const crypto = require("crypto");
 
 require("dotenv").config(); // Load environment variables from .env file
 
@@ -38,7 +40,9 @@ async function login_user(req, res) {
           login_token: token,
           app_environment: process.env.NODE_ENV,
         });
+        return;
       }
+      return res.status(401).json({ error: "Invalid credentials" });
     });
   } catch (err) {
     console.error("Error logging in:", err);
@@ -227,4 +231,65 @@ module.exports = {
   manageUser,
   createUser,
   editUserDepartmentMapping,
+  // password helpers exported
+  forgotPassword,
+  resetPassword,
 };
+
+// ---------------- Password reset flow ----------------
+async function forgotPassword(req, res) {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  try {
+    const user = await User.findOne({ where: { email, is_active: true } });
+    if (!user) return res.json({ message: 'If an account exists, a reset email will be sent.' });
+
+    // create a token and expiry (1 hour)
+    const token = crypto.randomBytes(24).toString('hex');
+    const expiresAt = Date.now() + 3600 * 1000;
+
+    // store token + expiry on user record (add temporary fields)
+    await user.update({ reset_token: token, reset_token_expires: new Date(expiresAt) });
+
+    const resetUrl = `${req.protocol}://${req.get('host')}/reset_password.html?token=${token}&email=${encodeURIComponent(email)}`;
+
+    const subject = 'Password reset instructions';
+    const text = `You requested a password reset. Use the link: ${resetUrl} (valid 1 hour)`;
+
+    // send mail, but do not fail if mail fails
+    try {
+      const info = await sendMail({ to: email, subject, text });
+      console.log('Password reset mail sent', { to: email, response: info && info.response });
+    } catch (mailErr) {
+      console.warn('Failed to send reset mail', mailErr && mailErr.message ? mailErr.message : mailErr);
+      if (mailErr && mailErr.response) console.warn('SMTP response', mailErr.response);
+    }
+
+    return res.json({ message: 'If an account exists, a reset email will be sent.' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function resetPassword(req, res) {
+  const { email, token, new_password } = req.body;
+  if (!email || !token || !new_password) return res.status(400).json({ error: 'Missing parameters' });
+
+  try {
+    const user = await User.findOne({ where: { email, is_active: true } });
+    if (!user) return res.status(400).json({ error: 'Invalid token or user' });
+
+    if (!user.reset_token || user.reset_token !== token) return res.status(400).json({ error: 'Invalid token' });
+    if (!user.reset_token_expires || new Date(user.reset_token_expires) < new Date()) return res.status(400).json({ error: 'Token expired' });
+
+    const hashed = await bcrypt.hash(new_password, 10);
+    await user.update({ password: hashed, reset_token: null, reset_token_expires: null });
+
+    return res.json({ message: 'Password has been reset' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}

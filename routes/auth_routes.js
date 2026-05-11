@@ -6,12 +6,17 @@ const {
   manageUser,
   createUser,
   editUserDepartmentMapping,
+  forgotPassword,
+  resetPassword,
 } = require("../controllers/auth_controller");
 const { verifyAdmin, verifyToken } = require("../middleware/verify_token");
 const auditLogger = require("../middleware/audit_logger"); // ✅ imported properly
 
 // Define route: POST /api/login
 router.post("/login", login_user); // ❌ no audit - user is not yet authenticated
+// Password reset endpoints
+router.post('/password/forgot', forgotPassword);
+router.post('/password/reset', resetPassword);
 
 // GET all users (admin only)
 router.get(
