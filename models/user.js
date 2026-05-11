@@ -50,6 +50,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      // store last reset mail SMTP ids for tracing deliverability
+      reset_mail_message_id: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      reset_mail_response: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
     },
     {
       freezeTableName: true, // prevents Sequelize from pluralizing the table name

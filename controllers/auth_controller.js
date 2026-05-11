@@ -243,7 +243,11 @@ async function forgotPassword(req, res) {
 
   try {
     const user = await User.findOne({ where: { email, is_active: true } });
-    if (!user) return res.json({ message: 'If an account exists, a reset email will be sent.' });
+    if (!user) {
+      logger.info('forgotPassword: user not found or not active', { email });
+      return res.json({ message: 'If an account exists, a reset email will be sent.' });
+    }
+    logger.info('forgotPassword: user found', { email, user_id: user.user_id });
 
     // create a token and expiry (1 hour)
     const token = crypto.randomBytes(24).toString('hex');
@@ -258,15 +262,46 @@ async function forgotPassword(req, res) {
     const text = `You requested a password reset. Use the link: ${resetUrl} (valid 1 hour)`;
 
     // send mail, but do not fail if mail fails
+    let mailInfo = null;
     try {
-      const info = await sendMail({ to: email, subject, text });
-      console.log('Password reset mail sent', { to: email, response: info && info.response });
+      // ensure 'from' uses EMAIL_FROM when provided
+      const from = process.env.EMAIL_FROM || process.env.EMAIL_HOST_USER;
+      mailInfo = await sendMail({ to: email, subject, text, from });
+      console.log('Password reset mail sent', {
+        to: email,
+        accepted: mailInfo && mailInfo.accepted,
+        rejected: mailInfo && mailInfo.rejected,
+        messageId: mailInfo && mailInfo.messageId,
+        response: mailInfo && mailInfo.response,
+      });
     } catch (mailErr) {
       console.warn('Failed to send reset mail', mailErr && mailErr.message ? mailErr.message : mailErr);
       if (mailErr && mailErr.response) console.warn('SMTP response', mailErr.response);
     }
 
-    return res.json({ message: 'If an account exists, a reset email will be sent.' });
+    // persist messageId/response on user for tracing (if possible)
+    try {
+      if (mailInfo && mailInfo.messageId) {
+        await user.update({
+          reset_mail_message_id: mailInfo.messageId,
+          reset_mail_response: mailInfo.response,
+        });
+      }
+    } catch (updErr) {
+      console.warn('Failed to persist reset mail metadata', updErr && updErr.message ? updErr.message : updErr);
+    }
+
+    const responsePayload = { message: 'If an account exists, a reset email will be sent.' };
+    if (mailInfo) {
+      responsePayload.mail_debug = {
+        accepted: mailInfo.accepted,
+        rejected: mailInfo.rejected,
+        messageId: mailInfo.messageId,
+        response: mailInfo.response,
+      };
+    }
+
+    return res.json(responsePayload);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Internal server error' });

@@ -49,6 +49,8 @@ function createTransporter() {
     host,
     port,
     secure,
+    // Set EHLO/HELO name to a real domain to avoid localhost in message-id/helo
+    name: process.env.EMAIL_HELO || process.env.EMAIL_DOMAIN || 'portal.seci.co.in',
     auth: { user, pass },
   };
   if (requireTLS) transportOptions.requireTLS = true;
