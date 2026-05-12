@@ -9,8 +9,7 @@ let sgMail;
 try {
   nodemailer = require('nodemailer');
 } catch (e) {
-  nodemailer = null;
-}
+  nodemailer = null;}
 
 if (process.env.SENDGRID_API_KEY) {
   try {
