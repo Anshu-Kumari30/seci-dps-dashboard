@@ -1,25 +1,37 @@
-const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Minimal mailer helper. Uses environment variables:
-// - EMAIL_HOST
-// - EMAIL_PORT
-// - EMAIL_SECURE (true/false)
-// - EMAIL_USER
-// - EMAIL_PASS
-// - EMAIL_FROM (optional)
+// Mailer helper with pluggable backends.
+// By default uses SMTP via `nodemailer` when `SENDGRID_API_KEY` is not set.
+// If `SENDGRID_API_KEY` is present, uses SendGrid API via `@sendgrid/mail`.
+
+let nodemailer;
+let sgMail;
+try {
+  nodemailer = require('nodemailer');
+} catch (e) {
+  nodemailer = null;
+}
+
+if (process.env.SENDGRID_API_KEY) {
+  try {
+    sgMail = require('@sendgrid/mail');
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  } catch (e) {
+    sgMail = null;
+    console.warn('SENDGRID_API_KEY is set but @sendgrid/mail is not installed.');
+  }
+}
 
 function createTransporter() {
+  if (!nodemailer) throw new Error('nodemailer is not installed');
+
   const host = process.env.EMAIL_HOST;
   const port = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT, 10) : undefined;
-  // Accept either EMAIL_SECURE or EMAIL_USE_TLS (some systems use EMAIL_USE_TLS/True)
   const secureFlag = (String(process.env.EMAIL_SECURE || '').toLowerCase() === 'true');
-  const useTlsFlag = (String(process.env.EMAIL_USE_TLS || '').toLowerCase() === 'true' || String(process.env.EMAIL_USE_TLS || '').toLowerCase() === 'true');
-  // prefer explicit EMAIL_SECURE, otherwise infer from EMAIL_USE_TLS
+  const useTlsFlag = (String(process.env.EMAIL_USE_TLS || '').toLowerCase() === 'true');
   const secure = secureFlag || false;
   const requireTLS = !secure && useTlsFlag;
 
-  // Accept multiple env var names for user/pass
   const user = process.env.EMAIL_USER || process.env.EMAIL_HOST_USER;
   const pass = process.env.EMAIL_PASS || process.env.EMAIL_HOST_PASSWORD;
   const missing = [];
@@ -31,7 +43,6 @@ function createTransporter() {
     throw new Error('Missing SMTP configuration in environment variables: ' + missing.join(', '));
   }
 
-  // Diagnostic: log which SMTP env keys are present (do not print values)
   try {
     console.log('SMTP env presence:', {
       EMAIL_HOST: !!host,
@@ -41,15 +52,13 @@ function createTransporter() {
       EMAIL_SECURE_or_USE_TLS: !!(process.env.EMAIL_SECURE || process.env.EMAIL_USE_TLS),
     });
   } catch (e) {
-    // ignore logging errors
-    logger.error("uncaughtexception error", err);
+    console.error(e);
   }
 
   const transportOptions = {
     host,
     port,
     secure,
-    // Set EHLO/HELO name to a real domain to avoid localhost in message-id/helo
     name: process.env.EMAIL_HELO || process.env.EMAIL_DOMAIN || 'portal.seci.co.in',
     auth: { user, pass },
   };
@@ -58,18 +67,27 @@ function createTransporter() {
   return nodemailer.createTransport(transportOptions);
 }
 
-async function sendMail({ to, subject, text, html }) {
+
+async function sendMail({ to, subject, text, html, from: fromOverride }) {
+  const from = fromOverride || process.env.EMAIL_FROM || process.env.EMAIL_USER || process.env.EMAIL_FROM_ADDRESS;
+
+  if (sgMail) {
+    const msg = { to, from, subject, text, html };
+    const res = await sgMail.send(msg);
+    // Normalize SendGrid response to resemble nodemailer shape
+    const first = Array.isArray(res) ? res[0] : res;
+    const normalized = {
+      accepted: [to],
+      rejected: [],
+      messageId: (first && first.headers && (first.headers['x-message-id'] || first.headers['X-Message-Id'])) || null,
+      response: first && first.statusCode ? String(first.statusCode) : (first && first.body) || JSON.stringify(first),
+    };
+    return normalized;
+  }
+
+  // Fallback to SMTP via nodemailer
   const transporter = createTransporter();
-  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
-
-  const info = await transporter.sendMail({
-    from,
-    to,
-    subject,
-    text,
-    html,
-  });
-
+  const info = await transporter.sendMail({ from, to, subject, text, html });
   return info;
 }
 
