@@ -1228,45 +1228,44 @@ exports.deleteBusinessDevelopmentMilestone = async (req, res) => {
  */
 exports.getUserDepartmentMappings = async (req, res) => {
   try {
-    // Fetch all user-department mappings
-    const userDepartmentMappings = await UserEditAccess.findAll();
+    const userDepartmentMappings = await UserEditAccess.findAll({
+      attributes: ["user_id", "dept_id", "can_edit"],
+    });
 
-    const mappingMap = new Map();
+    const userIds = Array.from(
+      new Set(userDepartmentMappings.map((m) => m.user_id))
+    );
+    const deptIds = Array.from(
+      new Set(userDepartmentMappings.map((m) => m.dept_id))
+    );
 
-    for (const mapping of userDepartmentMappings) {
-      const { user_id, dept_id } = mapping;
+    const [users, departments] = await Promise.all([
+      User.findAll({
+        where: { user_id: userIds },
+        attributes: ["user_id", "name"],
+      }),
+      DeptMaster.findAll({
+        where: { dept_id: deptIds },
+        attributes: ["dept_id", "dept_name"],
+      }),
+    ]);
 
-      // Fetch department name
-      const dept = await DeptMaster.findOne({
-        where: { dept_id },
-        attributes: ["dept_name"],
-      });
+    const userMap = new Map(users.map((u) => [u.user_id, u.name]));
+    const deptMap = new Map(
+      departments.map((d) => [d.dept_id, d.dept_name])
+    );
 
-      // Fetch user name
-      const user = await User.findOne({
-        where: { user_id },
-        attributes: ["name"],
-      });
+    const result = userDepartmentMappings
+      .map((mapping) => ({
+        user_id: mapping.user_id,
+        user_name: userMap.get(mapping.user_id) || "Unknown",
+        dept_id: mapping.dept_id,
+        dept_name: deptMap.get(mapping.dept_id) || "Unknown",
+        can_edit: mapping.can_edit !== false,
+      }))
+      .filter((row) => row.user_name !== "Unknown" && row.dept_name !== "Unknown");
 
-      // Skip if either record is missing (possible orphaned FK)
-      if (!dept || !user) continue;
-
-      const userName = user.name;
-      const deptName = dept.dept_name;
-
-      // Add or update entry in the map
-      if (mappingMap.has(userName)) {
-        mappingMap.get(userName).push(deptName);
-      } else {
-        mappingMap.set(userName, [deptName]);
-      }
-    }
-
-    // Convert Map to plain JSON-compatible object
-    const result = Object.fromEntries(mappingMap);
-
-    // Send the result
-    res.json(result);
+    res.json({ mappings: result });
   } catch (error) {
     console.error("Error in getUserDepartmentMappings:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -1673,14 +1672,19 @@ exports.getDepartmentsForUser = async (req, res) => {
         order: [["dept_name", "ASC"]],
       });
 
-      return res.json({ departments: departments.map((item) => item.dept_id) });
+      return res.json({
+        departments: departments.map((item) => ({
+          dept_id: item.dept_id,
+          can_edit: true,
+        })),
+      });
     }
 
     const userDepartmentMappings = await UserEditAccess.findAll({
       where: {
         user_id: requesterUserId,
       },
-      attributes: ["dept_id"],
+      attributes: ["dept_id", "can_edit"],
     });
 
     const mappedDeptIds = userDepartmentMappings.map((item) => item.dept_id);
@@ -1697,7 +1701,16 @@ exports.getDepartmentsForUser = async (req, res) => {
       order: [["dept_name", "ASC"]],
     });
 
-    res.json({ departments: departments.map((item) => item.dept_id) });
+    const canEditMap = new Map(
+      userDepartmentMappings.map((item) => [item.dept_id, item.can_edit !== false])
+    );
+
+    res.json({
+      departments: departments.map((item) => ({
+        dept_id: item.dept_id,
+        can_edit: canEditMap.get(item.dept_id) === true,
+      })),
+    });
   } catch (err) {
     console.error("Error fetching departments:", err);
     res.status(500).json({ error: "Failed to fetch departments for user" });

@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const dataController = require("../controllers/data_controllers");
 const { verifyToken, verifyAdmin } = require("../middleware/verify_token");
+const { requireDeptEditAccess } = require("../middleware/require_dept_edit_access");
 const auditLogger = require("../middleware/audit_logger");
 const multer = require("multer");
 const path = require("path");
@@ -19,6 +20,8 @@ const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 },
 });
+
+router.use(requireDeptEditAccess);
 
 // Get PMC donut chart data
 router.get(

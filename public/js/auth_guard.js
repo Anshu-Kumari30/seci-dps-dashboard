@@ -2,6 +2,14 @@
   var publicPages = ["/", "/login.html"];
   // Only block non-admins from explicit admin-only pages.
   var adminOnlyPages = ["/settings.html", "/add_user.html"];
+  var viewerBlockedPatterns = [
+    /^\/add_/i,
+    /\/add_edit/i,
+    /\/update/i,
+    /\/edit/i,
+    /\/upload/i,
+    /\/pmc_slice_editor/i,
+  ];
   var currentPath = window.location.pathname;
   var now = Math.floor(Date.now() / 1000);
 
@@ -33,6 +41,16 @@
     if (payload.role !== "admin" && adminOnlyPages.indexOf(currentPath) !== -1) {
       window.location.replace("/home.html");
       return;
+    }
+
+    if (payload.role === "viewer") {
+      var blocked = viewerBlockedPatterns.some(function (pattern) {
+        return pattern.test(currentPath);
+      });
+      if (blocked) {
+        window.location.replace("/home.html");
+        return;
+      }
     }
 
     if (payload.exp && payload.exp <= now) {

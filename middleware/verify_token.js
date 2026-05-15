@@ -17,6 +17,11 @@ function verifyToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
+    const method = String(req.method || "").toUpperCase();
+    const readOnlyMethods = ["GET", "HEAD", "OPTIONS"];
+    if (decoded.role === "viewer" && readOnlyMethods.indexOf(method) === -1) {
+      return res.status(403).json({ error: "Access denied: read-only user" });
+    }
     req.user = decoded; // Make user info available to the route
     next(); // Proceed to next handler
   } catch (err) {

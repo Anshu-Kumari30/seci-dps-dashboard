@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
           key: "dept_id",
         },
       },
+      can_edit: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
     },
     {
       tableName: "user_edit_access",

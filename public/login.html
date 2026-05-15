@@ -253,21 +253,21 @@
 
               clearTimeout(timeoutId);
 
-              if (response.ok) {
-                const response_json = await response.json();
+              const responseBody = await response.json().catch(() => null);
 
+              if (response.ok) {
                 // ✅ Store token in localStorage
-                jwt_token = response_json.login_token;
-                app_environment = response_json.app_environment;
+                jwt_token = responseBody?.login_token;
+                app_environment = responseBody?.app_environment;
                 localStorage.setItem("token", jwt_token);
                 localStorage.setItem("app_environment", app_environment);
 
                 // ✅ Redirect to home page
                 window.location.href = "/home.html";
+                return;
               }
 
-              const errorBody = await response.json().catch(() => null);
-              const errorText = errorBody?.error || "Invalid email or password.";
+              const errorText = responseBody?.error || "Invalid email or password.";
               showLoginError(errorText);
             } catch (err) {
               console.error("Login error:", err);

@@ -24,6 +24,7 @@ const {
 const { PmcCeDocument, PmcCeCorrespondence } = require("../models").models;
 
 const { verifyToken } = require("../middleware/verify_token");
+const { requireDeptEditAccess } = require("../middleware/require_dept_edit_access");
 const XLSX = require("xlsx");
 const { v4: uuidv4, v5: uuidv5 } = require("uuid");
 const { Op, fn, col, where } = require("sequelize");
@@ -52,6 +53,7 @@ const upload = multer({
     cb(null, true);
   },
 });
+
 
 function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
@@ -945,6 +947,7 @@ const express = require("express");
 const { json } = require("sequelize");
 const { isNumber, normalizeDate } = require("../utils/helper");
 const router = express.Router();
+router.use(requireDeptEditAccess);
 router.post("/", verifyToken, upload.single("doc_file"), addDocument);
 
 router.post("/add", verifyToken, upload.single("doc_file"), addCorrespondence);

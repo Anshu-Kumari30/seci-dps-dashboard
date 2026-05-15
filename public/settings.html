@@ -309,24 +309,34 @@
           .then(([mappingData, users, departments]) => {
             tableBody.innerHTML = "";
 
+            const mappingList = (mappingData && mappingData.mappings) || [];
+            const mappingByUser = {};
+            mappingList.forEach((row) => {
+              if (!mappingByUser[row.user_id]) {
+                mappingByUser[row.user_id] = {};
+              }
+              mappingByUser[row.user_id][row.dept_id] = row.can_edit
+                ? "edit"
+                : "view";
+            });
+
             users.forEach((user) => {
-              const userDepts = mappingData[user.name] || [];
-              originalMappings[user.user_id] = new Set(
-                departments
-                  .filter((d) => userDepts.includes(d.dept_name))
-                  .map((d) => d.dept_id)
-              );
+              const userMap = mappingByUser[user.user_id] || {};
+              originalMappings[user.user_id] = { ...userMap };
 
               const deptCheckboxes = departments
                 .map((dept) => {
-                  const isChecked = userDepts.includes(dept.dept_name);
+                  const access = userMap[dept.dept_id] || "none";
                   return `
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input mapping-checkbox" type="checkbox"
+                      <label class="form-check-label" style="min-width:160px;">${dept.dept_name}</label>
+                      <select class="form-select form-select-sm mapping-select"
                         data-user-id="${user.user_id}"
-                        data-dept-id="${dept.dept_id}"
-                        ${isChecked ? "checked" : ""}>
-                      <label class="form-check-label">${dept.dept_name}</label>
+                        data-dept-id="${dept.dept_id}">
+                        <option value="none" ${access === "none" ? "selected" : ""}>No Access</option>
+                        <option value="view" ${access === "view" ? "selected" : ""}>View</option>
+                        <option value="edit" ${access === "edit" ? "selected" : ""}>Edit</option>
+                      </select>
                     </div>
                   `;
                 })
@@ -356,40 +366,55 @@
       document.getElementById("saveBtn").addEventListener("click", () => {
         if (!hasChanges) return;
 
-        const checkboxes = document.querySelectorAll(".mapping-checkbox");
+        const selects = document.querySelectorAll(".mapping-select");
         const currentMap = {};
-        checkboxes.forEach((cb) => {
-          const userId = cb.dataset.userId;
-          const deptId = cb.dataset.deptId;
-          if (!currentMap[userId]) currentMap[userId] = new Set();
-          if (cb.checked) currentMap[userId].add(deptId);
+        selects.forEach((sel) => {
+          const userId = sel.dataset.userId;
+          const deptId = sel.dataset.deptId;
+          const access = sel.value;
+          if (!currentMap[userId]) currentMap[userId] = {};
+          if (access !== "none") currentMap[userId][deptId] = access;
         });
 
         const changes = [];
         for (const userId in currentMap) {
-          const currentDepts = currentMap[userId];
-          const originalDepts = originalMappings[userId] || new Set();
+          const currentDepts = currentMap[userId] || {};
+          const originalDepts = originalMappings[userId] || {};
 
-          currentDepts.forEach((deptId) => {
-            if (!originalDepts.has(deptId)) {
-              changes.push({ user_id: userId, dept_id: deptId, action: "add" });
+          for (const deptId in currentDepts) {
+            const access = currentDepts[deptId];
+            if (!originalDepts[deptId]) {
+              changes.push({
+                user_id: userId,
+                dept_id: deptId,
+                action: "add",
+                can_edit: access === "edit",
+              });
+            } else if (originalDepts[deptId] !== access) {
+              changes.push({
+                user_id: userId,
+                dept_id: deptId,
+                action: "update",
+                can_edit: access === "edit",
+              });
             }
-          });
+          }
 
-          originalDepts.forEach((deptId) => {
-            if (!currentDepts.has(deptId)) {
+          for (const deptId in originalDepts) {
+            if (!currentDepts[deptId]) {
               changes.push({
                 user_id: userId,
                 dept_id: deptId,
                 action: "remove",
               });
             }
-          });
+          }
         }
 
         for (const userId in originalMappings) {
           if (!currentMap[userId]) {
-            originalMappings[userId].forEach((deptId) => {
+            const originalDepts = originalMappings[userId] || {};
+            Object.keys(originalDepts).forEach((deptId) => {
               changes.push({
                 user_id: userId,
                 dept_id: deptId,

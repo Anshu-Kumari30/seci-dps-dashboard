@@ -94,10 +94,15 @@ async function createUser(req, res) {
       defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin1234";
     } else if (role === "user") {
       defaultPassword = process.env.DEFAULT_USER_PASSWORD || "user1234";
+    } else if (role === "viewer") {
+      defaultPassword =
+        process.env.DEFAULT_VIEWER_PASSWORD ||
+        process.env.DEFAULT_USER_PASSWORD ||
+        "user1234";
     } else {
       return res
         .status(400)
-        .json({ error: "Invalid role. Must be 'admin' or 'user'." });
+        .json({ error: "Invalid role. Must be 'admin', 'user', or 'viewer'." });
     }
 
     // Hash the password
@@ -149,7 +154,7 @@ async function createUser(req, res) {
 }
 
 async function editUserDepartmentMapping(req, res) {
-  const mappings = req.body.mappings; // expecting [{ user_id, dept_id, action }, ...]
+  const mappings = req.body.mappings; // expecting [{ user_id, dept_id, action, can_edit }, ...]
 
   if (!Array.isArray(mappings)) {
     return res
@@ -164,6 +169,7 @@ async function editUserDepartmentMapping(req, res) {
     try {
       for (const mapping of mappings) {
         const { user_id, dept_id, action } = mapping;
+        const canEdit = mapping.can_edit !== false;
 
         // Validate payload
         if (!user_id || !dept_id || !action) continue;
@@ -191,7 +197,7 @@ async function editUserDepartmentMapping(req, res) {
           continue;
         }
 
-        // Handle add/remove mapping logic
+        // Handle add/remove/update mapping logic
         if (action === "add") {
           const exists = await UserEditAccess.findOne({
             where: { user_id, dept_id },
@@ -199,13 +205,38 @@ async function editUserDepartmentMapping(req, res) {
           });
 
           if (!exists) {
-            await UserEditAccess.create({ user_id, dept_id }, { transaction });
+            await UserEditAccess.create(
+              { user_id, dept_id, can_edit: canEdit },
+              { transaction }
+            );
+          } else {
+            await UserEditAccess.update(
+              { can_edit: canEdit },
+              { where: { user_id, dept_id }, transaction }
+            );
           }
         } else if (action === "remove") {
           await UserEditAccess.destroy({
             where: { user_id, dept_id },
             transaction,
           });
+        } else if (action === "update") {
+          const exists = await UserEditAccess.findOne({
+            where: { user_id, dept_id },
+            transaction,
+          });
+
+          if (!exists) {
+            await UserEditAccess.create(
+              { user_id, dept_id, can_edit: canEdit },
+              { transaction }
+            );
+          } else {
+            await UserEditAccess.update(
+              { can_edit: canEdit },
+              { where: { user_id, dept_id }, transaction }
+            );
+          }
         }
       }
 
