@@ -1251,7 +1251,14 @@
         button.setAttribute("data-index", i);
         button.innerHTML = `<i class="bi ${icons[i % icons.length]
           } me-2"></i> <span class="tab-text">${dept.dept_name}</span>`;
-        button.addEventListener("click", () => switchDepartment(i));
+        button.addEventListener("click", () => {
+          const name = String(dept.dept_name || '').toLowerCase();
+          if (name.includes('engineering')) {
+            window.open('https://edms.seci.co.in', '_blank');
+            return;
+          }
+          switchDepartment(i);
+        });
         sidebar.appendChild(button);
       });
       switchDepartment(0);
@@ -1967,7 +1974,16 @@
               .om-banner { background: linear-gradient(135deg, #1f4e79, #0b5ed7); color: #fff; border-radius: 6px; padding: 10px 16px; margin-bottom: 12px; }
               .om-table { width: 100%; border-collapse: separate; border-spacing: 0; }
               .om-table thead th { background: linear-gradient(135deg, #1f4e79, #0b5ed7); color: #ffffff; font-size: 14px; font-weight: 700; text-transform: uppercase; border: none; padding: 14px 10px; text-align: center; }
-              .om-table tbody td { padding: 12px 10px; background: #fff; border: 1px solid #e0e6ef; text-align: center; }
+              /* Summary table: left-align body cells with wrapping for long text */
+              .om-table tbody td { padding: 12px 10px; background: #fff; border: 1px solid #e0e6ef; text-align: left; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
+              /* Center monetary columns (PO Value, Invoice Raised, PO Amount Pending) - columns 4-6 */
+              .om-table tbody td:nth-child(4),
+              .om-table tbody td:nth-child(5),
+              .om-table tbody td:nth-child(6) { text-align: center; white-space: nowrap; }
+              /* Let summary table auto-size to available space to avoid horizontal scrollbar */
+              .om-table { table-layout: auto; width: 100%; }
+              /* Actions column: keep centered and prevent wrapping */
+              .om-table tbody tr td:last-child { text-align: center; white-space: nowrap; }
               .edit-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 9999; }
               .edit-modal { width: 100%; max-width: 820px; max-height: 90vh; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.25); display: flex; flex-direction: column; }
               .edit-modal-header { background: #0b5ed7; color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; }
@@ -2553,6 +2569,32 @@
         } catch (e) {
           console.error("O&M inline render failed", e);
         }
+      } else if (dept.dept_name === "Engineering") {
+        // Render Engineering as an external EDMS link with icon and button
+        try {
+          document.getElementById("departmentContent").innerHTML = `
+              <div class="container-fluid">
+                <h3><b>Engineering</b></h3>
+                <div class="mt-3 mb-2 small text-muted"><strong>External EDMS</strong></div>
+                <div style="width:820px; max-width:100%; margin:12px auto 6px auto;">
+                  <div style="text-align:center;">
+                    <img src="/icons/Engineering.png" alt="Engineering" style="max-width:280px; width:100%; height:auto;" />
+                  </div>
+                  <div style="text-align:center; margin-top:12px;">
+                    <button class="btn btn-outline-primary" id="engineering-open-btn">Open EDMS</button>
+                  </div>
+                </div>
+              </div>
+            `;
+
+          setTimeout(() => {
+            const btn = document.getElementById('engineering-open-btn');
+            if (!btn) return;
+            btn.onclick = () => {
+              window.open('https://edms.seci.co.in', '_blank');
+            };
+          }, 80);
+        } catch (e) { console.error('Engineering inline render failed', e); }
       } else if (dept.dept_name === "Energy Mangement") {
         // Render Energy Management main view inline on Home (large donut + Edit button)
         try {
@@ -2875,6 +2917,7 @@
           if (key === "om" || key.includes("oandm") || key.includes("operationmaintenance")) return "/icons/o&m.png";
           if (key.includes("reia")) return "/icons/reia.png";
           if (key.includes("pmc")) return "/icons/pmc.png";
+          if (key.includes("engineering")) return "/icons/Engineering.png";
           if (key.includes("energy") && key.includes("management")) return "/icons/Energy%20Management.png";
           if (key.includes("energymangement")) return "/icons/Energy%20Management.png";
           return "";
@@ -2960,9 +3003,13 @@
           const bodyStyle = isFullImageDept ? "padding:0;" : "";
 
           const cardStyle = isFullImageDept ? 'min-height:420px;' : '';
+          const openAction = (d.dept_name && String(d.dept_name).toLowerCase().includes('engineering'))
+            ? `window.open('https://edms.seci.co.in','_blank')`
+            : `switchDepartment(${deptIndex})`;
+
           homeHtml += `
                       <div class="col-md-6 mb-4 d-flex justify-content-center">
-                        <div id="dept-card-${d.dept_id}" class="card h-100 clickable-card dept-overview-card" onclick="switchDepartment(${deptIndex})" style="cursor: pointer; ${cardStyle}">
+                        <div id="dept-card-${d.dept_id}" class="card h-100 clickable-card dept-overview-card" onclick="${openAction}" style="cursor: pointer; ${cardStyle}">
                           <div class="card-body dept-card-body" style="${bodyStyle}">
                             ${titleHtml}
                             ${chartCanvas}
@@ -3290,6 +3337,8 @@
                   setTimeout(() => { window.location.href = '/business_development_external.html'; }, 180);
                 } else if (txt.includes('energy management')) {
                   setTimeout(() => { window.location.href = '/energy_management.html'; }, 180);
+                } else if (txt.includes('engineering')) {
+                  setTimeout(() => { window.open('https://edms.seci.co.in', '_blank'); }, 180);
                 } else {
                   // for other departments, attempt to switch department (find dept index by id)
                   const id = btn.id && btn.id.replace('view-btn-', '') || null;

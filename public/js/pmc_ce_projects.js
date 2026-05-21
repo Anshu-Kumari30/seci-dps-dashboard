@@ -367,13 +367,13 @@
     var rows = ms.map(function (m, i) {
       return '<tr>' +
         '<td>' + (i + 1) + '</td>' +
-        '<td>' + (m.milestone || '') + '</td>' +
+        '<td><div class="milestone-text">' + (m.milestone || '') + '</div></td>' +
         '<td>' + (m.stage_payment != null ? m.stage_payment : '') + '</td>' +
         '<td>' + formatCurrency(m.invoice_amount) + '</td>' +
         '<td>' + formatCurrency(m.invoice_raised) + '</td>' +
         '<td>' + formatDate(m.invoice_date) + '</td>' +
         '<td>' + (m.invoice_number || '') + '</td>' +
-        '<td>' + (m.status || '') + '</td>' +
+        '<td><div class="invoice-status">' + (m.status || '') + '</div></td>' +
         '<td>' + getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status) + '</td>' +
         '</tr>';
     }).join('');

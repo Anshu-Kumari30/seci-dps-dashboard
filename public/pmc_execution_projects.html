@@ -20,6 +20,28 @@
       }
       /*In tariff petition add two placeholders */
       #executionMilestoneTable { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+      /* Let table auto-size to container to avoid horizontal scrollbar */
+      #executionMilestoneTable { table-layout: auto; width: 100%; }
+      /* Project Details (col 4): left-align and wrap */
+      #executionMilestoneTable tbody td:nth-child(4) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        max-width: 380px;
+        overflow-wrap: anywhere;
+      }
+      /* Center other columns */
+      #executionMilestoneTable tbody td:not(:nth-child(4)) {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Status column: left-align and allow wrapping for long status text (col 12) */
+      #executionMilestoneTable tbody td:nth-child(12) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
       #executionMilestoneTable thead tr:first-child th {
         background: linear-gradient(135deg, #1f4e79, #0b5ed7);
         color: #ffffff;
@@ -37,9 +59,27 @@
         background: #fff;
         color: #333;
         font-size: 13px;
-        text-align: center;
+        text-align: left;
         vertical-align: middle;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
+      /* Center date/amount columns (5-11) */
+      #executionMilestoneTable tbody td:nth-child(5),
+      #executionMilestoneTable tbody td:nth-child(6),
+      #executionMilestoneTable tbody td:nth-child(7),
+      #executionMilestoneTable tbody td:nth-child(8),
+      #executionMilestoneTable tbody td:nth-child(9),
+      #executionMilestoneTable tbody td:nth-child(10),
+      #executionMilestoneTable tbody td:nth-child(11) {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Actions cell */
+      #executionMilestoneTable tbody td.actions-cell { text-align:center; white-space:nowrap; }
+      /* Ensure last column (actions) is centered and doesn't wrap */
+      #executionMilestoneTable tbody tr td:last-child { text-align:center; white-space:nowrap; }
       #executionMilestoneTable tbody tr:nth-child(even) td { background: #f8fafc; }
       #executionMilestoneTable tbody tr:hover td { background: #f0f8ff; }
 
@@ -590,13 +630,13 @@
         var rows = ms.map(function (m, i) {
           return '<tr>' +
             '<td>' + (i + 1) + '</td>' +
-            '<td>' + (m.milestone || '') + '</td>' +
+            '<td><div class="milestone-text">' + (m.milestone || '') + '</div></td>' +
             '<td>' + (m.stage_payment != null ? m.stage_payment : '') + '</td>' +
             '<td>' + formatCurrency(m.invoice_amount) + '</td>' +
             '<td>' + formatCurrency(m.invoice_raised) + '</td>' +
             '<td>' + formatDate(m.invoice_date) + '</td>' +
             '<td>' + (m.invoice_number || '') + '</td>' +
-            '<td>' + (m.status || '') + '</td>' +
+            '<td><div class="invoice-status">' + (m.status || '') + '</div></td>' +
             '<td>' + getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status) + '</td>' +
             '</tr>';
         }).join('');

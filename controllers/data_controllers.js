@@ -2036,13 +2036,37 @@ exports.editDocument = async (req, res) => {
 exports.deleteDocument = async (req, res) => {
   try {
     const { doc_id } = req.params;
-    await EntityDocs.update(
+    // Try soft-delete in EntityDocs first
+    const [updatedCount] = await EntityDocs.update(
       { is_active: false },
       {
         where: { doc_id: doc_id },
       },
     );
-    res.json({ message: "Document deleted" });
+
+    if (updatedCount && updatedCount > 0) {
+      return res.json({ message: "Document deleted" });
+    }
+
+    // If no EntityDocs row was updated, this might be a TariffPetition record.
+    try {
+      const { TariffPetition } = require('../models').models;
+      if (TariffPetition) {
+        const [tpUpdated] = await TariffPetition.update(
+          { is_active: false },
+          { where: { id: doc_id } },
+        );
+        if (tpUpdated && tpUpdated > 0) {
+          return res.json({ message: 'Tariff petition deleted' });
+        }
+      }
+    } catch (e) {
+      // Continue to fallback response
+      console.warn('TariffPetition delete check failed:', e && e.message);
+    }
+
+    // If nothing matched, respond with not found
+    res.status(404).json({ error: 'Document not found' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to delete document" });

@@ -309,8 +309,8 @@ async function forgotPassword(req, res) {
       console.warn('Failed to send reset mail', mailErr && mailErr.message ? mailErr.message : mailErr);
       if (mailErr && mailErr.response) console.warn('SMTP response', mailErr.response);
     }
+    //persist messageId/response on user for tracing (if possible)
 
-    // persist messageId/response on user for tracing (if possible)
     try {
       if (mailInfo && mailInfo.messageId) {
         await user.update({
