@@ -23,6 +23,7 @@
         background: #f3f6fb;
         font-family: "Segoe UI", Roboto, Arial, sans-serif;
         color: #333;
+        overflow-x: auto;
       }
 
       /* Improved container */
@@ -774,8 +775,9 @@
               fetchDataForDate(selectedDate);
             }
 
-            // Refresh the displayed latest-uploaded date in the header
-            fetchAndSetLatestDate();
+            // Update header to show the selected view date (avoid overwriting)
+            const sel = document.getElementById("dateFilter").value;
+            if (sel) document.getElementById("asOnDateHeader").textContent = formatDate(sel);
           } catch (err) {
             console.error("Excel upload error:", err);
             alert(err.message || "Failed to upload Excel file");
@@ -791,6 +793,8 @@
 
       dateInput.addEventListener("change", () => {
         if (!dateInput.value) return;
+        // Update header to show the selected view date
+        document.getElementById("asOnDateHeader").textContent = formatDate(dateInput.value);
         fetchDataForDate(dateInput.value);
       });
 
@@ -1309,11 +1313,11 @@
         from.value = formatDate(last30);
         to.value = defaultDate;
 
-        // Load data
+        // Load data and set header to the selected view date
         fetchDataForDate(defaultDate);
         fetchProjectName();
         fetchIssuesAction();
-        fetchAndSetLatestDate();
+        document.getElementById("asOnDateHeader").textContent = formatDate(defaultDate);
       });
     </script>
     <script src="js/main.js"></script>

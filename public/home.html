@@ -433,6 +433,7 @@
       if (key.includes("pmc")) return "pmc";
       if (key.includes("energy") && key.includes("management")) return "energymanagement";
       if (key.includes("energymangement")) return "energymanagement";
+      if (key.includes("engineer") || key.includes("engineering")) return "engineering";
 
       return key;
     }
@@ -440,15 +441,15 @@
     function applyPreferredDepartmentOrder() {
       const preferredOrder = [
         "home",
-        "businessdevelopment",
-        "contractsandprocurement",
         "projects",
-        "livetenders",
-        "om",
-        "reia",
         "pmc",
+        "om",
+        "businessdevelopment",
         "energymanagement",
-        "energymangement",
+        "reia",
+        "engineering",
+        "contractsandprocurement",
+        "livetenders",
       ];
 
       const homeDept = departments.find((d) => canonicalDepartmentKey(d.dept_name) === "home") || { dept_name: "Home" };
@@ -1830,7 +1831,7 @@
                 if (grouped[type] && grouped[type].length) {
                   const anchorRow = document.createElement('tr');
                   const displayLabel = type === 'DPR/PFR' ? 'DPR / PFR' : type;
-                  anchorRow.innerHTML = `<td colspan="8" style="background:#f5f5f5;font-weight:bold;font-size:1rem;text-align:left;"><a href='/pmc_dpr_projects.html' style='font-size:1rem;text-align:left;'>${displayLabel} Projects</a></td>`;
+                  anchorRow.innerHTML = `<td colspan="7" style="background:#f5f5f5;font-weight:bold;font-size:1rem;text-align:left;"><a href='/pmc_dpr_projects.html' style='font-size:1rem;text-align:left;'>${displayLabel} Projects</a></td>`;
                   tbody.appendChild(anchorRow);
                   // For DPR/PFR combined group, ensure DPR rows appear before PFR
                   const renderItems = (type === 'DPR/PFR')
@@ -1856,9 +1857,8 @@
                         <td style='font-size:1rem;'>${item.total_amount || ''}</td>
                         <td style='font-size:1rem;'>${item.amount_received || ''}</td>
                         <td style='font-size:1rem;'>${item.amount_pending || ''}</td>
-                        <td style='font-size:1rem;'>${item.status || ''}</td>
                         <td style="white-space:nowrap;font-size:1rem;">
-                          <button class="btn btn-sm btn-danger pmc-delete-row edit-only">Delete</button>
+                          <button class="btn btn-sm btn-primary">View</button>
                         </td>
                       `;
                     tbody.appendChild(tr);
@@ -1980,8 +1980,10 @@
               .om-table tbody td:nth-child(4),
               .om-table tbody td:nth-child(5),
               .om-table tbody td:nth-child(6) { text-align: center; white-space: nowrap; }
-              /* Let summary table auto-size to available space to avoid horizontal scrollbar */
+              /* Let summary table auto-size to available space; allow horizontal scrolling on small screens */
               .om-table { table-layout: auto; width: 100%; }
+              .pmc-summary-scroll { overflow-x: auto; }
+              #pmcSummaryTable { min-width: 900px; }
               /* Actions column: keep centered and prevent wrapping */
               .om-table tbody tr td:last-child { text-align: center; white-space: nowrap; }
               .edit-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 9999; }
@@ -2043,7 +2045,7 @@
                 </div>
               </div>
             </div>
-            <div style="background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e0e6ef;">
+            <div class="pmc-summary-scroll" style="background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e0e6ef;">
               <table class="om-table" id="pmcSummaryTable">
                 <thead>
                   <tr>
@@ -3400,7 +3402,7 @@
                   </div>
                   <div class="mb-2">
                     <label class="form-label">Entity Value</label>
-                    <input type="number" class="form-control entity-value" required />
+                    <input type="number" class="form-control entity-value" step="0.01" required />
                   </div>
                   <div class="mb-2">
                     <label class="form-label">Fields</label>
@@ -3442,7 +3444,7 @@
         .querySelectorAll("#entitiesContainer > .card")
         .forEach((card) => {
           const entityName = card.querySelector(".entity-name").value.trim();
-          const entityValue = parseInt(
+          const entityValue = parseFloat(
             card.querySelector(".entity-value").value
           );
           if (!entityName || isNaN(entityValue)) return;
@@ -3530,7 +3532,7 @@
                     </div>
                     <div class="mb-2">
                       <label class="form-label">Entity Value</label>
-                      <input type="number" class="form-control entity-value" value="${entity.entity_value}" />
+                      <input type="number" class="form-control entity-value" step="0.01" value="${entity.entity_value}" />
                     </div>
                     <div class="mb-2">
                       <label class="form-label">Fields</label>
@@ -3589,7 +3591,7 @@
                   </div>
                   <div class="mb-2">
                     <label class="form-label">Entity Value</label>
-                    <input type="number" class="form-control entity-value" />
+                    <input type="number" class="form-control entity-value" step="0.01" />
                   </div>
                   <div class="mb-2">
                     <label class="form-label">Fields</label>
@@ -3634,7 +3636,7 @@
         .forEach((card) => {
           const entity_id = card.dataset.entityId || null; // get entity_id if exists
           const entity_name = card.querySelector(".entity-name").value.trim();
-          const entity_value = parseInt(
+          const entity_value = parseFloat(
             card.querySelector(".entity-value").value.trim()
           );
           if (!entity_name || isNaN(entity_value)) return;
