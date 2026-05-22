@@ -538,7 +538,7 @@
           <table class="table table-bordered mb-0">
             <thead>
               <tr>
-                <th colspan="8">As on Date</th>
+                <th colspan="8" id="asOnDateHeader">As on Date</th>
                 <th colspan="5">Year Till Date</th>
                 <th colspan="4">Last FY Performance</th>
               </tr>
@@ -928,6 +928,31 @@
         });
       }
 
+      // Fetch and display the latest available OM Solar+BESS date for this entity
+      async function fetchAndSetLatestDate() {
+        try {
+          GlobalLoader.show();
+          const res = await authFetch(
+            `/api/data/om/solar_bess/last-date?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+            { method: "GET" },
+          );
+
+          if (res.status === 204) {
+            document.getElementById("asOnDateHeader").textContent = "No data";
+            return;
+          }
+
+          const json = await res.json();
+          if (json && json.date) {
+            document.getElementById("asOnDateHeader").textContent = formatDate(json.date);
+          }
+        } catch (err) {
+          console.error("Failed to fetch latest Solar+BESS date:", err);
+        } finally {
+          GlobalLoader.hide();
+        }
+      }
+
       function bindDailyGenerationChart(last7Days = []) {
         if (!last7Days.length) {
           if (dailyGenerationChart) {
@@ -1120,6 +1145,8 @@
             if (selectedDate) {
               fetchDataForDate(selectedDate);
             }
+            // Refresh latest-uploaded date header
+            fetchAndSetLatestDate();
           } catch (err) {
             console.error("Excel upload error:", err);
             alert(err.message || "Failed to upload Excel file");
@@ -1275,6 +1302,7 @@
         fetchDataForDate(defaultDate);
         fetchProjectName();
         fetchIssuesAction();
+        fetchAndSetLatestDate();
       });
     </script>
     <script src="js/main.js"></script>

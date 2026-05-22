@@ -587,7 +587,7 @@
           <table class="table table-bordered mb-0">
             <thead>
               <tr>
-                <th colspan="5">As on Date</th>
+                <th colspan="5" id="asOnDateHeader">As on Date</th>
                 <th colspan="2">Year Till Date</th>
                 <th colspan="2">Last FY Performance</th>
               </tr>
@@ -769,11 +769,13 @@
             }
 
             alert(alertMsg);
-
             const selectedDate = document.getElementById("dateFilter").value;
             if (selectedDate) {
               fetchDataForDate(selectedDate);
             }
+
+            // Refresh the displayed latest-uploaded date in the header
+            fetchAndSetLatestDate();
           } catch (err) {
             console.error("Excel upload error:", err);
             alert(err.message || "Failed to upload Excel file");
@@ -808,6 +810,31 @@
           document.getElementById("main-heading").innerHTML = projectName;
         } catch (err) {
           console.error("API Error:", err);
+        } finally {
+          GlobalLoader.hide();
+        }
+      }
+
+      // Fetch and display the latest available OM Solar date for this entity
+      async function fetchAndSetLatestDate() {
+        try {
+          GlobalLoader.show();
+          const res = await authFetch(
+            `/api/data/om/solar/last-date?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+            { method: "GET" },
+          );
+
+          if (res.status === 204) {
+            document.getElementById("asOnDateHeader").textContent = "No data";
+            return;
+          }
+
+          const json = await res.json();
+          if (json && json.date) {
+            document.getElementById("asOnDateHeader").textContent = formatDate(json.date);
+          }
+        } catch (err) {
+          console.error("Failed to fetch latest date:", err);
         } finally {
           GlobalLoader.hide();
         }
@@ -1286,6 +1313,7 @@
         fetchDataForDate(defaultDate);
         fetchProjectName();
         fetchIssuesAction();
+        fetchAndSetLatestDate();
       });
     </script>
     <script src="js/main.js"></script>

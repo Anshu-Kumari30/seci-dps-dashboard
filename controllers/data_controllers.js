@@ -3166,6 +3166,34 @@ exports.getOMSolarBESSDataForDate = async (req, res) => {
   }
 };
 
+// Return the most recent date for which OM Solar+BESS data exists for an entity
+exports.getOMSolarBESSLatestDate = async (req, res) => {
+  try {
+    const { dept_id, statistic_id, entity_id } = req.query;
+
+    if (!dept_id || !statistic_id || !entity_id) {
+      return res.status(400).json({ message: "dept_id, statistic_id and entity_id are required" });
+    }
+
+    const latest = await OMDGRSolarBESS.findOne({
+      where: { dept_id, statistic_id, entity_id },
+      order: [["date", "DESC"]],
+      attributes: ["date"],
+      raw: true,
+    });
+
+    if (!latest) {
+      return res.status(204).json({ message: "No data found" });
+    }
+
+    return res.status(200).json({ date: latest.date });
+  } catch (error) {
+    console.error("Fetch latest OM Solar+BESS date error:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+
 exports.downloadOMSolarBESSExcel = async (req, res) => {
   try {
     const { dept_id, statistic_id, entity_id, fromDate, toDate } = req.query;
@@ -3433,6 +3461,33 @@ exports.getOMSolarDataForDate = async (req, res) => {
       message: "Internal server error",
       error: error.message,
     });
+  }
+};
+
+// Return the most recent date for which OM Solar data exists for an entity
+exports.getOMSolarLatestDate = async (req, res) => {
+  try {
+    const { dept_id, statistic_id, entity_id } = req.query;
+
+    if (!dept_id || !statistic_id || !entity_id) {
+      return res.status(400).json({ message: "dept_id, statistic_id and entity_id are required" });
+    }
+
+    const latest = await OMDGRSolar.findOne({
+      where: { dept_id, statistic_id, entity_id },
+      order: [["date", "DESC"]],
+      attributes: ["date"],
+      raw: true,
+    });
+
+    if (!latest) {
+      return res.status(204).json({ message: "No data found" });
+    }
+
+    return res.status(200).json({ date: latest.date });
+  } catch (error) {
+    console.error("Fetch latest OM Solar date error:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 

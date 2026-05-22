@@ -685,6 +685,13 @@ router.post(
   dataController.getOMSolarBESSDataForDate,
 );
 
+router.get(
+  "/om/solar_bess/last-date",
+  verifyToken,
+  auditLogger("Fetched latest OM Solar+BESS date for entity"),
+  dataController.getOMSolarBESSLatestDate,
+);
+
 router.post(
   "/om/solar_bess/data/one/update",
   verifyToken,
@@ -704,6 +711,13 @@ router.post(
   verifyToken,
   auditLogger("Fetched the OM Solar data for a specific date"),
   dataController.getOMSolarDataForDate,
+);
+
+router.get(
+  "/om/solar/last-date",
+  verifyToken,
+  auditLogger("Fetched latest OM Solar date for entity"),
+  dataController.getOMSolarLatestDate,
 );
 
 router.get(
