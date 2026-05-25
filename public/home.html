@@ -189,6 +189,23 @@
     .full-image-wrapper { padding: 0; display:flex; align-items:center; justify-content:center; height:240px; box-sizing:border-box; width:100%; }
     .full-image-wrapper img { width:100%; height:240px; object-fit:contain; display:block; border-radius:10px; }
   </style>
+  <style>
+    /* Home page: make Remarks column wrap and top-align for better readability */
+    #omHomeTableBody td:last-child {
+      text-align: left;
+      vertical-align: top;
+      white-space: normal;
+      word-break: break-word;
+      min-width: 40ch; /* approx 6–8 words per line */
+      max-width: 56ch;
+      padding: 6px 10px;
+      font-size: 12px;
+      word-break: normal;
+      overflow-wrap: normal;
+      hyphens: none;
+      overflow: visible;
+    }
+  </style>
 </head>
 
 <body>
@@ -2505,7 +2522,7 @@
                         <td>${formatOMValue(lastFY?.cumulative_generation / 1000000, 6)}</td>
                         <td>${formatOMValue(lastFY?.cuf_till_date)}%</td>
                         ${"<td>-</td>".repeat(6)}
-                        <td>${row.remarks ?? "-"}</td>
+                        <td title="${row.remarks ?? ""}">${row.remarks ?? "-"}</td>
                       </tr>
                     `;
                 });
@@ -2537,7 +2554,7 @@
                         <td>${formatOMValue(row.cumulative_bess_import, 3)}</td>
                         <td>${formatOMValue(lastFY?.cumulative_bess_export, 2)}</td>
                         <td>${formatOMValue(lastFY?.cumulative_bess_import, 2)}</td>
-                        <td>${row.remarks ?? "-"}</td>
+                        <td title="${row.remarks ?? ""}">${row.remarks ?? "-"}</td>
                       </tr>
                     `;
                 });

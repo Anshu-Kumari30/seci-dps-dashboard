@@ -68,6 +68,21 @@
       .table thead th {
         padding: 14px 8px;
       }
+      /* Remarks (last column) — clamp to 3 lines for consistent display */
+      .table tbody td:last-child {
+        min-width: 40ch; /* approx 6-8 words per line */
+        max-width: 56ch;
+        text-align: left;
+        vertical-align: top;
+        padding: 6px 10px;
+        font-size: 12px;
+
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: normal;
+        hyphens: none;
+        overflow: visible;
+      }
     </style>
   </head>
 
@@ -267,7 +282,7 @@
             <td>${format(lastFY?.generation / 1000000, 6)}</td>
             <td>${format(lastFY?.cuf)}%</td>
             ${"<td>-</td>".repeat(6)}
-            <td>${row.remarks ?? "-"}</td>
+            <td title="${row.remarks ?? ""}">${row.remarks ?? "-"}</td>
           </tr>
         `;
             });
@@ -308,7 +323,7 @@
             <td>${format(row.cumulative_bess_import, 3)}</td>
             <td>${format(lastFY?.generation / 1000000, 6)}</td>
             <td>${format(lastFY?.daily_cuf_worc)}%</td>
-            <td>${row.remarks ?? "-"}</td>
+            <td title="${row.remarks ?? ""}">${row.remarks ?? "-"}</td>
           </tr>
         `;
             });

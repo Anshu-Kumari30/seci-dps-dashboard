@@ -441,15 +441,23 @@
         background-color: rgba(102, 16, 242, 0.05);
       }
 
-      /* Remarks column */
-      tbody td:nth-child(7) /* Remarks column in main table */ {
-        /* font-style: italic; */
+      /* Remarks column: clamp to 3 lines and top-align for consistent layout */
+      tbody td:nth-child(7),
+      tbody td:last-child {
         color: #6c757d !important;
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        background-color: rgba(108, 117, 125, 0.05);
+        min-width: 40ch; /* approx 6-8 words per line */
+        max-width: 56ch;
+        background-color: rgba(108, 117, 125, 0.03);
+        text-align: left;
+        vertical-align: top;
+        padding: 6px 10px;
+        font-size: 12px;
+
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: normal;
+        hyphens: none;
+        overflow: visible;
       }
 
       /* Last 7 Days Table styling */
@@ -894,7 +902,7 @@
             <td>${(d.generation / 1000000).toFixed(6)}</td>
             <td>${d.cuf?.toFixed(2) ?? "-"}%</td>
             <td>${(d.peak_power / 1000)?.toFixed(3) ?? "-"}</td>
-            <td>${d.remarks ?? "-"}</td>
+            <td title="${d.remarks ?? ""}">${d.remarks ?? "-"}</td>
             <td>${(d.cumulative_generation / 1000000)?.toFixed(6) ?? "-"}</td>
             <td>${d.cuf_till_date?.toFixed(2) ?? "-"}%</td>
             <td>${d1 ? (d1.cumulative_generation / 1000000).toFixed(6) : "-"}</td>
