@@ -795,7 +795,7 @@
             <!-- As on Date – Solar -->
             <td>${d.radiation?.toFixed(2) ?? "-"}</td>
             <td>${d.generation ? (d.generation / 1e6).toFixed(6) : "-"}</td>
-            <td>${(d.generation - d.bess_import * 1000) / 1e6}</td>
+            <td>${d.generation ? (((d.generation - ((d.bess_import || 0) * 1000)) / 1e6).toFixed(6)) : "-"}</td>
             <td>${d.daily_cuf_worc?.toFixed(2) ?? "-"}%</td>
             <td>${d.peak_power?.toFixed(3) ?? "-"}</td>
 
@@ -806,18 +806,18 @@
 
             <!-- YTD -->
             <td>${d.cumulative_generation ? (d.cumulative_generation / 1e6).toFixed(6) : "-"}</td>
-            <td>${d.cumulative_generation - d.cumulative_bess_import * 1000}</td>
+            <td>${d.cumulative_generation ? (((d.cumulative_generation - ((d.cumulative_bess_import || 0) * 1000)) / 1e6).toFixed(6)) : "-"}</td>
             <td>${d.cuf_till_date?.toFixed(2) ?? "-"}%</td>
 
             <td>${d.cumulative_bess_import?.toFixed(3) ?? "-"}</td>
             <td>${d.cumulative_bess_export?.toFixed(3) ?? "-"}</td>
 
             <!-- Last FY -->
-            <td>${lastFY ? (lastFY.generation / 1e6).toFixed(6) : "-"}</td>
-            <td>${lastFY ? lastFY.daily_cuf_worc?.toFixed(2) + "%" : "-"}</td>
+            <td>${lastFY ? (lastFY.cumulative_generation / 1e6).toFixed(6) : "-"}</td>
+            <td>${lastFY ? lastFY.cuf_till_date?.toFixed(2) + "%" : "-"}</td>
 
-            <td>${lastFY ? lastFY.bess_import?.toFixed(3) : "-"}</td>
-            <td>${lastFY ? lastFY.bess_export?.toFixed(3) : "-"}</td>
+            <td>${lastFY ? lastFY.cumulative_bess_import?.toFixed(3) : "-"}</td>
+            <td>${lastFY ? lastFY.cumulative_bess_export?.toFixed(3) : "-"}</td>
           </tr>
         `;
       }
@@ -905,6 +905,18 @@
         });
       }
 
+      function formatHeaderDate(dateStr) {
+        try {
+          const d = new Date(dateStr + "T00:00:00");
+          const day = String(d.getDate()).padStart(2, "0");
+          const month = d.toLocaleString("en-GB", { month: "short" }).toUpperCase();
+          const year = d.getFullYear();
+          return `${day} ${month} ${year}`;
+        } catch (e) {
+          return dateStr;
+        }
+      }
+
       function fileAuthFetch(url, options = {}) {
         const token = localStorage.getItem("token");
         const defaultHeaders = {
@@ -944,7 +956,7 @@
 
           const json = await res.json();
           if (json && json.date) {
-            document.getElementById("asOnDateHeader").textContent = formatDate(json.date);
+            document.getElementById("asOnDateHeader").textContent = formatHeaderDate(json.date);
           }
         } catch (err) {
           console.error("Failed to fetch latest Solar+BESS date:", err);
@@ -1276,8 +1288,8 @@
 
         dateInput.addEventListener("change", () => {
           if (!dateInput.value) return;
-          // Update header to show the selected view date
-          document.getElementById("asOnDateHeader").textContent = formatDate(dateInput.value);
+            // Update header to show the selected view date
+          document.getElementById("asOnDateHeader").textContent = formatHeaderDate(dateInput.value);
           fetchDataForDate(dateInput.value);
         });
 
@@ -1305,7 +1317,7 @@
         fetchDataForDate(defaultDate);
         fetchProjectName();
         fetchIssuesAction();
-        document.getElementById("asOnDateHeader").textContent = formatDate(defaultDate);
+        document.getElementById("asOnDateHeader").textContent = formatHeaderDate(defaultDate);
       });
     </script>
     <script src="js/main.js"></script>

@@ -777,7 +777,7 @@
 
             // Update header to show the selected view date (avoid overwriting)
             const sel = document.getElementById("dateFilter").value;
-            if (sel) document.getElementById("asOnDateHeader").textContent = formatDate(sel);
+            if (sel) document.getElementById("asOnDateHeader").textContent = formatHeaderDate(sel);
           } catch (err) {
             console.error("Excel upload error:", err);
             alert(err.message || "Failed to upload Excel file");
@@ -794,7 +794,7 @@
       dateInput.addEventListener("change", () => {
         if (!dateInput.value) return;
         // Update header to show the selected view date
-        document.getElementById("asOnDateHeader").textContent = formatDate(dateInput.value);
+        document.getElementById("asOnDateHeader").textContent = formatHeaderDate(dateInput.value);
         fetchDataForDate(dateInput.value);
       });
 
@@ -835,7 +835,7 @@
 
           const json = await res.json();
           if (json && json.date) {
-            document.getElementById("asOnDateHeader").textContent = formatDate(json.date);
+            document.getElementById("asOnDateHeader").textContent = formatHeaderDate(json.date);
           }
         } catch (err) {
           console.error("Failed to fetch latest date:", err);
@@ -1008,6 +1008,18 @@
           month: "short",
           year: "numeric",
         });
+      }
+
+      function formatHeaderDate(dateStr) {
+        try {
+          const d = new Date(dateStr + "T00:00:00");
+          const day = String(d.getDate()).padStart(2, "0");
+          const month = d.toLocaleString("en-GB", { month: "short" }).toUpperCase();
+          const year = d.getFullYear();
+          return `${day} ${month} ${year}`;
+        } catch (e) {
+          return dateStr;
+        }
       }
 
       function fileAuthFetch(url, options = {}) {

@@ -3136,8 +3136,11 @@ exports.getOMSolarBESSDataForDate = async (req, res) => {
     });
 
     /* ---------- Last year March 31 ---------- */
-    const reqYear = new Date(requestedDate + "T00:00:00").getFullYear();
-    const lastYearMarch31 = `${reqYear - 1}-03-31`;
+    const reqDateObj = new Date(requestedDate + "T00:00:00");
+    const reqYear = reqDateObj.getFullYear();
+    const reqMonth = reqDateObj.getMonth() + 1; // 1-12
+    const lastFYEndYear = reqMonth >= 4 ? reqYear : reqYear - 1;
+    const lastYearMarch31 = `${lastFYEndYear}-03-31`;
 
     const lastYearMarch31Data = await OMDGRSolarBESS.findOne({
       where: {
@@ -3434,8 +3437,11 @@ exports.getOMSolarDataForDate = async (req, res) => {
       order: [["date", "ASC"]],
     });
 
-    const reqYear = new Date(requestedDate + "T00:00:00").getFullYear();
-    const lastYearMarch31 = `${reqYear - 1}-03-31`;
+    const reqDateObj = new Date(requestedDate + "T00:00:00");
+    const reqYear = reqDateObj.getFullYear();
+    const reqMonth = reqDateObj.getMonth() + 1; // 1-12
+    const lastFYEndYear = reqMonth >= 4 ? reqYear : reqYear - 1;
+    const lastYearMarch31 = `${lastFYEndYear}-03-31`;
 
     const lastYearMarch31Data = await OMDGRSolar.findOne({
       where: {
@@ -3685,10 +3691,14 @@ exports.getOMProjectsByDate = async (req, res) => {
       return res.status(400).json({ message: "date is required" });
     }
 
-    // 🔹 Calculate last year's 31 March
-    const inputDate = new Date(date);
-    const lastYear = inputDate.getFullYear() - 1;
-    const lastYearMarch31 = `${lastYear}-03-31`;
+    // 🔹 Calculate financial-year end (31 March) for the selected date
+    // If selected month is Apr(4) to Dec(12) -> FY end is same year March 31
+    // If selected month is Jan(1) to Mar(3) -> FY end is previous year's March 31
+    const inputDate = new Date(date + "T00:00:00");
+    const inputYear = inputDate.getFullYear();
+    const inputMonth = inputDate.getMonth() + 1; // 1-12
+    const fyEndYear = inputMonth >= 4 ? inputYear : inputYear - 1;
+    const lastYearMarch31 = `${fyEndYear}-03-31`;
 
     // 1️⃣ Fetch project mappings
     const projectMappings = await OMProjectTypeMapping.findAll({

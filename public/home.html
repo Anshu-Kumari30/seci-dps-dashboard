@@ -2345,11 +2345,11 @@
                         <th class="om-bess-header" rowspan="3">Remarks</th>
                       </tr>
                       <tr>
-                        <th class="om-solar-header" colspan="4">AS ON DATE</th>
+                        <th class="om-solar-header" colspan="4" id="omSolarAsOnDateHeader">AS ON DATE</th>
                         <th class="om-solar-header" colspan="2">YEAR TILL DATE</th>
                         <th class="om-solar-header" colspan="2">LAST FY PERFORMANCE</th>
 
-                        <th class="om-bess-header" colspan="2">AS ON DATE</th>
+                        <th class="om-bess-header" colspan="2" id="omBessAsOnDateHeader">AS ON DATE</th>
                         <th class="om-bess-header" colspan="2">YEAR TILL DATE</th>
                         <th class="om-bess-header" colspan="2">LAST FY PERFORMANCE</th>
                       </tr>
@@ -2563,11 +2563,38 @@
           if (omDateFilter) {
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
-            omDateFilter.value = yesterday.toISOString().split("T")[0];
-            omDateFilter.addEventListener("change", loadOMHomeTableData);
-          }
+            const defaultDate = yesterday.toISOString().split("T")[0];
+            omDateFilter.value = defaultDate;
 
-          loadOMHomeTableData();
+            function formatDisplayDate(dateStr) {
+              try {
+                const d = new Date(dateStr + "T00:00:00");
+                const day = String(d.getDate()).padStart(2, "0");
+                const month = d.toLocaleString("en-GB", { month: "short" }).toUpperCase();
+                const year = d.getFullYear();
+                return `${day} ${month} ${year}`;
+              } catch (e) {
+                return dateStr;
+              }
+            }
+
+            const updateHeaderAndReload = () => {
+              const sel = omDateFilter.value || defaultDate;
+              const disp = formatDisplayDate(sel);
+              const solarHdr = document.getElementById("omSolarAsOnDateHeader");
+              const bessHdr = document.getElementById("omBessAsOnDateHeader");
+              if (solarHdr) solarHdr.textContent = disp;
+              if (bessHdr) bessHdr.textContent = disp;
+              loadOMHomeTableData();
+            };
+
+            omDateFilter.addEventListener("change", updateHeaderAndReload);
+
+            // initialize header and table
+            updateHeaderAndReload();
+          } else {
+            loadOMHomeTableData();
+          }
         } catch (e) {
           console.error("O&M inline render failed", e);
         }
@@ -3336,7 +3363,7 @@
                 if (txt.includes('contract')) {
                   setTimeout(() => { window.location.href = '/contracts_external.html'; }, 180);
                 } else if (txt.includes('business development')) {
-                  setTimeout(() => { window.location.href = '/business_development_external.html'; }, 180);
+                  setTimeout(() => { window.location.href = 'http://localhost:3000/business_development_external.html'; }, 180);
                 } else if (txt.includes('energy management')) {
                   setTimeout(() => { window.location.href = '/energy_management.html'; }, 180);
                 } else if (txt.includes('engineering')) {
