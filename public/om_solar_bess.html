@@ -290,25 +290,15 @@
         background-color: rgba(102, 16, 242, 0.05);
       }
 
-      /* Remarks column: clamp to 3 lines and top-align for consistent layout */
-      tbody td:nth-child(8),
-      tbody td:last-child {
+      /* Remarks column */
+      tbody td:nth-child(8) /* Remarks column in main table */ {
         font-style: italic;
         color: #6c757d !important;
-        min-width: 40ch; /* approx 6-8 words per line */
-        max-width: 56ch; /* allow some flexibility */
-        background-color: rgba(108, 117, 125, 0.03);
-        text-align: left;
-        vertical-align: top;
-        padding: 6px 10px;
-        font-size: 12px;
-
-        /* show full remarks text and avoid breaking words mid-line */
-        white-space: normal;
-        word-break: normal;
-        overflow-wrap: normal;
-        hyphens: none;
-        overflow: visible;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background-color: rgba(108, 117, 125, 0.05);
       }
 
       /* Last 7 Days Table styling */
