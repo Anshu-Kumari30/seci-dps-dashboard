@@ -1229,7 +1229,7 @@ exports.deleteBusinessDevelopmentMilestone = async (req, res) => {
 exports.getUserDepartmentMappings = async (req, res) => {
   try {
     const userDepartmentMappings = await UserEditAccess.findAll({
-      attributes: ["user_id", "dept_id", "can_edit"],
+      attributes: ["user_id", "dept_id", "can_edit", "access_level"],
     });
 
     const userIds = Array.from(
@@ -1256,13 +1256,20 @@ exports.getUserDepartmentMappings = async (req, res) => {
     );
 
     const result = userDepartmentMappings
-      .map((mapping) => ({
+      .map((mapping) => {
+        const level = String(mapping.access_level || "").trim().toLowerCase();
+        const accessLevel = (level === "view" || level === "edit" || level === "head")
+          ? level
+          : (mapping.can_edit !== false ? "edit" : "view");
+        return {
         user_id: mapping.user_id,
         user_name: userMap.get(mapping.user_id) || "Unknown",
         dept_id: mapping.dept_id,
         dept_name: deptMap.get(mapping.dept_id) || "Unknown",
-        can_edit: mapping.can_edit !== false,
-      }))
+        can_edit: accessLevel === "edit" || accessLevel === "head",
+        access_level: accessLevel,
+      };
+      })
       .filter((row) => row.user_name !== "Unknown" && row.dept_name !== "Unknown");
 
     res.json({ mappings: result });
@@ -1676,6 +1683,7 @@ exports.getDepartmentsForUser = async (req, res) => {
         departments: departments.map((item) => ({
           dept_id: item.dept_id,
           can_edit: true,
+          access_level: "head",
         })),
       });
     }
@@ -1684,7 +1692,7 @@ exports.getDepartmentsForUser = async (req, res) => {
       where: {
         user_id: requesterUserId,
       },
-      attributes: ["dept_id", "can_edit"],
+      attributes: ["dept_id", "can_edit", "access_level"],
     });
 
     const mappedDeptIds = userDepartmentMappings.map((item) => item.dept_id);
@@ -1701,14 +1709,21 @@ exports.getDepartmentsForUser = async (req, res) => {
       order: [["dept_name", "ASC"]],
     });
 
-    const canEditMap = new Map(
-      userDepartmentMappings.map((item) => [item.dept_id, item.can_edit !== false])
+    const accessLevelMap = new Map(
+      userDepartmentMappings.map((item) => {
+        const level = String(item.access_level || "").trim().toLowerCase();
+        const accessLevel = (level === "view" || level === "edit" || level === "head")
+          ? level
+          : (item.can_edit !== false ? "edit" : "view");
+        return [item.dept_id, accessLevel];
+      })
     );
 
     res.json({
       departments: departments.map((item) => ({
         dept_id: item.dept_id,
-        can_edit: canEditMap.get(item.dept_id) === true,
+        can_edit: accessLevelMap.get(item.dept_id) === "edit" || accessLevelMap.get(item.dept_id) === "head",
+        access_level: accessLevelMap.get(item.dept_id) || "view",
       })),
     });
   } catch (err) {
@@ -4120,6 +4135,28 @@ exports.createPmcEntry = async (req, res) => {
               pmc_entry_id: stableExecutionId,
               ...entryPayload,
             });
+          }
+        }
+      }
+
+      if (!entry) {
+        // For DPR/PFR, try to reuse an existing entry by project name/client/details
+        // so adding milestones does not create a new UUID for the same project.
+        if (!isExecutionService) {
+          const lookupName = String(projectName || client || projectDetails || '').trim().toLowerCase();
+          if (lookupName) {
+            const candidates = await PmcProject.findAll({
+              where: { service_type: 'DPR' },
+              order: [["createdAt", "DESC"]],
+            });
+            const match = candidates.find(e => {
+              const enName = String(e.project_name || e.client || e.project_details || '').trim().toLowerCase();
+              return enName && enName === lookupName;
+            });
+            if (match) {
+              await match.update(entryPayload);
+              entry = match;
+            }
           }
         }
       }

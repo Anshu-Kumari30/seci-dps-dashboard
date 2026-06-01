@@ -21,44 +21,26 @@ function getDeptNamesFromPath(pathname) {
   return [];
 }
 
-async function requireDeptEditAccess(req, res, next) {
-  const method = String(req.method || "").toUpperCase();
-  const readOnlyMethods = ["GET", "HEAD", "OPTIONS"];
-  if (readOnlyMethods.indexOf(method) !== -1) {
-    return next();
-  }
-
+async function requireDeptHeadAccess(req, res, next) {
   let deptId = getDeptId(req);
   if (!deptId) {
     const deptNames = getDeptNamesFromPath(req.path);
-    if (!deptNames.length) {
-      return next();
-    }
-
+    if (!deptNames.length) return next();
     try {
-      const dept = await DeptMaster.findOne({
-        where: { dept_name: deptNames, is_active: true },
-        attributes: ["dept_id"],
-      });
+      const dept = await DeptMaster.findOne({ where: { dept_name: deptNames, is_active: true }, attributes: ["dept_id"] });
       deptId = dept?.dept_id || null;
     } catch (err) {
       return res.status(500).json({ error: "Failed to resolve department" });
     }
-
-    if (!deptId) {
-      return res.status(403).json({ error: "Access denied: department not found" });
-    }
+    if (!deptId) return res.status(403).json({ error: "Access denied: department not found" });
   }
 
   let user = req.user || null;
   if (!user) {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res
-        .status(401)
-        .json({ error: "Missing or invalid Authorization header" });
+      return res.status(401).json({ error: "Missing or invalid Authorization header" });
     }
-
     const token = authHeader.split(" ")[1];
     try {
       user = jwt.verify(token, SECRET_KEY);
@@ -67,28 +49,17 @@ async function requireDeptEditAccess(req, res, next) {
     }
   }
 
-  if (user.role === "admin") {
-    return next();
-  }
+  if (user.role === "admin") return next();
 
   try {
-    const access = await UserEditAccess.findOne({
-      where: { user_id: user.user_id, dept_id: deptId },
-    });
-
+    const access = await UserEditAccess.findOne({ where: { user_id: user.user_id, dept_id: deptId } });
     const level = String(access?.access_level || "").trim().toLowerCase();
-    const allowEdit = level === "edit" || level === "head" || access?.can_edit === true;
-
-    if (!allowEdit) {
-      return res.status(403).json({ error: "Access denied: edit not allowed" });
-    }
-
+    const allowHead = level === "head";
+    if (!allowHead) return res.status(403).json({ error: "Access denied: head access required" });
     return next();
   } catch (err) {
-    return res.status(500).json({ error: "Failed to check edit access" });
+    return res.status(500).json({ error: "Failed to check head access" });
   }
 }
 
-module.exports = {
-  requireDeptEditAccess,
-};
+module.exports = { requireDeptHeadAccess };

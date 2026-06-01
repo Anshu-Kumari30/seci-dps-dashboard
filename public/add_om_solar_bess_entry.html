@@ -505,6 +505,7 @@
     const statistic_id = params.get("statistic_id");
     const entity_id = params.get("entity_id");
 
+    let canOmHead = false;
     let capacity = 0;
     let lastAddedRecord = {};
 
@@ -718,6 +719,58 @@
         });
     }
 
+    function normalizeDeptName(name) {
+      return String(name || "")
+        .toLowerCase()
+        .replace(/&/g, "and")
+        .replace(/[^a-z0-9]/g, "");
+    }
+
+    function getJwtPayload() {
+      try {
+        const token = localStorage.getItem("token") || "";
+        const payload = token.split(".")[1] || "";
+        return JSON.parse(atob(payload));
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function resolveDeptAccessLevelByName(targetName) {
+      const payload = getJwtPayload();
+      if (payload && payload.role === "admin") return Promise.resolve("head");
+      const userId = payload && payload.user_id;
+      if (!userId) return Promise.resolve("none");
+      return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+        .then((res) => (res.ok ? res.json() : { departments: [] }))
+        .then((data) => {
+          const list = Array.isArray(data.departments) ? data.departments : [];
+          const targetKey = normalizeDeptName(targetName);
+          const lookups = list.map((deptInfo) => {
+            const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+            if (!id) return Promise.resolve(null);
+            return authFetch(`/api/data/departments/${encodeURIComponent(id)}`)
+              .then((res) => (res.ok ? res.json() : null))
+              .then((dept) => {
+                if (!dept) return null;
+                if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
+                const raw = String((deptInfo && deptInfo.access_level) || "")
+                  .trim()
+                  .toLowerCase();
+                if (raw === "view" || raw === "edit" || raw === "head") return raw;
+                return deptInfo && deptInfo.can_edit === true ? "edit" : "view";
+              });
+          });
+          return Promise.all(lookups).then((levels) => {
+            for (let i = 0; i < levels.length; i++) {
+              if (levels[i]) return levels[i];
+            }
+            return "none";
+          });
+        })
+        .catch(() => "none");
+    }
+
     function recalculateDerivedFields() {
       const generation = parseFloat(generationInput.value) || 0;
       const bessExport = parseFloat(bessExportInput.value) || 0;
@@ -763,6 +816,10 @@
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
+      if (!canOmHead) {
+        alert("Head access only. Editing is not allowed.");
+        return;
+      }
 
       const payload = {
         date: dateInput.value,
@@ -816,9 +873,16 @@
     });
 
     window.addEventListener("DOMContentLoaded", async () => {
-      plantAvailabilityInput.value = 100;
+      const level = await resolveDeptAccessLevelByName("O&M");
+      canOmHead = level === "head";
+      if (!canOmHead) {
+        alert("Head access only. Editing is not allowed.");
+        window.location.href = "/home.html";
+        return;
+      }
+
+      machineAvailabilityInput.value = 100;
       gridAvailabilityInput.value = 100;
-      bessAvailabilityInput.value = 100;
       try {
         let response = await authFetch(
           `/api/data/om/project/capacity?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
@@ -833,6 +897,7 @@
       } catch (error) {
         console.error("Capacity Fetching Failed:", error);
       }
+    });
     });
   </script>
   <script src="js/main.js"></script>

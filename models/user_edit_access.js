@@ -25,6 +25,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: true,
       },
+      access_level: {
+        type: DataTypes.STRING(16),
+        allowNull: false,
+        defaultValue: "edit",
+      },
     },
     {
       tableName: "user_edit_access",

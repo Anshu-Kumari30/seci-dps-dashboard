@@ -301,16 +301,30 @@
 
     let activeDeptId = null;
 
+    function getDeptAccessLevel(deptId) {
+      if (role === "admin") return "head";
+      if (role === "viewer") return "view";
+      return (deptId && departmentAccess[deptId]) || "none";
+    }
+
     function canEditDept(deptId) {
-      if (role === "admin") return true;
-      if (role === "viewer") return false;
-      return deptId && departmentAccess[deptId] === true;
+      const level = getDeptAccessLevel(deptId);
+      return level === "edit" || level === "head";
+    }
+
+    function canHeadDept(deptId) {
+      const level = getDeptAccessLevel(deptId);
+      return level === "head";
     }
 
     function applyEditVisibility(deptId) {
       const allowEdit = canEditDept(deptId);
+      const allowHead = canHeadDept(deptId);
       document.querySelectorAll(".edit-only").forEach((el) => {
         el.style.display = allowEdit ? "" : "none";
+      });
+      document.querySelectorAll(".head-only").forEach((el) => {
+        el.style.display = allowHead ? "" : "none";
       });
     }
 
@@ -688,14 +702,14 @@
               <div class="edit-modal-header">
                 <span>Edit Chart Slices</span>
                 <div style="display:flex; gap:8px; align-items:center;">
-                  <button class="btn btn-sm btn-light edit-only" onclick="addSliceCard()">Add Slice</button>
+                  <button class="btn btn-sm btn-light head-only" onclick="addSliceCard()">Add Slice</button>
                   <button class="btn btn-sm btn-outline-light" onclick="closeEditSliceModal()">✕</button>
                 </div>
               </div>
               <div class="edit-modal-body" id="editSliceContainer"></div>
               <div class="edit-modal-footer">
                 <button class="btn btn-secondary" onclick="closeEditSliceModal()">Cancel</button>
-                <button class="btn btn-primary edit-only" onclick="saveSliceMeta()">Save Changes</button>
+                <button class="btn btn-primary head-only" onclick="saveSliceMeta()">Save Changes</button>
               </div>
             </div>
           </div>`;
@@ -707,6 +721,13 @@
 
       async function openEditSliceModal(segment) {
         sliceEditingSegment = segment;
+        // only Heads may open the slice editor
+        try {
+          const pmcDeptId = departments.find(d => String(d.dept_name || '').toUpperCase() === 'PMC')?.dept_id;
+          if (!canHeadDept(pmcDeptId)) {
+            return alert('Head access is required to edit chart slices.');
+          }
+        } catch (e) { /* ignore */ }
         // set dynamic header label (modal is appended to body)
         try {
           const headerEl = document.querySelector('#editSliceModal .edit-modal-header span');
@@ -777,6 +798,13 @@
 
       async function saveSliceMeta() {
         if (!sliceEditingSegment) return alert('Unknown segment');
+        // ensure only Heads can save slice metadata
+        try {
+          const pmcDeptId = departments.find(d => String(d.dept_name || '').toUpperCase() === 'PMC')?.dept_id;
+          if (!canHeadDept(pmcDeptId)) {
+            return alert('Head access is required to save chart slices.');
+          }
+        } catch (e) { /* ignore */ }
         try {
           const payload = { segment: sliceEditingSegment, items: editSlices, replaceAll: true };
           const res = await authFetch('/api/data/pmc/slice_meta/save', { method: 'POST', body: JSON.stringify(payload) });
@@ -1077,17 +1105,19 @@
         console.log("Departments fetched:", departmentList);
         // get details for all departments for which user has access to
         for (const deptInfo of departmentList) {
-          // Accept both shapes: { dept_id, can_edit } or plain dept_id string
-          const dept_id = deptInfo && (deptInfo.dept_id || deptInfo) || null;
-          let canEdit = false;
-          if (deptInfo && typeof deptInfo === 'object' && Object.prototype.hasOwnProperty.call(deptInfo, 'can_edit')) {
-            canEdit = deptInfo.can_edit === true;
-          } else {
-            // if API returned just ids (legacy), assume edit allowed on frontend until backend enforces
-            canEdit = true;
+          // Accept both shapes: { dept_id, access_level, can_edit } or plain dept_id string
+          const dept_id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+          let accessLevel = "edit";
+          if (deptInfo && typeof deptInfo === "object") {
+            const rawLevel = String(deptInfo.access_level || "").trim().toLowerCase();
+            if (rawLevel === "view" || rawLevel === "edit" || rawLevel === "head") {
+              accessLevel = rawLevel;
+            } else if (Object.prototype.hasOwnProperty.call(deptInfo, "can_edit")) {
+              accessLevel = deptInfo.can_edit === true ? "edit" : "view";
+            }
           }
-          departmentAccess[dept_id] = canEdit;
-          console.log(`departmentAccess[${dept_id}] = ${canEdit}`);
+          departmentAccess[dept_id] = accessLevel;
+          console.log(`departmentAccess[${dept_id}] = ${accessLevel}`);
           const departmentResponse = await authFetch(
             `/api/data/departments/${dept_id}`
           );
@@ -1266,8 +1296,8 @@
     }
 
     function updateREIAInfo(type) {
-      if (!canEditDept(activeDeptId)) {
-        alert("Edit access is not allowed for this department.");
+      if (!canHeadDept(activeDeptId)) {
+        alert("Head access is required to edit this department.");
         return;
       }
       console.log(`/update_reia_info.html?reia_doc_type=${type}`);
@@ -1276,8 +1306,8 @@
 
     function openPmcEditForm() {
       const pmcDeptId = departments.find(d => d.dept_name === "PMC")?.dept_id;
-      if (!canEditDept(pmcDeptId)) {
-        alert("Edit access is not allowed for this department.");
+      if (!canHeadDept(pmcDeptId)) {
+        alert("Head access is required to edit PMC charts.");
         return;
       }
       const pmcStatistics = pmcDeptId ? (departmentStatistics[pmcDeptId] || []) : [];
@@ -1301,6 +1331,7 @@
     async function initializePmcDashboard() {
       console.log("🔵 Initializing PMC Dashboard");
       try {
+        const pmcDeptId = departments.find(d => d.dept_name === "PMC")?.dept_id || null;
         // Get canvas elements for charts
         const ctx1 = document.getElementById("pmcChart1")?.getContext("2d");
         const ctx2 = document.getElementById("pmcChart2")?.getContext("2d");
@@ -1441,6 +1472,10 @@
                 }
               },
               onClick: (evt, activeEls) => {
+                if (!canHeadDept(pmcDeptId)) {
+                  alert("Head access is required to perform this action.");
+                  return;
+                }
                 if (!activeEls.length) return;
                 const idx = activeEls[0].index;
                 const selected = dprPfrEntries[idx];
@@ -1466,7 +1501,11 @@
             const canvasEl = ctx1 && ctx1.canvas ? ctx1.canvas : null;
             if (canvasEl && window.pmcChart1Instance && !canvasEl.__pmc1_click_bound) {
               canvasEl.addEventListener('click', function (ev) {
-                try {
+                  try {
+                  if (!canHeadDept(pmcDeptId)) {
+                    alert("Head access is required to perform this action.");
+                    return;
+                  }
                   const points = window.pmcChart1Instance.getElementsAtEventForMode(ev, 'nearest', { intersect: true }, false) || [];
                   if (points.length) {
                     const idx = points[0].index;
@@ -1558,6 +1597,10 @@
               },
               // keep Chart.js onClick but also add a reliable canvas-level fallback below
               onClick: (evt, activeEls) => {
+                if (!canHeadDept(pmcDeptId)) {
+                  alert("Head access is required to perform this action.");
+                  return;
+                }
                 try {
                   if (activeEls && activeEls.length) {
                     const idx = activeEls[0].index;
@@ -1596,6 +1639,10 @@
             if (!window.__pmcChart3_doc_delegate_bound) {
               window._pmcChart3ClickDelegate = function (ev) {
                 try {
+                  if (!canHeadDept(pmcDeptId)) {
+                    alert("Head access is required to perform this action.");
+                    return;
+                  }
                   const canvasEl = (window.pmcChart3Instance && window.pmcChart3Instance.ctx && window.pmcChart3Instance.ctx.canvas) || document.getElementById('pmcChart3');
                   if (!canvasEl) return;
                   const rect = canvasEl.getBoundingClientRect();
@@ -1633,6 +1680,10 @@
             const wrapperEl = canvasEl ? canvasEl.parentElement : null;
             function handlePmcChart3Click(ev) {
               try {
+                if (!canHeadDept(pmcDeptId)) {
+                  alert("Head access is required to perform this action.");
+                  return;
+                }
                 console.log('pmcChart3 received click/pointer event', ev.type);
                 // Try Chart.js hit-test with the native event first
                 let points = [];
@@ -1789,6 +1840,10 @@
                   }
                 },
                 onClick: (evt, activeEls) => {
+                  if (!canHeadDept(pmcDeptId)) {
+                    alert("Head access is required to perform this action.");
+                    return;
+                  }
                   if (!activeEls.length) return;
                   const idx = activeEls[0].index;
                   const sel = ceProjects[idx];
@@ -2007,7 +2062,7 @@
                 <div class="chart-title">PMC - DPR</div>
                 <div class="chart-wrapper"><canvas id="pmcChart1"></canvas></div>
                 <div style="text-align:center; margin-top:10px;">
-                  <button class="btn btn-success edit-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc_dpr'">Add / Edit</button>
+                  <button class="btn btn-success head-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc_dpr'">Add / Edit</button>
                 </div>
               </div>
               <div class="chart-card">
@@ -2015,14 +2070,14 @@
                 <div class="chart-wrapper"><canvas id="pmcChart3"></canvas></div>
                 <div id="pmcChart3ClientLinks" style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:8px; padding:8px;"></div>
                 <div style="text-align:center; margin-top:10px; display:flex; gap:8px; justify-content:center; align-items:center;">
-                  <button class="btn btn-success edit-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc-bms'">Add / Edit</button>
+                  <button class="btn btn-success head-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc-bms'">Add / Edit</button>
                 </div>
               </div>
               <div class="chart-card">
                 <div class="chart-title">PMC - Execution</div>
                 <div class="chart-wrapper"><canvas id="pmcChart2"></canvas></div>
                 <div style="text-align:center; margin-top:10px;">
-                  <button class="btn btn-success edit-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc-execution'">Add / Edit</button>
+                  <button class="btn btn-success head-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc-execution'">Add / Edit</button>
                 </div>
               </div>
             </div>
@@ -2940,16 +2995,20 @@
             .toLowerCase()
             .replace(/&/g, "and")
             .replace(/\s+/g, "");
-          if (key.includes("business") && key.includes("development")) return "/icons/Bd.png";
-          if (key.includes("contract") && key.includes("procurement")) return "/icons/contract&procurement.png";
-          if (key.includes("project")) return "/icons/Projects.png";
-          if (key === "om" || key.includes("oandm") || key.includes("operationmaintenance")) return "/icons/o&m.png";
-          if (key.includes("reia")) return "/icons/reia.png";
-          if (key.includes("pmc")) return "/icons/pmc.png";
-          if (key.includes("engineering")) return "/icons/Engineering.png";
-          if (key.includes("energy") && key.includes("management")) return "/icons/Energy%20Management.png";
-          if (key.includes("energymangement")) return "/icons/Energy%20Management.png";
-          return "";
+
+          let filename = "";
+          if (key.includes("business") && key.includes("development")) filename = "BD.png";
+          else if (key.includes("contract") && key.includes("procurement")) filename = "contract&procurement.png";
+          else if (key.includes("project")) filename = "Projects.png";
+          else if (key === "om" || key.includes("oandm") || key.includes("operationmaintenance")) filename = "o&m.png";
+          else if (key.includes("reia")) filename = "reia.png";
+          else if (key.includes("pmc")) filename = "pmc.png";
+          else if (key.includes("engineering")) filename = "Engineering.png";
+          else if (key.includes("energy") && key.includes("management")) filename = "Energy Management.png";
+          else if (key.includes("energymangement")) filename = "Energy Management.png";
+
+          if (!filename) return "";
+          return "/icons/" + encodeURIComponent(filename);
         }
         let homeHtml = `<h3><b>Departments Overview</b></h3><div class="row">`;
         departments.slice(1).forEach((d) => {
@@ -3363,7 +3422,7 @@
                 if (txt.includes('contract')) {
                   setTimeout(() => { window.location.href = '/contracts_external.html'; }, 180);
                 } else if (txt.includes('business development')) {
-                  setTimeout(() => { window.location.href = 'http://localhost:3000/business_development_external.html'; }, 180);
+                  setTimeout(() => { window.location.href = '/business_development_external.html'; }, 180);
                 } else if (txt.includes('energy management')) {
                   setTimeout(() => { window.location.href = '/energy_management.html'; }, 180);
                 } else if (txt.includes('engineering')) {
@@ -3523,8 +3582,8 @@
     let editingStatId = null;
 
     function editStatistic(deptId, statId) {
-      if (!canEditDept(deptId)) {
-        alert("Edit access is not allowed for this department.");
+      if (!canHeadDept(deptId)) {
+        alert("Head access is required to edit this department.");
         return;
       }
       editingDeptId = deptId;

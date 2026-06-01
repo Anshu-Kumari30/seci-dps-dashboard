@@ -30,8 +30,71 @@
         window.SELECTED_TAB = new URLSearchParams(window.location.search).get('tab') || "developer_payment";
 
         document.addEventListener("DOMContentLoaded", function () {
-            populateTabs();
+            initPermissions().then(() => populateTabs()).catch(() => populateTabs());
         });
+
+        async function initPermissions() {
+            try {
+                const jwt = localStorage.getItem('token');
+                let parsed = {};
+                if (jwt) {
+                    try {
+                        parsed = JSON.parse(atob(jwt.split('.')[1]));
+                    } catch (e) { parsed = {}; }
+                }
+                const user_id = parsed.user_id || null;
+                const role = parsed.role || 'user';
+                window.__ENERGY_PERMS = { role };
+
+                if (role === 'admin') {
+                    // Admins are treated as head
+                    window.__ENERGY_PERMS.level = 'head';
+                    return;
+                }
+
+                if (!user_id) {
+                    window.__ENERGY_PERMS.level = 'none';
+                    return;
+                }
+
+                const res = await fetch(`/api/data/departments/user/${encodeURIComponent(user_id)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                if (!res.ok) { window.__ENERGY_PERMS.level = 'none'; return; }
+                const json = await res.json();
+                const list = Array.isArray(json.departments) ? json.departments : (Array.isArray(json) ? json : []);
+                // departments may be objects or ids; fetch details to find Energy department id
+                let energyDeptId = null;
+                for (const d of list) {
+                    const dept_id = (d && (d.dept_id || d)) || null;
+                    try {
+                        const dres = await fetch(`/api/data/departments/${encodeURIComponent(dept_id)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                        if (!dres.ok) continue;
+                        const dd = await dres.json();
+                        const name = String(dd.dept_name || '').toLowerCase();
+                        if (name.includes('energy') && name.includes('manag')) {
+                            energyDeptId = dd.dept_id;
+                            // determine access level from original list item
+                            let accessLevel = 'edit';
+                            if (d && typeof d === 'object') {
+                                const rawLevel = String(d.access_level || '').trim().toLowerCase();
+                                if (rawLevel === 'view' || rawLevel === 'edit' || rawLevel === 'head') accessLevel = rawLevel;
+                                else if (Object.prototype.hasOwnProperty.call(d, 'can_edit')) accessLevel = d.can_edit ? 'edit' : 'view';
+                            }
+                            window.__ENERGY_PERMS.dept_id = energyDeptId;
+                            window.__ENERGY_PERMS.level = accessLevel;
+                            return;
+                        }
+                    } catch (e) { continue; }
+                }
+                // fallback: if not found, set none
+                window.__ENERGY_PERMS.level = 'none';
+            } catch (e) {
+                window.__ENERGY_PERMS = window.__ENERGY_PERMS || { level: 'none' };
+            }
+        }
+
+        function energyAccessLevel() { return (window.__ENERGY_PERMS && window.__ENERGY_PERMS.level) || 'none'; }
+        function energyCanEdit() { const l = energyAccessLevel(); return l === 'edit' || l === 'head'; }
+        function energyCanHead() { return energyAccessLevel() === 'head'; }
 
         function populateTabs() {
             // Use global selected project
@@ -50,6 +113,9 @@
                 pageTitle.textContent = `Energy Management - ${selectedProject}`;
               }
             }
+
+            // Note: always render content; Add/Edit/Delete controls below are
+            // conditionally shown/hidden based on permissions (view vs edit/head).
 
             const types = [
                 { id: "developer_payment", label: "Developer Payment" },
@@ -91,18 +157,19 @@
 
                 // Developer Payment Tab
                 if (type.id === "developer_payment") {
-
-                    const addBtn = document.createElement("button");
-                    addBtn.className = "btn btn-success mb-3";
-                    addBtn.innerText = "+ Add Developer Payment";
-                    addBtn.onclick = () => {
-                        const q = new URLSearchParams();
-                        if (selectedProject) q.set("project", selectedProject);
-                        q.set("tab", "developer_payment");
-                        window.location.href = "/add_edit_developer_payment.html" + (q.toString() ? `?${q.toString()}` : "");
-                    };
-
-                    pane.appendChild(addBtn);
+                    // Only show add button when user can edit/head
+                    if (energyCanEdit()) {
+                        const addBtn = document.createElement("button");
+                        addBtn.className = "btn btn-success mb-3";
+                        addBtn.innerText = "+ Add Developer Payment";
+                        addBtn.onclick = () => {
+                            const q = new URLSearchParams();
+                            if (selectedProject) q.set("project", selectedProject);
+                            q.set("tab", "developer_payment");
+                            window.location.href = "/add_edit_developer_payment.html" + (q.toString() ? `?${q.toString()}` : "");
+                        };
+                        pane.appendChild(addBtn);
+                    }
 
                     const tableContainer = document.createElement("div");
                     tableContainer.id = "developerPaymentTable";
@@ -114,18 +181,18 @@
                 // Power Sale Tab
                 else if (type.id === "ps") {
 
-                    const addBtn = document.createElement("button");
-                    addBtn.className = "btn btn-success mb-3";
-                    addBtn.innerText = "+ Add Power Sale";
-                    addBtn.onclick = () => {
-                        const q = new URLSearchParams();
-                        if (selectedProject) q.set("project", selectedProject);
-                        q.set("tab", "ps");
-                        window.location.href = "/add_edit_power_sale.html" + (q.toString() ? `?${q.toString()}` : "");
-                    };
-
-                    pane.appendChild(addBtn);
-
+                    if (energyCanEdit()) {
+                        const addBtn = document.createElement("button");
+                        addBtn.className = "btn btn-success mb-3";
+                        addBtn.innerText = "+ Add Power Sale";
+                        addBtn.onclick = () => {
+                            const q = new URLSearchParams();
+                            if (selectedProject) q.set("project", selectedProject);
+                            q.set("tab", "ps");
+                            window.location.href = "/add_edit_power_sale.html" + (q.toString() ? `?${q.toString()}` : "");
+                        };
+                        pane.appendChild(addBtn);
+                    }
                     const tableContainer = document.createElement("div");
                     tableContainer.id = "powerSaleTable";
                     pane.appendChild(tableContainer);
@@ -136,18 +203,18 @@
                 // DISCOM Payment Tab
                 else if (type.id === "dpod") {
 
-                    const addBtn = document.createElement("button");
-                    addBtn.className = "btn btn-success mb-3";
-                    addBtn.innerText = "+ Add DISCOM Payment";
-                    addBtn.onclick = () => {
-                        const q = new URLSearchParams();
-                        if (selectedProject) q.set("project", selectedProject);
-                        q.set("tab", "dpod");
-                        window.location.href = "/add_edit_discom_payment.html" + (q.toString() ? `?${q.toString()}` : "");
-                    };
-
-                    pane.appendChild(addBtn);
-
+                    if (energyCanEdit()) {
+                        const addBtn = document.createElement("button");
+                        addBtn.className = "btn btn-success mb-3";
+                        addBtn.innerText = "+ Add DISCOM Payment";
+                        addBtn.onclick = () => {
+                            const q = new URLSearchParams();
+                            if (selectedProject) q.set("project", selectedProject);
+                            q.set("tab", "dpod");
+                            window.location.href = "/add_edit_discom_payment.html" + (q.toString() ? `?${q.toString()}` : "");
+                        };
+                        pane.appendChild(addBtn);
+                    }
                     const tableContainer = document.createElement("div");
                     tableContainer.id = "discomPaymentTable";
                     pane.appendChild(tableContainer);
@@ -158,18 +225,18 @@
                 // Regulatory Order Tab
                 else if (type.id === "ro") {
 
-                    const addBtn = document.createElement("button");
-                    addBtn.className = "btn btn-success mb-3";
-                    addBtn.innerText = "+ Add Regulatory Order";
-                    addBtn.onclick = () => {
-                        const q = new URLSearchParams();
-                        if (selectedProject) q.set("project", selectedProject);
-                        q.set("tab", "ro");
-                        window.location.href = "/add_edit_regulatory_order.html" + (q.toString() ? `?${q.toString()}` : "");
-                    };
-
-                    pane.appendChild(addBtn);
-
+                    if (energyCanEdit()) {
+                        const addBtn = document.createElement("button");
+                        addBtn.className = "btn btn-success mb-3";
+                        addBtn.innerText = "+ Add Regulatory Order";
+                        addBtn.onclick = () => {
+                            const q = new URLSearchParams();
+                            if (selectedProject) q.set("project", selectedProject);
+                            q.set("tab", "ro");
+                            window.location.href = "/add_edit_regulatory_order.html" + (q.toString() ? `?${q.toString()}` : "");
+                        };
+                        pane.appendChild(addBtn);
+                    }
                     const tableContainer = document.createElement("div");
                     tableContainer.id = "regulatoryOrderTable";
                     pane.appendChild(tableContainer);
@@ -180,18 +247,18 @@
                 // State Wise Details Tab
                 else if (type.id === "swd") {
 
-                    const addBtn = document.createElement("button");
-                    addBtn.className = "btn btn-success mb-3";
-                    addBtn.innerText = "+ Add State Wise Details";
-                    addBtn.onclick = () => {
-                        const q = new URLSearchParams();
-                        if (selectedProject) q.set("project", selectedProject);
-                        q.set("tab", "swd");
-                        window.location.href = "/add_edit_state_wise_details.html" + (q.toString() ? `?${q.toString()}` : "");
-                    };
-
-                    pane.appendChild(addBtn);
-
+                    if (energyCanEdit()) {
+                        const addBtn = document.createElement("button");
+                        addBtn.className = "btn btn-success mb-3";
+                        addBtn.innerText = "+ Add State Wise Details";
+                        addBtn.onclick = () => {
+                            const q = new URLSearchParams();
+                            if (selectedProject) q.set("project", selectedProject);
+                            q.set("tab", "swd");
+                            window.location.href = "/add_edit_state_wise_details.html" + (q.toString() ? `?${q.toString()}` : "");
+                        };
+                        pane.appendChild(addBtn);
+                    }
                     const tableContainer = document.createElement("div");
                     tableContainer.id = "stateWiseDetailsTable";
                     pane.appendChild(tableContainer);
@@ -300,6 +367,18 @@
     `;
 
             items.forEach((item, index) => {
+                const canEdit = energyCanEdit();
+                const actionHtml = canEdit
+                    ? `<button class="btn btn-warning btn-sm me-1" 
+                        onclick="editDeveloperPayment('${item.id}')">
+                        Edit
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                        onclick="deleteDeveloperPayment('${item.id}', this)">
+                        Delete
+                    </button>`
+                    : `<span class="text-muted">View Only</span>`;
+
                 html += `
             <tr>
                 <td>${index + 1}</td>
@@ -312,14 +391,7 @@
                 </td>
                 <td>${formatToISTDate(item.createdAt)}</td>
                 <td>
-                    <button class="btn btn-warning btn-sm me-1" 
-                        onclick="editDeveloperPayment('${item.id}')">
-                        Edit
-                    </button>
-                    <button class="btn btn-danger btn-sm"
-                        onclick="deleteDeveloperPayment('${item.id}', this)">
-                        Delete
-                    </button>
+                    ${actionHtml}
                 </td>
             </tr>
         `;
@@ -358,6 +430,18 @@
     `;
 
             items.forEach((item, index) => {
+                const canEdit = energyCanEdit();
+                const actionHtml = canEdit
+                    ? `<button class="btn btn-warning btn-sm me-1" 
+                        onclick="editPowerSale('${item.id}')">
+                        Edit
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                        onclick="deletePowerSale('${item.id}', this)">
+                        Delete
+                    </button>`
+                    : `<span class="text-muted">View Only</span>`;
+
                 html += `
             <tr>
                 <td>${index + 1}</td>
@@ -370,14 +454,7 @@
                 </td>
                 <td>${formatToISTDate(item.createdAt)}</td>
                 <td>
-                    <button class="btn btn-warning btn-sm me-1" 
-                        onclick="editPowerSale('${item.id}')">
-                        Edit
-                    </button>
-                    <button class="btn btn-danger btn-sm"
-                        onclick="deletePowerSale('${item.id}', this)">
-                        Delete
-                    </button>
+                    ${actionHtml}
                 </td>
             </tr>
         `;
@@ -416,6 +493,18 @@
     `;
 
             items.forEach((item, index) => {
+                const canEdit = energyCanEdit();
+                const actionHtml = canEdit
+                    ? `<button class="btn btn-warning btn-sm me-1" 
+                        onclick="editDiscomPayment('${item.id}')">
+                        Edit
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                        onclick="deleteDiscomPayment('${item.id}', this)">
+                        Delete
+                    </button>`
+                    : `<span class="text-muted">View Only</span>`;
+
                 html += `
             <tr>
                 <td>${index + 1}</td>
@@ -428,14 +517,7 @@
                 </td>
                 <td>${formatToISTDate(item.createdAt)}</td>
                 <td>
-                    <button class="btn btn-warning btn-sm me-1" 
-                        onclick="editDiscomPayment('${item.id}')">
-                        Edit
-                    </button>
-                    <button class="btn btn-danger btn-sm"
-                        onclick="deleteDiscomPayment('${item.id}', this)">
-                        Delete
-                    </button>
+                    ${actionHtml}
                 </td>
             </tr>
         `;
@@ -474,6 +556,18 @@
     `;
 
             items.forEach((item, index) => {
+                const canEdit = energyCanEdit();
+                const actionHtml = canEdit
+                    ? `<button class="btn btn-warning btn-sm me-1" 
+                        onclick="editRegulatoryOrder('${item.id}')">
+                        Edit
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                        onclick="deleteRegulatoryOrder('${item.id}', this)">
+                        Delete
+                    </button>`
+                    : `<span class="text-muted">View Only</span>`;
+
                 html += `
             <tr>
                 <td>${index + 1}</td>
@@ -486,14 +580,7 @@
                 </td>
                 <td>${formatToISTDate(item.createdAt)}</td>
                 <td>
-                    <button class="btn btn-warning btn-sm me-1" 
-                        onclick="editRegulatoryOrder('${item.id}')">
-                        Edit
-                    </button>
-                    <button class="btn btn-danger btn-sm"
-                        onclick="deleteRegulatoryOrder('${item.id}', this)">
-                        Delete
-                    </button>
+                    ${actionHtml}
                 </td>
             </tr>
         `;
@@ -535,6 +622,18 @@
     `;
 
             items.forEach((item, index) => {
+                const canEdit = energyCanEdit();
+                const actionHtml = canEdit
+                    ? `<button class="btn btn-warning btn-sm me-1"
+                        onclick="editStateWiseDetails('${item.id}')">
+                        Edit
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                        onclick="deleteStateWiseDetails('${item.id}', this)">
+                        Delete
+                    </button>`
+                    : `<span class="text-muted">View Only</span>`;
+
                 html += `
             <tr>
                 <td>${index + 1}</td>
@@ -559,14 +658,7 @@
                 </td>
                 <td>${formatToISTDate(item.createdAt)}</td>
                 <td>
-                    <button class="btn btn-warning btn-sm me-1"
-                        onclick="editStateWiseDetails('${item.id}')">
-                        Edit
-                    </button>
-                    <button class="btn btn-danger btn-sm"
-                        onclick="deleteStateWiseDetails('${item.id}', this)">
-                        Delete
-                    </button>
+                    ${actionHtml}
                 </td>
             </tr>
         `;
@@ -659,6 +751,7 @@
 
 
         function editDeveloperPayment(id) {
+            if (!energyCanEdit()) { alert('You do not have permission to edit this item.'); return; }
             const q = new URLSearchParams({ id });
             if (window.SELECTED_PROJECT) q.set('project', window.SELECTED_PROJECT);
             q.set('tab', 'developer_payment');
@@ -666,6 +759,7 @@
         }
 
         function editPowerSale(id) {
+            if (!energyCanEdit()) { alert('You do not have permission to edit this item.'); return; }
             const q = new URLSearchParams({ id });
             if (window.SELECTED_PROJECT) q.set('project', window.SELECTED_PROJECT);
             q.set('tab', 'ps');
@@ -673,6 +767,7 @@
         }
 
         function editDiscomPayment(id) {
+            if (!energyCanEdit()) { alert('You do not have permission to edit this item.'); return; }
             const q = new URLSearchParams({ id });
             if (window.SELECTED_PROJECT) q.set('project', window.SELECTED_PROJECT);
             q.set('tab', 'dpod');
@@ -680,6 +775,7 @@
         }
 
         function editRegulatoryOrder(id) {
+            if (!energyCanEdit()) { alert('You do not have permission to edit this item.'); return; }
             const q = new URLSearchParams({ id });
             if (window.SELECTED_PROJECT) q.set('project', window.SELECTED_PROJECT);
             q.set('tab', 'ro');
@@ -687,6 +783,7 @@
         }
 
         function editStateWiseDetails(id) {
+            if (!energyCanEdit()) { alert('You do not have permission to edit this item.'); return; }
             const q = new URLSearchParams({ id });
             if (window.SELECTED_PROJECT) q.set('project', window.SELECTED_PROJECT);
             q.set('tab', 'swd');

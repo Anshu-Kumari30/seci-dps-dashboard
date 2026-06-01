@@ -275,9 +275,11 @@
               if (!mappingByUser[row.user_id]) {
                 mappingByUser[row.user_id] = {};
               }
-              mappingByUser[row.user_id][row.dept_id] = row.can_edit
-                ? "edit"
-                : "view";
+              const rawLevel = (row.access_level || "").toString().trim().toLowerCase();
+              const accessLevel = (rawLevel === "view" || rawLevel === "edit" || rawLevel === "head")
+                ? rawLevel
+                : (row.can_edit ? "edit" : "view");
+              mappingByUser[row.user_id][row.dept_id] = accessLevel;
             });
 
             users.forEach((user) => {
@@ -296,6 +298,7 @@
                         <option value="none" ${access === "none" ? "selected" : ""}>No Access</option>
                         <option value="view" ${access === "view" ? "selected" : ""}>View</option>
                         <option value="edit" ${access === "edit" ? "selected" : ""}>Edit</option>
+                        <option value="head" ${access === "head" ? "selected" : ""}>Head</option>
                       </select>
                     </div>
                   `;
@@ -348,14 +351,16 @@
                 user_id: userId,
                 dept_id: deptId,
                 action: "add",
-                can_edit: access === "edit",
+                can_edit: access === "edit" || access === "head",
+                access_level: access,
               });
             } else if (originalDepts[deptId] !== access) {
               changes.push({
                 user_id: userId,
                 dept_id: deptId,
                 action: "update",
-                can_edit: access === "edit",
+                can_edit: access === "edit" || access === "head",
+                access_level: access,
               });
             }
           }

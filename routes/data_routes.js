@@ -4,6 +4,7 @@ const router = express.Router();
 const dataController = require("../controllers/data_controllers");
 const { verifyToken, verifyAdmin } = require("../middleware/verify_token");
 const { requireDeptEditAccess } = require("../middleware/require_dept_edit_access");
+const { requireDeptHeadAccess } = require("../middleware/require_dept_head_access");
 const auditLogger = require("../middleware/audit_logger");
 const multer = require("multer");
 const path = require("path");
@@ -153,6 +154,7 @@ router.get(
 router.post(
   "/pmc/slice_meta/save",
   verifyToken,
+  requireDeptHeadAccess,
   auditLogger("Saved PMC slice metadata"),
   dataController.savePmcSliceMeta,
 );
@@ -165,11 +167,13 @@ router.get(
 
 router.post(
   "/pmc/slice_editor/save",
+  requireDeptHeadAccess,
   dataController.savePmcSliceMeta,
 );
 
 router.delete(
   "/pmc/slice_editor/item/:id",
+  requireDeptHeadAccess,
   dataController.deletePmcSliceMetaItem,
 );
 
@@ -186,6 +190,7 @@ router.get(
 
 router.post(
   "/pmc_slice/save",
+  requireDeptHeadAccess,
   dataController.savePmcSliceMeta,
 );
 

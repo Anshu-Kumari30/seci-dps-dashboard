@@ -499,7 +499,7 @@
             <div
               class="d-flex align-items-center justify-content-md-end flex-wrap gap-3"
             >
-              <div class="toolbar-group">
+              <div class="toolbar-group" id="uploadGroup">
                 <span class="toolbar-label"
                   ><i class="fas fa-file-upload"></i> Upload Excel:</span
                 >
@@ -537,8 +537,9 @@
         <div class="table-responsive">
           <table class="table table-bordered mb-0">
             <thead>
-              <tr>
+              <a
                 <th colspan="8" id="asOnDateHeader">As on Date</th>
+                id="addOmDataLink"
                 <th colspan="5">Year Till Date</th>
                 <th colspan="4">Last FY Performance</th>
               </tr>
@@ -675,7 +676,7 @@
             placeholder="Enter action plan..."
           ></textarea>
 
-          <button class="btn btn-primary" onclick="saveIssuesAction()">
+          <button class="btn btn-primary" id="saveIssuesBtn" onclick="saveIssuesAction()">
             <i class="fas fa-save"></i> Save
           </button>
         </div>
@@ -688,6 +689,9 @@
       const statistic_id = params.get("statistic_id");
       const entity_id = params.get("entity_id");
       let dailyGenerationChart = null;
+      let omAccessLevel = "view";
+      let canOmEdit = false;
+      let canOmHead = false;
       let dateInput;
       let currentDateTbody;
       let last7DaysTbody;
@@ -715,6 +719,75 @@
           }
           return res;
         });
+      }
+
+      function normalizeDeptName(name) {
+        return String(name || "")
+          .toLowerCase()
+          .replace(/&/g, "and")
+          .replace(/[^a-z0-9]/g, "");
+      }
+
+      function getJwtPayload() {
+        try {
+          const token = localStorage.getItem("token") || "";
+          const payload = token.split(".")[1] || "";
+          return JSON.parse(atob(payload));
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function resolveDeptAccessLevelByName(targetName) {
+        const payload = getJwtPayload();
+        if (payload && payload.role === "admin") return Promise.resolve("head");
+        const userId = payload && payload.user_id;
+        if (!userId) return Promise.resolve("none");
+        return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+          .then((res) => (res.ok ? res.json() : { departments: [] }))
+          .then((data) => {
+            const list = Array.isArray(data.departments) ? data.departments : [];
+            const targetKey = normalizeDeptName(targetName);
+            const lookups = list.map((deptInfo) => {
+              const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+              if (!id) return Promise.resolve(null);
+              return authFetch(`/api/data/departments/${encodeURIComponent(id)}`)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((dept) => {
+                  if (!dept) return null;
+                  if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
+                  const raw = String((deptInfo && deptInfo.access_level) || "")
+                    .trim()
+                    .toLowerCase();
+                  if (raw === "view" || raw === "edit" || raw === "head") return raw;
+                  return deptInfo && deptInfo.can_edit === true ? "edit" : "view";
+                });
+            });
+            return Promise.all(lookups).then((levels) => {
+              for (let i = 0; i < levels.length; i++) {
+                if (levels[i]) return levels[i];
+              }
+              return "none";
+            });
+          })
+          .catch(() => "none");
+      }
+
+      function applyOmAccessUi() {
+        const addLink = document.getElementById("addOmDataLink");
+        const uploadGroup = document.getElementById("uploadGroup");
+        const keyIssues = document.getElementById("keyIssues");
+        const actionPlan = document.getElementById("actionPlan");
+        const saveBtn = document.getElementById("saveIssuesBtn");
+
+        if (addLink) addLink.style.display = canOmHead ? "" : "none";
+        if (uploadGroup) uploadGroup.style.display = canOmHead ? "" : "none";
+
+        if (!canOmEdit) {
+          if (keyIssues) keyIssues.readOnly = true;
+          if (actionPlan) actionPlan.readOnly = true;
+          if (saveBtn) saveBtn.style.display = "none";
+        }
       }
 
       async function fetchProjectName() {
@@ -1113,6 +1186,11 @@
       document
         .getElementById("excelUpload")
         .addEventListener("change", async function (e) {
+          if (!canOmHead) {
+            alert("Head access only. Upload is not allowed.");
+            e.target.value = "";
+            return;
+          }
           const file = e.target.files[0];
           if (!file) return;
 
@@ -1245,6 +1323,10 @@
       }
 
       async function saveIssuesAction() {
+        if (!canOmEdit) {
+          alert("View access only. Editing issues is not allowed.");
+          return;
+        }
         const key_issues = document.getElementById("keyIssues").value;
 
         const action_plan = document.getElementById("actionPlan").value;
@@ -1279,45 +1361,52 @@
       }
 
       window.addEventListener("DOMContentLoaded", () => {
-        dateInput = document.getElementById("dateFilter");
-        currentDateTbody = document.getElementById("currentDateTableBody");
-        last7DaysTbody = document.getElementById("last7DaysTableBody");
+        resolveDeptAccessLevelByName("O&M").then((level) => {
+          omAccessLevel = level;
+          canOmHead = level === "head";
+          canOmEdit = level === "edit" || level === "head";
+          applyOmAccessUi();
 
-        const from = document.getElementById("fromDate");
-        const to = document.getElementById("toDate");
+          dateInput = document.getElementById("dateFilter");
+          currentDateTbody = document.getElementById("currentDateTableBody");
+          last7DaysTbody = document.getElementById("last7DaysTableBody");
 
-        dateInput.addEventListener("change", () => {
-          if (!dateInput.value) return;
-            // Update header to show the selected view date
-          document.getElementById("asOnDateHeader").textContent = formatHeaderDate(dateInput.value);
-          fetchDataForDate(dateInput.value);
+          const from = document.getElementById("fromDate");
+          const to = document.getElementById("toDate");
+
+          dateInput.addEventListener("change", () => {
+            if (!dateInput.value) return;
+              // Update header to show the selected view date
+            document.getElementById("asOnDateHeader").textContent = formatHeaderDate(dateInput.value);
+            fetchDataForDate(dateInput.value);
+          });
+
+          const formatLocalDate = (date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+          };
+
+          const base = new Date();
+
+          const yesterday = new Date(base);
+          yesterday.setDate(yesterday.getDate() - 1);
+
+          const last30 = new Date(yesterday);
+          last30.setDate(last30.getDate() - 30);
+
+          const defaultDate = formatLocalDate(yesterday);
+
+          dateInput.value = defaultDate;
+          from.value = formatLocalDate(last30);
+          to.value = defaultDate;
+
+          fetchDataForDate(defaultDate);
+          fetchProjectName();
+          fetchIssuesAction();
+          document.getElementById("asOnDateHeader").textContent = formatHeaderDate(defaultDate);
         });
-
-        const formatLocalDate = (date) => {
-          const y = date.getFullYear();
-          const m = String(date.getMonth() + 1).padStart(2, "0");
-          const d = String(date.getDate()).padStart(2, "0");
-          return `${y}-${m}-${d}`;
-        };
-
-        const base = new Date();
-
-        const yesterday = new Date(base);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const last30 = new Date(yesterday);
-        last30.setDate(last30.getDate() - 30);
-
-        const defaultDate = formatLocalDate(yesterday);
-
-        dateInput.value = defaultDate;
-        from.value = formatLocalDate(last30);
-        to.value = defaultDate;
-
-        fetchDataForDate(defaultDate);
-        fetchProjectName();
-        fetchIssuesAction();
-        document.getElementById("asOnDateHeader").textContent = formatHeaderDate(defaultDate);
       });
     </script>
     <script src="js/main.js"></script>

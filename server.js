@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 // Load .env from this src directory to avoid relying on process.cwd()
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { performance } = require("perf_hooks");
@@ -178,8 +179,15 @@ function startExpressServer() {
 
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+  const publicIconsDir = path.join(__dirname, "public", "icons");
+  const rootIconsDir = path.join(__dirname, "icons");
+  if (!fs.existsSync(publicIconsDir) && !fs.existsSync(rootIconsDir)) {
+    logger.warn("Icons directory not found in public/icons or /icons.");
+  }
+
   app.use(express.static(path.join(__dirname, "public")));
-  app.use("/icons", express.static(path.join(__dirname, "icons")));
+  app.use("/icons", express.static(publicIconsDir));
+  app.use("/icons", express.static(rootIconsDir));
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
   app.get("/", (req, res) => {

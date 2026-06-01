@@ -169,7 +169,12 @@ async function editUserDepartmentMapping(req, res) {
     try {
       for (const mapping of mappings) {
         const { user_id, dept_id, action } = mapping;
-        const canEdit = mapping.can_edit !== false;
+        const rawAccess = mapping.access_level || mapping.access || mapping.level || "";
+        let accessLevel = String(rawAccess || "").trim().toLowerCase();
+        if (accessLevel !== "view" && accessLevel !== "edit" && accessLevel !== "head") {
+          accessLevel = mapping.can_edit === false ? "view" : "edit";
+        }
+        const canEdit = accessLevel === "edit" || accessLevel === "head";
 
         // Validate payload
         if (!user_id || !dept_id || !action) continue;
@@ -206,12 +211,12 @@ async function editUserDepartmentMapping(req, res) {
 
           if (!exists) {
             await UserEditAccess.create(
-              { user_id, dept_id, can_edit: canEdit },
+              { user_id, dept_id, can_edit: canEdit, access_level: accessLevel },
               { transaction }
             );
           } else {
             await UserEditAccess.update(
-              { can_edit: canEdit },
+              { can_edit: canEdit, access_level: accessLevel },
               { where: { user_id, dept_id }, transaction }
             );
           }
@@ -228,12 +233,12 @@ async function editUserDepartmentMapping(req, res) {
 
           if (!exists) {
             await UserEditAccess.create(
-              { user_id, dept_id, can_edit: canEdit },
+              { user_id, dept_id, can_edit: canEdit, access_level: accessLevel },
               { transaction }
             );
           } else {
             await UserEditAccess.update(
-              { can_edit: canEdit },
+              { can_edit: canEdit, access_level: accessLevel },
               { where: { user_id, dept_id }, transaction }
             );
           }
