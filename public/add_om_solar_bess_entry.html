@@ -738,9 +738,9 @@
 
     function resolveDeptAccessLevelByName(targetName) {
       const payload = getJwtPayload();
-      if (payload && payload.role === "admin") return Promise.resolve("head");
+      if (payload && payload.role === "admin") return Promise.resolve({ level: "head", can_edit: true });
       const userId = payload && payload.user_id;
-      if (!userId) return Promise.resolve("none");
+      if (!userId) return Promise.resolve({ level: "none", can_edit: false });
       return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
         .then((res) => (res.ok ? res.json() : { departments: [] }))
         .then((data) => {
@@ -754,21 +754,27 @@
               .then((dept) => {
                 if (!dept) return null;
                 if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
-                const raw = String((deptInfo && deptInfo.access_level) || "")
-                  .trim()
-                  .toLowerCase();
-                if (raw === "view" || raw === "edit" || raw === "head") return raw;
-                return deptInfo && deptInfo.can_edit === true ? "edit" : "view";
+                const raw = String((deptInfo && deptInfo.access_level) || "").trim().toLowerCase();
+                let level = 'view';
+                let canEdit = false;
+                if (raw === 'head') { level = 'head'; canEdit = true; }
+                else if (raw === 'edit') { level = 'edit'; canEdit = true; }
+                else if (raw === 'view') { level = 'view'; canEdit = false; }
+                else if (deptInfo && Object.prototype.hasOwnProperty.call(deptInfo, 'can_edit')) {
+                  canEdit = Boolean(deptInfo.can_edit);
+                  level = canEdit ? 'edit' : 'view';
+                }
+                return { level, can_edit: canEdit };
               });
           });
-          return Promise.all(lookups).then((levels) => {
-            for (let i = 0; i < levels.length; i++) {
-              if (levels[i]) return levels[i];
+          return Promise.all(lookups).then((results) => {
+            for (let i = 0; i < results.length; i++) {
+              if (results[i]) return results[i];
             }
-            return "none";
+            return { level: 'none', can_edit: false };
           });
         })
-        .catch(() => "none");
+        .catch(() => ({ level: 'none', can_edit: false }));
     }
 
     function recalculateDerivedFields() {
@@ -873,10 +879,16 @@
     });
 
     window.addEventListener("DOMContentLoaded", async () => {
-      const level = await resolveDeptAccessLevelByName("O&M");
+      const res = await resolveDeptAccessLevelByName("O&M");
+      const level = res && res.level ? res.level : 'none';
+      const canEditFlag = res && typeof res.can_edit !== 'undefined' ? Boolean(res.can_edit) : (level === 'edit' || level === 'head');
       canOmHead = level === "head";
-      if (!canOmHead) {
-        alert("Head access only. Editing is not allowed.");
+      // Allow both head AND edit users to access the form page.
+      // - Head: full access (can submit)
+      // - Edit: can view/fill form but submit is blocked in the submit handler
+      // - View/None: blocked from accessing
+      if (level !== "head" && level !== "edit") {
+        alert("You do not have permission to access this page.");
         window.location.href = "/home.html";
         return;
       }

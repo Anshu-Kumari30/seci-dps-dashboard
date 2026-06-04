@@ -749,10 +749,11 @@
       }
 
       function resolveDeptAccessLevelByName(targetName) {
+        // Returns a Promise resolving to { level: 'none'|'view'|'edit'|'head', can_edit: boolean }
         const payload = getJwtPayload();
-        if (payload && payload.role === "admin") return Promise.resolve("head");
+        if (payload && payload.role === "admin") return Promise.resolve({ level: "head", can_edit: true });
         const userId = payload && payload.user_id;
-        if (!userId) return Promise.resolve("none");
+        if (!userId) return Promise.resolve({ level: "none", can_edit: false });
         return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
           .then((res) => (res.ok ? res.json() : { departments: [] }))
           .then((data) => {
@@ -766,21 +767,27 @@
                 .then((dept) => {
                   if (!dept) return null;
                   if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
-                  const raw = String((deptInfo && deptInfo.access_level) || "")
-                    .trim()
-                    .toLowerCase();
-                  if (raw === "view" || raw === "edit" || raw === "head") return raw;
-                  return deptInfo && deptInfo.can_edit === true ? "edit" : "view";
+                  const raw = String((deptInfo && deptInfo.access_level) || "").trim().toLowerCase();
+                  let level = 'view';
+                  let canEdit = false;
+                  if (raw === 'head') { level = 'head'; canEdit = true; }
+                  else if (raw === 'edit') { level = 'edit'; canEdit = true; }
+                  else if (raw === 'view') { level = 'view'; canEdit = false; }
+                  else if (deptInfo && Object.prototype.hasOwnProperty.call(deptInfo, 'can_edit')) {
+                    canEdit = Boolean(deptInfo.can_edit);
+                    level = canEdit ? 'edit' : 'view';
+                  }
+                  return { level, can_edit: canEdit };
                 });
             });
-            return Promise.all(lookups).then((levels) => {
-              for (let i = 0; i < levels.length; i++) {
-                if (levels[i]) return levels[i];
+            return Promise.all(lookups).then((results) => {
+              for (let i = 0; i < results.length; i++) {
+                if (results[i]) return results[i];
               }
-              return "none";
+              return { level: 'none', can_edit: false };
             });
           })
-          .catch(() => "none");
+          .catch(() => ({ level: 'none', can_edit: false }));
       }
 
       function applyOmAccessUi() {
@@ -790,8 +797,10 @@
         const actionPlan = document.getElementById("actionPlan");
         const saveBtn = document.getElementById("saveIssuesBtn");
 
-        if (addLink) addLink.style.display = canOmHead ? "" : "none";
-        if (uploadGroup) uploadGroup.style.display = canOmHead ? "" : "none";
+        // Show Add/Edit Data button for head AND edit users; hide for view-only
+        if (addLink) addLink.style.display = canOmHead || canOmEdit ? "" : "none";
+        // Upload for head and edit users
+        if (uploadGroup) uploadGroup.style.display = canOmHead || canOmEdit ? "" : "none";
 
         if (!canOmEdit) {
           if (keyIssues) keyIssues.readOnly = true;
@@ -803,8 +812,8 @@
       document
         .getElementById("excelUpload")
         .addEventListener("change", async function (e) {
-          if (!canOmHead) {
-            alert("Head access only. Upload is not allowed.");
+          if (!canOmHead && !canOmEdit) {
+            alert("You do not have permission to upload.");
             e.target.value = "";
             return;
           }
@@ -1382,10 +1391,13 @@
       }
 
       window.addEventListener("DOMContentLoaded", () => {
-        resolveDeptAccessLevelByName("O&M").then((level) => {
+        resolveDeptAccessLevelByName("O&M").then((res) => {
+          // res is { level, can_edit }
+          const level = res && res.level ? res.level : 'none';
+          const canEditFlag = res && typeof res.can_edit !== 'undefined' ? Boolean(res.can_edit) : (level === 'edit' || level === 'head');
           omAccessLevel = level;
           canOmHead = level === "head";
-          canOmEdit = level === "edit" || level === "head";
+          canOmEdit = canEditFlag;
           applyOmAccessUi();
 
           const from = document.getElementById("fromDate");

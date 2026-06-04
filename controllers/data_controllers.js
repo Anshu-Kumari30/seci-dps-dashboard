@@ -118,6 +118,24 @@ function normalizeProjectKey(value) {
   return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+async function resolveUserDeptAccessLevel(user, deptId) {
+  if (!user || !deptId) return 'none';
+  if (user.role === 'admin') return 'head';
+
+  try {
+    const access = await models.UserEditAccess.findOne({
+      where: { user_id: user.user_id, dept_id: deptId },
+      attributes: ['can_edit', 'access_level'],
+    });
+
+    const level = String(access?.access_level || '').trim().toLowerCase();
+    if (level === 'view' || level === 'edit' || level === 'head') return level;
+    return access?.can_edit === true ? 'edit' : 'view';
+  } catch (err) {
+    return 'none';
+  }
+}
+
 function buildExecutionEntityId(projectName) {
   const normalized = normalizeProjectKey(projectName);
   if (!normalized) return null;
@@ -1566,14 +1584,19 @@ exports.deletePmcCeCorrespondence = async (req, res) => {
 exports.deleteIssue = async (req, res) => {
   try {
     const { issue_id } = req.params;
+    const issue = await EntityIssues.findOne({ where: { issue_id } });
+    if (!issue) {
+      return res.status(404).json({ error: 'Issue not found' });
+    }
+
+    const accessLevel = await resolveUserDeptAccessLevel(req.user, issue.dept_id);
+    if (accessLevel !== 'edit' && accessLevel !== 'head') {
+      return res.status(403).json({ error: 'Access denied: edit not allowed' });
+    }
 
     await EntityIssues.update(
       { is_active: false },
-      {
-        where: {
-          issue_id: issue_id,
-        },
-      },
+      { where: { issue_id } },
     );
     res.json({ message: "Issue deleted" });
   } catch (err) {
@@ -2051,15 +2074,17 @@ exports.editDocument = async (req, res) => {
 exports.deleteDocument = async (req, res) => {
   try {
     const { doc_id } = req.params;
-    // Try soft-delete in EntityDocs first
-    const [updatedCount] = await EntityDocs.update(
-      { is_active: false },
-      {
-        where: { doc_id: doc_id },
-      },
-    );
+    const entityDoc = await EntityDocs.findOne({ where: { doc_id } });
+    if (entityDoc) {
+      const accessLevel = await resolveUserDeptAccessLevel(req.user, entityDoc.dept_id);
+      if (accessLevel !== 'edit' && accessLevel !== 'head') {
+        return res.status(403).json({ error: 'Access denied: edit not allowed' });
+      }
 
-    if (updatedCount && updatedCount > 0) {
+      await EntityDocs.update(
+        { is_active: false },
+        { where: { doc_id } },
+      );
       return res.json({ message: "Document deleted" });
     }
 
@@ -2067,11 +2092,17 @@ exports.deleteDocument = async (req, res) => {
     try {
       const { TariffPetition } = require('../models').models;
       if (TariffPetition) {
-        const [tpUpdated] = await TariffPetition.update(
-          { is_active: false },
-          { where: { id: doc_id } },
-        );
-        if (tpUpdated && tpUpdated > 0) {
+        const tariffDoc = await TariffPetition.findOne({ where: { id: doc_id } });
+        if (tariffDoc) {
+          const accessLevel = await resolveUserDeptAccessLevel(req.user, tariffDoc.dept_id);
+          if (accessLevel !== 'edit' && accessLevel !== 'head') {
+            return res.status(403).json({ error: 'Access denied: edit not allowed' });
+          }
+
+          await TariffPetition.update(
+            { is_active: false },
+            { where: { id: doc_id } },
+          );
           return res.json({ message: 'Tariff petition deleted' });
         }
       }
@@ -2151,11 +2182,19 @@ exports.editCorrespondence = async (req, res) => {
 exports.deleteCorrespondence = async (req, res) => {
   try {
     const { correspondence_id } = req.params;
+    const correspondence = await EntityCorrespondence.findOne({ where: { correspondence_id } });
+    if (!correspondence) {
+      return res.status(404).json({ error: 'Correspondence not found' });
+    }
+
+    const accessLevel = await resolveUserDeptAccessLevel(req.user, correspondence.dept_id);
+    if (accessLevel !== 'edit' && accessLevel !== 'head') {
+      return res.status(403).json({ error: 'Access denied: edit not allowed' });
+    }
+
     await EntityCorrespondence.update(
       { is_active: false },
-      {
-        where: { correspondence_id: correspondence_id },
-      },
+      { where: { correspondence_id } },
     );
     res.json({ message: "Correspondence deleted" });
   } catch (err) {
