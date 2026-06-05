@@ -22,6 +22,22 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
+// --- Read-only data-fetch POST routes (before requireDeptEditAccess so viewers can access them) ---
+
+router.post(
+  "/om/solar_bess/date/one",
+  verifyToken,
+  auditLogger("Fetched the OM Solar+BESS data for a specific date"),
+  dataController.getOMSolarBESSDataForDate,
+);
+
+router.post(
+  "/om/solar/date/one",
+  verifyToken,
+  auditLogger("Fetched the OM Solar data for a specific date"),
+  dataController.getOMSolarDataForDate,
+);
+
 router.use(requireDeptEditAccess);
 
 // Get PMC donut chart data
@@ -683,13 +699,6 @@ router.get(
   dataController.getOAllMSolarBESSData,
 );
 
-router.post(
-  "/om/solar_bess/date/one",
-  verifyToken,
-  auditLogger("Fetched the OM Solar+BESS data for a specific date"),
-  dataController.getOMSolarBESSDataForDate,
-);
-
 router.get(
   "/om/solar_bess/last-date",
   verifyToken,
@@ -709,13 +718,6 @@ router.post(
   verifyToken,
   auditLogger("Updated the OM Solar data for a specific date"),
   dataController.updateOMDGRSolarForOneDate,
-);
-
-router.post(
-  "/om/solar/date/one",
-  verifyToken,
-  auditLogger("Fetched the OM Solar data for a specific date"),
-  dataController.getOMSolarDataForDate,
 );
 
 router.get(

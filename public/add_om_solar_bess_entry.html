@@ -841,8 +841,8 @@
         cumulative_generation: cumulativeGenerationInput.value,
         cumulative_bess_export: cumulativeBessExportInput.value,
         cumulative_bess_import: cumulativeBessImportInput.value,
-        daily_cuf_worc: cufInput.value,
-        cuf_till_date: cufTillDateInput.value,
+        daily_cuf_worc: cufInput.value || null,
+        cuf_till_date: cufTillDateInput.value || null,
         remarks: remarksInput.value,
         action: actionInput.value,
       };
@@ -893,7 +893,7 @@
         return;
       }
 
-      machineAvailabilityInput.value = 100;
+      plantAvailabilityInput.value = 100;
       gridAvailabilityInput.value = 100;
       try {
         let response = await authFetch(
@@ -909,7 +909,6 @@
       } catch (error) {
         console.error("Capacity Fetching Failed:", error);
       }
-    });
     });
   </script>
   <script src="js/main.js"></script>

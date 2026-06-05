@@ -1246,9 +1246,27 @@ exports.deleteBusinessDevelopmentMilestone = async (req, res) => {
  */
 exports.getUserDepartmentMappings = async (req, res) => {
   try {
-    const userDepartmentMappings = await UserEditAccess.findAll({
-      attributes: ["user_id", "dept_id", "can_edit", "access_level"],
-    });
+    // Try to fetch with access_level column (may not exist in production if migration
+    // 20260528090000 hasn't been run). Fall back gracefully if column is missing.
+    let userDepartmentMappings;
+    let hasAccessLevel = true;
+
+    try {
+      userDepartmentMappings = await UserEditAccess.findAll({
+        attributes: ["user_id", "dept_id", "can_edit", "access_level"],
+      });
+    } catch (colErr) {
+      // Column access_level missing — retry without it
+      hasAccessLevel = false;
+      userDepartmentMappings = await UserEditAccess.findAll({
+        attributes: ["user_id", "dept_id", "can_edit"],
+      });
+    }
+
+    // If no mappings exist, return empty immediately — avoids IN () SQL error
+    if (!userDepartmentMappings || userDepartmentMappings.length === 0) {
+      return res.json({ mappings: [] });
+    }
 
     const userIds = Array.from(
       new Set(userDepartmentMappings.map((m) => m.user_id))
@@ -1256,6 +1274,11 @@ exports.getUserDepartmentMappings = async (req, res) => {
     const deptIds = Array.from(
       new Set(userDepartmentMappings.map((m) => m.dept_id))
     );
+
+    // Guard: empty arrays cause invalid WHERE user_id IN () SQL in MySQL/PostgreSQL
+    if (userIds.length === 0 || deptIds.length === 0) {
+      return res.json({ mappings: [] });
+    }
 
     const [users, departments] = await Promise.all([
       User.findAll({
@@ -1275,9 +1298,11 @@ exports.getUserDepartmentMappings = async (req, res) => {
 
     const result = userDepartmentMappings
       .map((mapping) => {
-        const level = String(mapping.access_level || "").trim().toLowerCase();
-        const accessLevel = (level === "view" || level === "edit" || level === "head")
-          ? level
+        const rawLevel = hasAccessLevel
+          ? String(mapping.access_level || "").trim().toLowerCase()
+          : "";
+        const accessLevel = (rawLevel === "view" || rawLevel === "edit" || rawLevel === "head")
+          ? rawLevel
           : (mapping.can_edit !== false ? "edit" : "view");
         return {
         user_id: mapping.user_id,
@@ -1751,6 +1776,7 @@ exports.getDepartmentsForUser = async (req, res) => {
     });
   } catch (err) {
     console.error("Error fetching departments:", err);
+      logger.error("Failed to fetch departments for user", err);   
     res.status(500).json({ error: "Failed to fetch departments for user" });
   }
 };
