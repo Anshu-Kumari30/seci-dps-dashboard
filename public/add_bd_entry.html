@@ -89,6 +89,16 @@
         .addEventListener("submit", function (e) {
           e.preventDefault();
 
+          const anticipatedCapacityInput = document
+            .getElementById("anticipated_capacity")
+            .value.trim();
+          const anticipatedCapacityValue = parseFloat(anticipatedCapacityInput);
+
+          if (isNaN(anticipatedCapacityValue)) {
+            alert("Anticipated Capacity must be a valid number.");
+            return;
+          }
+
           const data = {
             business_partner: document
               .getElementById("business_partner")
@@ -98,9 +108,7 @@
             action_pending_with: document
               .getElementById("action_pending_with")
               .value.trim(),
-            anticipated_capacity: document
-              .getElementById("anticipated_capacity")
-              .value.trim(),
+            anticipated_capacity: anticipatedCapacityValue,
             target: document.getElementById("target").value.trim(),
           };
 

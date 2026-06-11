@@ -1129,12 +1129,22 @@ exports.createBusinessDevelopmentEntry = async (req, res) => {
       !location ||
       !action_plan ||
       !action_pending_with ||
-      !anticipated_capacity ||
+      anticipated_capacity === null ||
+      anticipated_capacity === undefined ||
       !target
     ) {
       return res.status(400).json({
         success: false,
         message: "All fields are required.",
+      });
+    }
+
+    // Validate and convert anticipated_capacity to number
+    const capacity = parseFloat(anticipated_capacity);
+    if (isNaN(capacity)) {
+      return res.status(400).json({
+        success: false,
+        message: "Anticipated capacity must be a valid number.",
       });
     }
 
@@ -1144,7 +1154,7 @@ exports.createBusinessDevelopmentEntry = async (req, res) => {
       location,
       action_plan,
       action_pending_with,
-      anticipated_capacity,
+      anticipated_capacity: capacity,
       target,
     });
 
