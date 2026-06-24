@@ -2750,73 +2750,89 @@
           }, 100);
         } catch (e) { console.error('Energy Mangement inline render failed', e); }
       } else if (dept.dept_name === "Contracts & Procurement") {
-        // For Contracts & Procurement show Key Issues/Targets with a single donut and Edit button
+        // For Contracts & Procurement show Tendered Capacity donut (tech mix) on Home
         document.getElementById("departmentContent").innerHTML = `
                     <h3><b>${dept.dept_name}</b></h3>
                         <div id="contractsPanel" class="row mt-4">
                           <div class="col-12 d-flex justify-content-center mb-4">
                             <div class="card" style="width:780px;">
                               <div class="card-body text-center" style="padding:1.75rem;">
-                                <canvas id="contractsDonut" width="480" height="360" style="display:block;margin:auto;max-width:100%;height:auto;"></canvas>
-                                <div class="mt-3">
-                                  <button id="contractsEditBtn" class="btn btn-sm btn-outline-primary edit-only"><i class="bi bi-pencil"></i> Edit</button>
-                                </div>
+                                <h5 class="card-title mb-3">Tendered Capacity</h5>
+                                <canvas id="contractsDonut" width="480" height="400" style="display:block;margin:auto;max-width:100%;height:auto;"></canvas>
                               </div>
                             </div>
                           </div>
                         </div>
                       `;
 
-        // render donut for Contracts & Procurement using department statistics/entities
-        try {
-          const deptStats = departmentStatistics[dept.dept_id] || [];
-          const stat = deptStats.length ? deptStats[0] : null;
-          const relatedEntities = departmentStatisticEntities.filter(e => e.dept_id === dept.dept_id && (stat ? e.statistic_id === stat.statistic_id : true));
-          const filteredEntityFields = departmentStatisticEntityFields.filter(f => f.dept_id === dept.dept_id && (stat ? f.statistic_id === stat.statistic_id : true));
+        // render tendered capacity donut from tender summary API
+        (async function renderContractsDonut() {
+          try {
+            const res = await authFetch('/api/data/contracts/tenders/summary');
+            if (!res.ok) throw new Error('Failed to fetch tender summary');
+            const json = await res.json();
+            const summary = json.data || json;
+            const techGroups = summary.by_technology || [];
 
-          const labels = relatedEntities.map(r => r.entity_name || 'Item');
-          const data = relatedEntities.map(r => Number(r.entity_value) || 1);
-          const total = data.reduce((s, v) => s + v, 0);
+            const labels = techGroups.map(t => t.technology_type || 'Unknown');
+            const values = techGroups.map(t => Number(t.capacity) || 0);
+            const total = values.reduce((s, v) => s + v, 0);
 
-          const ctx = document.getElementById('contractsDonut');
-          if (ctx) {
-            const contractsChart = new Chart(ctx, {
+            const TECH_COLORS_CONTRACTS = {
+              Solar:  '#f0a500',
+              Wind:   '#28a745',
+              Hybrid: '#0d6efd',
+              RTC:    '#6f42c1',
+              FDRE:   '#dc3545',
+            };
+            const colors = labels.map(l => TECH_COLORS_CONTRACTS[l] || '#6c757d');
+
+            const ctx = document.getElementById('contractsDonut');
+            if (!ctx) return;
+            new Chart(ctx, {
               type: 'doughnut',
               data: {
-                labels: labels.length ? labels : ['No Data'],
-                datasets: [{ data: data.length ? data : [1], backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6610f2', '#fd7e14'] }]
+                labels,
+                datasets: [{
+                  data: values,
+                  backgroundColor: colors,
+                  borderColor: '#fff',
+                  borderWidth: 3,
+                  hoverOffset: 6,
+                }]
               },
               options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                plugins: { legend: { display: false } },
-                elements: { center: { text: `${total} MW`, color: '#333', minFontSize: 16 } },
-                onClick: (evt, activeEls, chart) => {
+                cutout: '50%',
+                elements: { center: { text: `${total.toLocaleString('en-IN')} MW`, color: '#333', fontStyle: 'bold', minFontSize: 18 } },
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                    labels: { color: '#6c757d', padding: 12, font: { size: 11 }, boxWidth: 12 }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('en-IN')} MW`
+                    }
+                  }
+                },
+                onClick: (evt, activeEls) => {
                   if (activeEls.length > 0) {
-                    // navigate to contracts page when any slice is clicked
                     window.location.href = '/contracts_external.html';
                   }
                 }
               }
             });
-
-            // attach meta so other code can inspect
-            contractsChart.dept_id = dept.dept_id;
-            contractsChart.dept_name = dept.dept_name;
-            contractsChart.statistic_id = stat ? stat.statistic_id : null;
-            contractsChart.statistic_name = stat ? stat.statistic_name : 'Key Issues/Targets';
-            contractsChart.relatedEntities = relatedEntities;
-
-            // Wire the Edit button to open the existing edit modal for this statistic (if available)
-            const editBtn = document.getElementById('contractsEditBtn');
-            if (editBtn) {
-              editBtn.onclick = () => {
-                if (!stat || !stat.statistic_id) return alert('No statistic configured for Contracts & Procurement');
-                editStatistic(dept.dept_id, stat.statistic_id);
-              };
+          } catch (e) {
+            console.warn('Contracts & Procurement tendered capacity donut render failed', e);
+            const ctx = document.getElementById('contractsDonut');
+            if (ctx) {
+              const parent = ctx.parentNode;
+              parent.innerHTML = '<p class="text-muted mt-3">Tendered capacity data unavailable. Upload Excel from Contracts dashboard.</p>';
             }
           }
-        } catch (e) { console.warn('Contracts & Procurement chart render failed', e); }
+        })();
       } else if (dept.dept_name !== "Home") {
         document.getElementById("departmentContent").innerHTML = `
                     <h3><b>${dept.dept_name}</b></h3>

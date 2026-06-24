@@ -10,7 +10,7 @@ const multer = require("multer");
 const path = require("path");
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
+  destination: (req, file, cb) => cb(null, path.join(__dirname, "..", "uploads")),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -402,6 +402,28 @@ router.delete(
   verifyToken,
   auditLogger("Deleted an entry from the contract table"),
   dataController.deleteEntryFromContractsTable,
+);
+
+router.post(
+  "/contracts/tenders/upload",
+  verifyToken,
+  upload.single("excelFile"),
+  auditLogger("Uploaded contract tender register Excel"),
+  dataController.uploadTenderRegisterExcel,
+);
+
+router.get(
+  "/contracts/tenders/all",
+  verifyToken,
+  auditLogger("Viewed contract tender register entries"),
+  dataController.getTenderRegisters,
+);
+
+router.get(
+  "/contracts/tenders/summary",
+  verifyToken,
+  auditLogger("Viewed contract tender register summary"),
+  dataController.getTenderRegisterSummary,
 );
 
 router.get(

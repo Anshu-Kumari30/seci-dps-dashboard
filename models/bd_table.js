@@ -16,8 +16,20 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
       },
       action_plan: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
+      },
+      connectivity: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
+      technology: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
+      buyer: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
       },
       action_pending_with: {
         type: DataTypes.STRING,

@@ -895,6 +895,7 @@ const {
   EntityIssues,
   User,
   ContractsTable,
+  TenderRegister,
   BusinessDevelopmentTable,
   BusinessDevelopmentMilestones,
   OMDGR,
@@ -960,6 +961,9 @@ exports.editBusinessDevelopmentEntry = async (req, res) => {
       action_pending_with,
       anticipated_capacity,
       target,
+      connectivity,
+      technology,
+      buyer,
     } = req.body;
 
     // Check if the entry exists
@@ -980,6 +984,9 @@ exports.editBusinessDevelopmentEntry = async (req, res) => {
       action_pending_with,
       anticipated_capacity,
       target,
+      connectivity,
+      technology,
+      buyer,
     });
 
     return res.status(200).json({
@@ -1121,6 +1128,9 @@ exports.createBusinessDevelopmentEntry = async (req, res) => {
       action_pending_with,
       anticipated_capacity,
       target,
+      connectivity,
+      technology,
+      buyer,
     } = req.body;
 
     // Basic validation
@@ -1156,6 +1166,9 @@ exports.createBusinessDevelopmentEntry = async (req, res) => {
       action_pending_with,
       anticipated_capacity: capacity,
       target,
+      connectivity: connectivity || null,
+      technology: technology || null,
+      buyer: buyer || null,
     });
 
     return res.status(201).json({
@@ -2679,7 +2692,7 @@ exports.editNewStatisticWithDepartmentEntityFields = async (req, res) => {
 
     await transaction.commit();
 
-    return res.status(200).json({
+     return res.status(200).json({
       message: "Statistic and related entities updated successfully",
     });
   } catch (err) {
@@ -2691,6 +2704,7 @@ exports.editNewStatisticWithDepartmentEntityFields = async (req, res) => {
     });
   }
 };
+
 
 //create a new statistic with entities and fields
 exports.createNewStatisticWithDepartmentEntityFields = async (req, res) => {
@@ -2781,6 +2795,371 @@ exports.deleteEntryFromContractsTable = async (req, res) => {
   } catch (err) {
     console.error("Error deleting contract:", err);
     res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+function parseTenderValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const cleaned = String(value).replace(/,/g, "").trim();
+  const num = Number(cleaned);
+  return Number.isNaN(num) ? null : num;
+}
+
+function keyMatch(rowKeys, desired) {
+  desired = (desired || "").toString().toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!desired) return null;
+  let bestKey = null;
+  let bestScore = -1;
+  for (const key of rowKeys) {
+    const norm = key.toString().toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!norm) continue;
+    let score = -1;
+    if (norm === desired) {
+      score = 100;
+    } else if (norm.includes(desired)) {
+      score = desired.length;
+    } else if (desired.includes(norm)) {
+      score = norm.length * 0.8;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestKey = key;
+    }
+  }
+  return bestKey;
+}
+
+function mapTenderRow(row, rowKeys) {
+  return {
+    tender_title:
+      row[keyMatch(rowKeys, "Tender Title")] || row[keyMatch(rowKeys, "TenderName")] || row[keyMatch(rowKeys, "Tender")] || null,
+    tendering_agency:
+      row[keyMatch(rowKeys, "Tendering Agency")] || row[keyMatch(rowKeys, "Agency")] || null,
+    technology_type:
+      row[keyMatch(rowKeys, "Type of Technology")] || row[keyMatch(rowKeys, "Technology")] || row[keyMatch(rowKeys, "Tech")] || null,
+    mode:
+      row[keyMatch(rowKeys, "Mode")] || row[keyMatch(rowKeys, "Mode of Tender")] || null,
+    year: (function() {
+        const yearVal = parseTenderValue(row[keyMatch(rowKeys, "Year")]);
+        // Only use if it looks like a real year (1900-2100), not a PSA duration or similar
+        if (yearVal !== null && yearVal >= 1900 && yearVal <= 2100) return yearVal;
+        const fyVal = parseTenderValue(row[keyMatch(rowKeys, "FY")]);
+        if (fyVal !== null && fyVal >= 1900 && fyVal <= 2100) return fyVal;
+        // Extract year from date columns
+        const dateVal = row[keyMatch(rowKeys, "Date of issue of RfS")]
+          || row[keyMatch(rowKeys, "RfS Date")]
+          || row[keyMatch(rowKeys, "Date of issue of NIT")]
+          || row[keyMatch(rowKeys, "RFS Date")] || "";
+        const ds = String(dateVal).trim();
+        if (!ds) return null;
+        let m = ds.match(/(\d{4})[-/]\d{2}[-/]\d{2}/);
+        if (m) return Number(m[1]);
+        m = ds.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
+        if (m) return Number(m[3]);
+        return null;
+      })(),
+    rfs_number:
+      row[keyMatch(rowKeys, "RFS Number")] || row[keyMatch(rowKeys, "RFS")]
+      || row[keyMatch(rowKeys, "RfS Number")] || row[keyMatch(rowKeys, "NIT")] || null,
+    rfs_date:
+      row[keyMatch(rowKeys, "Date of issue of RfS")] || row[keyMatch(rowKeys, "RfS Date")] || row[keyMatch(rowKeys, "RFS Date")] || row[keyMatch(rowKeys, "RfS Issue Date")] || row[keyMatch(rowKeys, "Date of issue of NIT")] || null,
+    tariff: parseTenderValue(row[keyMatch(rowKeys, "Tariff")]) || parseTenderValue(row[keyMatch(rowKeys, "Tariff (Rs/kWhr)")]) || parseTenderValue(row[keyMatch(rowKeys, "Tariff (Rs)")]) || null,
+    tendered_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "Tendered Capacity")]) || parseTenderValue(row[keyMatch(rowKeys, "Tendered Capacity (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "Capacity")]) || parseTenderValue(row[keyMatch(rowKeys, "Capacity (MW)")]) || null,
+    era_awarded_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "eRA Awarded Capacity")]) || parseTenderValue(row[keyMatch(rowKeys, "Capacity awarded by eRA (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "Capacity awarded by eRA")]) || null,
+    loa_loi_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "LOA/LOI Capacity")]) || parseTenderValue(row[keyMatch(rowKeys, "LOA Capacity")]) || parseTenderValue(row[keyMatch(rowKeys, "LOI Capacity")]) || parseTenderValue(row[keyMatch(rowKeys, "LOA Capacity (MW)")]) || null,
+    commissioned_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "Commissioned")]) || parseTenderValue(row[keyMatch(rowKeys, "Commissioned Capacity")]) || parseTenderValue(row[keyMatch(rowKeys, "Capacity Commissioned")]) || parseTenderValue(row[keyMatch(rowKeys, "Capacity Commissioned (MW)")]) || null,
+    psa_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "PSA Capacity (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "PSA Capacity")]) || null,
+    ppa_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "PPA Capacity (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "PPA Capacity")]) || null,
+    psa_ppa_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "PSA / PPA Signed (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "PSA / PPA Signed")]) || null,
+    stage:
+      row[keyMatch(rowKeys, "Stage")] || row[keyMatch(rowKeys, "Tender Stage")] || row[keyMatch(rowKeys, "Status")] || null,
+  };
+}
+
+function summarizeTenderRows(rows) {
+  const techMap = {};
+  const stageMap = {};
+  const yearMap = {};
+  let totalTendered = 0;
+  let totalEraAwarded = 0;
+  let totalLoaLoi = 0;
+  let totalCommissioned = 0;
+  let totalPsaPpa = 0;
+  let totalPsa = 0;
+  let totalPpa = 0;
+
+  rows.forEach((row) => {
+    const tech = row.technology_type || "Unknown";
+    const stage = row.stage || "Unknown";
+    const year = row.year || "Unknown";
+
+    const tenderCapacity = Number(row.tendered_capacity_mw) || 0;
+    const eraCapacity = Number(row.era_awarded_capacity_mw) || 0;
+    const loaCapacity = Number(row.loa_loi_capacity_mw) || 0;
+    const commissioned = Number(row.commissioned_capacity_mw) || 0;
+    const psaCapacity = Number(row.psa_capacity_mw) || 0;
+    const ppaCapacity = Number(row.ppa_capacity_mw) || 0;
+
+    totalTendered += tenderCapacity;
+    totalEraAwarded += eraCapacity;
+    totalLoaLoi += loaCapacity;
+    totalCommissioned += commissioned;
+    totalPsa += psaCapacity;
+    totalPpa += ppaCapacity;
+    totalPsaPpa += (psaCapacity + ppaCapacity);
+
+    techMap[tech] = techMap[tech] || { count: 0, capacity: 0, era_capacity: 0, ppa_capacity: 0, psa_capacity: 0, commissioned_capacity: 0 };
+    techMap[tech].count += 1;
+    techMap[tech].capacity += tenderCapacity;
+    techMap[tech].era_capacity += eraCapacity;
+    techMap[tech].ppa_capacity += ppaCapacity;
+    techMap[tech].psa_capacity += psaCapacity;
+    techMap[tech].commissioned_capacity += commissioned;
+
+    stageMap[stage] = stageMap[stage] || { count: 0, capacity: 0 };
+    stageMap[stage].count += 1;
+    stageMap[stage].capacity += tenderCapacity;
+
+    yearMap[year] = yearMap[year] || { count: 0, capacity: 0 };
+    yearMap[year].count += 1;
+    yearMap[year].capacity += tenderCapacity;
+  });
+
+  return {
+    total_tenders: rows.length,
+    tendered_capacity_mw: totalTendered,
+    era_awarded_capacity_mw: totalEraAwarded,
+    loa_loi_capacity_mw: totalLoaLoi,
+    commissioned_capacity_mw: totalCommissioned,
+    psa_capacity_mw: totalPsa,
+    ppa_capacity_mw: totalPpa,
+    psa_ppa_capacity_mw: totalPsaPpa,
+    by_technology: Object.entries(techMap).map(([technology_type, values]) => ({ technology_type, ...values })),
+    by_stage: Object.entries(stageMap).map(([stage, values]) => ({ stage, ...values })),
+    by_year: Object.entries(yearMap).map(([year, values]) => ({ year, ...values })),
+  };
+}
+
+/**
+ * Read rows from a tender register Excel, handling merged/two-row headers.
+ * If the first row of data contains sub-header labels (SI. No, etc.), the
+ * second row is used as column names and data starts from row 3.
+ */
+function readTenderExcelRows(filePath) {
+  const xlsx = require("xlsx");
+  const workbook = xlsx.readFile(filePath);
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const raw = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+  if (!raw || raw.length === 0) return [];
+
+  // Detect two-row header: row0 has merged category names, row1 has real column names
+  const firstVal = String(raw[0]?.[0] || "").trim();
+  const secondVal = String(raw[1]?.[0] || "").trim();
+  const headerRowIndex = (/^(si\s*\.?\s*no|sno|sl\s*\.?\s*no|#)$/i.test(secondVal) && /[a-z]/i.test(firstVal))
+    ? 1
+    : 0;
+
+  const headerRow = raw[headerRowIndex];
+  const colCount = headerRow.length;
+
+  // Build column name mapping: use header row values as keys
+  const colMap = {};
+  for (let i = 0; i < colCount; i++) {
+    const key = String(headerRow[i] || "").trim();
+    colMap[i] = key;
+  }
+
+  // Build data rows
+  const result = [];
+  for (let r = headerRowIndex + 1; r < raw.length; r++) {
+    const rowArr = raw[r];
+    // Skip completely empty rows
+    const hasVal = rowArr.some((v) => String(v || "").trim() !== "");
+    if (!hasVal) continue;
+
+    const rowObj = {};
+    for (let i = 0; i < colCount; i++) {
+      const key = colMap[i];
+      if (key) {
+        rowObj[key] = rowArr[i] !== undefined ? rowArr[i] : "";
+      }
+    }
+    result.push(rowObj);
+  }
+
+  return result;
+}
+
+exports.uploadTenderRegisterExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Excel file is required" });
+    }
+
+    const rows = readTenderExcelRows(req.file.path);
+
+    if (!rows.length) {
+      return res.status(400).json({ error: "Excel file is empty" });
+    }
+
+    const rowKeys = Object.keys(rows[0]);
+    const persistedRows = [];
+    let inserted = 0;
+    let updated = 0;
+
+    async function saveTender(tender) {
+      if (!tender) return null;
+      const where = {};
+      if (tender.rfs_number) where.rfs_number = tender.rfs_number;
+      if (!Object.keys(where).length && tender.tender_title) where.tender_title = tender.tender_title;
+      if (!Object.keys(where).length) return null;
+      const existing = await TenderRegister.findOne({ where });
+      const payload = {
+        tender_title: tender.tender_title,
+        tendering_agency: tender.tendering_agency,
+        technology_type: tender.technology_type,
+        mode: tender.mode,
+        year: tender.year,
+        rfs_number: tender.rfs_number,
+        rfs_date: tender.rfs_date,
+        tariff: tender.tariff,
+        tendered_capacity_mw: tender.tendered_capacity_mw,
+        era_awarded_capacity_mw: tender.era_awarded_capacity_mw,
+        loa_loi_capacity_mw: tender.loa_loi_capacity_mw,
+        commissioned_capacity_mw: tender.commissioned_capacity_mw,
+        psa_capacity_mw: tender.psa_capacity_mw,
+        ppa_capacity_mw: tender.ppa_capacity_mw,
+        psa_ppa_capacity_mw: (tender.psa_capacity_mw || 0) + (tender.ppa_capacity_mw || 0),
+        stage: tender.stage,
+        excel_file_path: req.file.path,
+        original_file_name: req.file.originalname,
+        uploaded_at: new Date(),
+        is_active: true,
+      };
+      let saved;
+      if (existing) {
+        saved = await existing.update(payload);
+        updated += 1;
+      } else {
+        saved = await TenderRegister.create(payload);
+        inserted += 1;
+      }
+      const json = saved.toJSON();
+      persistedRows.push(json);
+      return json;
+    }
+
+    let currentTender = null;
+
+    for (const row of rows) {
+      // Skip rows where first cell looks like a sub-header label
+      const firstCell = String(row[rowKeys[0]] || "").trim();
+      if (/^(si\s*\.?\s*no|sno|sl\s*\.?\s*no|#)$/i.test(firstCell)) continue;
+
+      const mapped = mapTenderRow(row, rowKeys);
+
+      const isMainRow = !!(mapped.tender_title || mapped.rfs_number || mapped.tendering_agency);
+
+      if (isMainRow) {
+        // Save previous aggregated tender before starting a new one
+        if (currentTender) {
+          await saveTender(currentTender);
+        }
+        // Start new aggregated tender from this main row
+        currentTender = { ...mapped };
+      } else if (currentTender) {
+        // Sub-row: check if it has its own tariff — save as separate record
+        if (mapped.tariff != null) {
+          // Build a developer-specific record inheriting parent tender info
+          const devName = String(mapped.tendering_agency || '').trim() || 'Developer';
+          const subTender = {
+            ...currentTender,
+            tender_title: (currentTender.tender_title || '') + ' - ' + devName,
+            tariff: mapped.tariff,
+            // Only include capacities from this sub-row
+            tendered_capacity_mw: null,
+            era_awarded_capacity_mw: null,
+            loa_loi_capacity_mw: mapped.loa_loi_capacity_mw,
+            commissioned_capacity_mw: mapped.commissioned_capacity_mw,
+            psa_capacity_mw: mapped.psa_capacity_mw,
+            ppa_capacity_mw: mapped.ppa_capacity_mw,
+          };
+          // Force a new record: clear rfs_number lookup so it won't match the parent
+          const rfsNum = subTender.rfs_number;
+          subTender.rfs_number = null;
+          await saveTender(subTender);
+          subTender.rfs_number = rfsNum;
+        }
+
+        // Also aggregate developer-level capacities into the current tender
+        const hasDevData = mapped.loa_loi_capacity_mw != null || mapped.commissioned_capacity_mw != null || mapped.psa_capacity_mw != null || mapped.ppa_capacity_mw != null;
+        if (hasDevData) {
+          if (mapped.loa_loi_capacity_mw != null) {
+            currentTender.loa_loi_capacity_mw = (currentTender.loa_loi_capacity_mw || 0) + Number(mapped.loa_loi_capacity_mw);
+          }
+          if (mapped.commissioned_capacity_mw != null) {
+            currentTender.commissioned_capacity_mw = (currentTender.commissioned_capacity_mw || 0) + Number(mapped.commissioned_capacity_mw);
+          }
+          if (mapped.psa_capacity_mw != null) {
+            currentTender.psa_capacity_mw = (currentTender.psa_capacity_mw || 0) + Number(mapped.psa_capacity_mw);
+          }
+          if (mapped.ppa_capacity_mw != null) {
+            currentTender.ppa_capacity_mw = (currentTender.ppa_capacity_mw || 0) + Number(mapped.ppa_capacity_mw);
+          }
+        }
+      }
+    }
+
+    // Don't forget the LAST tender
+    if (currentTender) {
+      await saveTender(currentTender);
+    }
+
+    const summary = summarizeTenderRows(persistedRows);
+
+    return res.status(200).json({
+      message: "Tender register uploaded successfully",
+      inserted,
+      updated,
+      total: persistedRows.length,
+      summary,
+      rows: persistedRows,
+    });
+  } catch (err) {
+    console.error("Error uploading tender register Excel:", err);
+    return res.status(500).json({ error: "Failed to process tender register Excel", detail: err.message });
+  }
+};
+
+exports.getTenderRegisters = async (req, res) => {
+  try {
+    const { technology_type, year, stage } = req.query;
+    const where = { is_active: true };
+    if (technology_type) where.technology_type = technology_type;
+    if (year) where.year = Number(year);
+    if (stage) where.stage = stage;
+
+    const rows = await TenderRegister.findAll({
+      where,
+      order: [["year", "DESC"], ["tender_title", "ASC"]],
+    });
+
+    return res.status(200).json({ message: "Tender register entries fetched successfully", data: rows });
+  } catch (err) {
+    console.error("Error fetching tender register entries:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.getTenderRegisterSummary = async (req, res) => {
+  try {
+    const rows = await TenderRegister.findAll({ where: { is_active: true } });
+    const summary = summarizeTenderRows(rows.map((r) => r.toJSON()));
+    return res.status(200).json({ message: "Tender register summary fetched successfully", data: summary });
+  } catch (err) {
+    console.error("Error fetching tender register summary:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
