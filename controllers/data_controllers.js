@@ -911,6 +911,7 @@ const {
   PmcCeDocument,
   PmcCeCorrespondence,
   PmcSliceMeta,
+  OwnProject,
 } = require("../models").models;
 
 const { sequelize } = require("../models");
@@ -1009,7 +1010,7 @@ exports.editBusinessDevelopmentMilestone = async (req, res) => {
     const { milestone_id } = req.params;
 
     // Extract fields from request body
-    const { milestone_name, milestone_date, is_active } = req.body;
+    const { milestone_name, milestone_date, milestone_status, is_active } = req.body;
 
     // Find milestone by primary key (milestone_id)
     const milestone = await BusinessDevelopmentMilestones.findOne({
@@ -1027,6 +1028,7 @@ exports.editBusinessDevelopmentMilestone = async (req, res) => {
     await milestone.update({
       milestone_name,
       milestone_date,
+      milestone_status,
       is_active,
     });
 
@@ -1070,6 +1072,7 @@ exports.createBusinessDevelopmentMilestone = async (req, res) => {
       bd_entry_id,
       milestone_name,
       milestone_date,
+      milestone_status = "in-progress",
       is_active = true, // default true if not provided
     } = req.body;
 
@@ -1097,6 +1100,7 @@ exports.createBusinessDevelopmentMilestone = async (req, res) => {
       bd_entry_id,
       milestone_name,
       milestone_date,
+      milestone_status,
       is_active,
     });
 
@@ -1251,6 +1255,200 @@ exports.deleteBusinessDevelopmentMilestone = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "An error occurred while deleting the milestone.",
+      error: error.message,
+    });
+  }
+};
+
+// ──────────────────────────────────────────────
+// C&P Own Projects Controllers
+// ──────────────────────────────────────────────
+
+/**
+ * Get all C&P Own Projects entries
+ */
+exports.getAllCpOwnProjects = async (req, res) => {
+  try {
+    const entries = await OwnProject.findAll({
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "C&P own projects fetched successfully.",
+      data: entries,
+    });
+  } catch (error) {
+    console.error("Error fetching C&P own projects:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching entries.",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get a single C&P Own Project by ID
+ */
+exports.getOneCpOwnProject = async (req, res) => {
+  try {
+    const { cp_entry_id } = req.params;
+
+    const entry = await OwnProject.findByPk(cp_entry_id);
+    if (!entry) {
+      return res.status(404).json({
+        success: false,
+        message: "C&P own project entry not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "C&P own project fetched successfully.",
+      data: entry,
+    });
+  } catch (error) {
+    console.error("Error fetching C&P own project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching entry.",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Create a new C&P Own Project entry
+ */
+exports.createCpOwnProject = async (req, res) => {
+  try {
+    const {
+      project_name,
+      capacity_mw,
+      estimated_cost,
+      awarded_cost,
+      agreement_no,
+      agency,
+      date_of_start,
+      completion_time,
+      remarks,
+    } = req.body;
+
+    if (!project_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Project name is required.",
+      });
+    }
+
+    const newEntry = await OwnProject.create({
+      project_name,
+      capacity_mw: capacity_mw ? parseFloat(capacity_mw) : null,
+      estimated_cost: estimated_cost || null,
+      awarded_cost: awarded_cost || null,
+      agreement_no: agreement_no || null,
+      agency: agency || null,
+      date_of_start: date_of_start || null,
+      completion_time: completion_time || null,
+      remarks: remarks || null,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "C&P own project created successfully.",
+      data: newEntry,
+    });
+  } catch (error) {
+    console.error("Error creating C&P own project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while creating the entry.",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Edit a C&P Own Project entry
+ */
+exports.editCpOwnProject = async (req, res) => {
+  try {
+    const { cp_entry_id } = req.params;
+    const {
+      project_name,
+      capacity_mw,
+      estimated_cost,
+      awarded_cost,
+      agreement_no,
+      agency,
+      date_of_start,
+      completion_time,
+      remarks,
+    } = req.body;
+
+    const entry = await OwnProject.findByPk(cp_entry_id);
+    if (!entry) {
+      return res.status(404).json({
+        success: false,
+        message: "C&P own project entry not found.",
+      });
+    }
+
+    await entry.update({
+      project_name: project_name ?? entry.project_name,
+      capacity_mw: capacity_mw !== undefined ? parseFloat(capacity_mw) : entry.capacity_mw,
+      estimated_cost: estimated_cost ?? entry.estimated_cost,
+      awarded_cost: awarded_cost ?? entry.awarded_cost,
+      agreement_no: agreement_no ?? entry.agreement_no,
+      agency: agency ?? entry.agency,
+      date_of_start: date_of_start ?? entry.date_of_start,
+      completion_time: completion_time ?? entry.completion_time,
+      remarks: remarks ?? entry.remarks,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "C&P own project updated successfully.",
+      data: entry,
+    });
+  } catch (error) {
+    console.error("Error updating C&P own project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while updating the entry.",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Delete a C&P Own Project entry
+ */
+exports.deleteCpOwnProject = async (req, res) => {
+  try {
+    const { cp_entry_id } = req.params;
+
+    const deletedEntry = await OwnProject.destroy({
+      where: { cp_entry_id },
+    });
+
+    if (!deletedEntry) {
+      return res.status(404).json({
+        success: false,
+        message: "C&P own project entry not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "C&P own project deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting C&P own project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while deleting the entry.",
       error: error.message,
     });
   }
@@ -2835,8 +3033,13 @@ function mapTenderRow(row, rowKeys) {
       row[keyMatch(rowKeys, "Tender Title")] || row[keyMatch(rowKeys, "TenderName")] || row[keyMatch(rowKeys, "Tender")] || null,
     tendering_agency:
       row[keyMatch(rowKeys, "Tendering Agency")] || row[keyMatch(rowKeys, "Agency")] || null,
-    technology_type:
-      row[keyMatch(rowKeys, "Type of Technology")] || row[keyMatch(rowKeys, "Technology")] || row[keyMatch(rowKeys, "Tech")] || null,
+    technology_type: (function() {
+        const typeOfTech = row[keyMatch(rowKeys, "Type of Technology")];
+        if (typeOfTech && String(typeOfTech).trim()) return String(typeOfTech).trim();
+        const techType = row[keyMatch(rowKeys, "Technology Type")];
+        if (techType && String(techType).trim()) return String(techType).trim();
+        return row[keyMatch(rowKeys, "Technology")] || row[keyMatch(rowKeys, "Tech")] || null;
+      })(),
     mode:
       row[keyMatch(rowKeys, "Mode")] || row[keyMatch(rowKeys, "Mode of Tender")] || null,
     year: (function() {
@@ -2871,6 +3074,7 @@ function mapTenderRow(row, rowKeys) {
     psa_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "PSA Capacity (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "PSA Capacity")]) || null,
     ppa_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "PPA Capacity (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "PPA Capacity")]) || null,
     psa_ppa_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "PSA / PPA Signed (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "PSA / PPA Signed")]) || null,
+    storage_capacity_mw: parseTenderValue(row[keyMatch(rowKeys, "Storage Capacity (MW)")]) || parseTenderValue(row[keyMatch(rowKeys, "Storage Capacity (MW) (Col")]) || parseTenderValue(row[keyMatch(rowKeys, "Storage Capacity")]) || null,
     stage:
       row[keyMatch(rowKeys, "Stage")] || row[keyMatch(rowKeys, "Tender Stage")] || row[keyMatch(rowKeys, "Status")] || null,
   };
@@ -2964,9 +3168,18 @@ function readTenderExcelRows(filePath) {
   const colCount = headerRow.length;
 
   // Build column name mapping: use header row values as keys
+  // Handle duplicate column names by keeping the first occurrence
   const colMap = {};
+  const seenKeys = {};
   for (let i = 0; i < colCount; i++) {
-    const key = String(headerRow[i] || "").trim();
+    let key = String(headerRow[i] || "").trim();
+    if (key) {
+      if (seenKeys[key]) {
+        // Append column index to disambiguate duplicates (e.g. two "Storage Capacity (MW)" columns)
+        key = key + " (Col " + i + ")";
+      }
+      seenKeys[key] = true;
+    }
     colMap[i] = key;
   }
 
@@ -3031,6 +3244,7 @@ exports.uploadTenderRegisterExcel = async (req, res) => {
         psa_capacity_mw: tender.psa_capacity_mw,
         ppa_capacity_mw: tender.ppa_capacity_mw,
         psa_ppa_capacity_mw: (tender.psa_capacity_mw || 0) + (tender.ppa_capacity_mw || 0),
+        storage_capacity_mw: tender.storage_capacity_mw,
         stage: tender.stage,
         excel_file_path: req.file.path,
         original_file_name: req.file.originalname,

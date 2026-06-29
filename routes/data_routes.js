@@ -108,6 +108,50 @@ router.post(
   dataController.createBusinessDevelopmentEntry,
 );
 
+// ──────────────────────────────────────────────
+// C&P Own Projects routes
+// ──────────────────────────────────────────────
+
+// get all C&P own projects
+router.get(
+  "/cp/entry/all",
+  verifyToken,
+  auditLogger("Viewed all C&P own projects"),
+  dataController.getAllCpOwnProjects,
+);
+
+// get one C&P own project
+router.get(
+  "/cp/entry/one/:cp_entry_id",
+  verifyToken,
+  auditLogger("Viewed a C&P own project"),
+  dataController.getOneCpOwnProject,
+);
+
+// add a C&P own project
+router.post(
+  "/cp/entry/add",
+  verifyToken,
+  auditLogger("Added a C&P own project"),
+  dataController.createCpOwnProject,
+);
+
+// edit a C&P own project
+router.put(
+  "/cp/entry/edit/:cp_entry_id",
+  verifyToken,
+  auditLogger("Edited a C&P own project"),
+  dataController.editCpOwnProject,
+);
+
+// delete a C&P own project
+router.delete(
+  "/cp/entry/delete/:cp_entry_id",
+  verifyToken,
+  auditLogger("Deleted a C&P own project"),
+  dataController.deleteCpOwnProject,
+);
+
 // PMC entries
 router.get(
   "/pmc/entry/all",

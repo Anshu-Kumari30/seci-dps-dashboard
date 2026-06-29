@@ -94,6 +94,7 @@ const models = {
   DiscomPayments: require("./discom_payment")(sequelize, DataTypes),
   StateWiseDetail: require("./state_wise_details")(sequelize, DataTypes),
   DiscomPayments: require("./discom_payment")(sequelize, DataTypes),
+  OwnProject: require("./own_project")(sequelize, DataTypes),
 };
 
 Object.values(models).forEach((model) => {

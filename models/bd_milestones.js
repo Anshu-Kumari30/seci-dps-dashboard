@@ -16,12 +16,17 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
       },
       milestone_name: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
       },
       milestone_date: {
         type: DataTypes.DATE,
         allowNull: false,
+      },
+      milestone_status: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        defaultValue: "in-progress",
       },
       is_active: {
         type: DataTypes.BOOLEAN,

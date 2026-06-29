@@ -804,11 +804,15 @@
     }
 
     function createMilestonesHtml(milestones, entryId, partner) {
-      let rows = milestones.map((milestone, index) => `
+      let rows = milestones.map((milestone, index) => {
+        const statusClass = milestone.milestone_status === 'complete' ? 'badge-completed' : 'badge-in-progress';
+        const statusLabel = milestone.milestone_status === 'complete' ? 'Complete' : 'In Progress';
+        return `
         <tr>
           <td>${index + 1}</td>
           <td><strong>${escapeHtml(milestone.milestone_name)}</strong></td>
           <td>${formatToISTDate(milestone.milestone_date)}</td>
+          <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
           <td>
             <div class="btn-action-group">
               <button class="btn btn-sm btn-warning edit-milestone-btn" 
@@ -823,12 +827,12 @@
             </div>
           </td>
         </tr>
-      `).join('');
+      `}).join('');
 
       if (!rows) {
         rows = `
           <tr>
-            <td colspan="4" class="text-center text-muted py-3">
+            <td colspan="5" class="text-center text-muted py-3">
               <i class="bi bi-inbox me-2"></i>No milestones found
             </td>
           </tr>
@@ -853,6 +857,7 @@
                   <th>#</th>
                   <th>Milestone Name</th>
                   <th>Date</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -979,12 +984,17 @@
       const milestoneRow = $(`[data-milestone-id="${milestoneId}"]`).closest('tr');
       const currentName = milestoneRow.find('td:nth-child(2) strong').text();
       const currentDate = milestoneRow.find('td:nth-child(3)').text();
+      const currentStatus = milestoneRow.find('td:nth-child(4) .status-badge').text().trim() === 'Complete' ? 'complete' : 'in-progress';
 
       Swal.fire({
         title: 'Edit Milestone',
         html: `
           <input id="milestoneName" class="swal2-input" placeholder="Milestone Name" value="${escapeHtml(currentName)}">
           <input id="milestoneDate" class="swal2-input" type="date" placeholder="Date" value="${formatDateToInput(currentDate)}">
+          <select id="milestoneStatus" class="swal2-input" style="height:auto">
+            <option value="in-progress" ${currentStatus === 'in-progress' ? 'selected' : ''}>In Progress</option>
+            <option value="complete" ${currentStatus === 'complete' ? 'selected' : ''}>Complete</option>
+          </select>
         `,
         focusConfirm: false,
         showCancelButton: true,
@@ -997,7 +1007,7 @@
             return false;
           }
           
-          return { name, date };
+          return { name, date, status: $('#milestoneStatus').val() };
         }
       }).then((result) => {
         if (result.isConfirmed) {
@@ -1012,7 +1022,8 @@
         method: 'PUT',
         body: JSON.stringify({
           milestone_name: data.name,
-          milestone_date: data.date
+          milestone_date: data.date,
+          milestone_status: data.status
         })
       })
         .then(res => res.json())

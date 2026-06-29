@@ -1286,8 +1286,9 @@
         const button = document.createElement("button");
         button.className = `btn tab-button ${i === 0 ? "active" : ""}`;
         button.setAttribute("data-index", i);
-        button.innerHTML = `<i class="bi ${icons[i % icons.length]
-          } me-2"></i> <span class="tab-text">${dept.dept_name}</span>`;
+        const deptName = dept.dept_name;
+        const showIcon = deptName !== "Contracts & Procurement";
+        button.innerHTML = (showIcon ? `<i class="bi ${icons[i % icons.length]} me-2"></i> ` : '') + `<span class="tab-text">${deptName}</span>`;
         button.addEventListener("click", () => {
           const name = String(dept.dept_name || '').toLowerCase();
           if (name.includes('engineering')) {
@@ -2750,15 +2751,23 @@
           }, 100);
         } catch (e) { console.error('Energy Mangement inline render failed', e); }
       } else if (dept.dept_name === "Contracts & Procurement") {
-        // For Contracts & Procurement show Tendered Capacity donut (tech mix) on Home
+        // For Contracts & Procurement show Schemes donut + C&P Own Projects donut side by side
         document.getElementById("departmentContent").innerHTML = `
                     <h3><b>${dept.dept_name}</b></h3>
                         <div id="contractsPanel" class="row mt-4">
-                          <div class="col-12 d-flex justify-content-center mb-4">
-                            <div class="card" style="width:780px;">
+                          <div class="col-md-6 mb-3">
+                            <div class="card h-100">
                               <div class="card-body text-center" style="padding:1.75rem;">
-                                <h5 class="card-title mb-3">Tendered Capacity</h5>
-                                <canvas id="contractsDonut" width="480" height="400" style="display:block;margin:auto;max-width:100%;height:auto;"></canvas>
+                                <h5 class="card-title mb-3">Schemes</h5>
+                                <canvas id="contractsDonut" width="400" height="360" style="display:block;margin:auto;max-width:100%;height:auto;"></canvas>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                              <div class="card-body text-center" style="padding:1.75rem;">
+                                <h5 class="card-title mb-3">Own Project</h5>
+                                <canvas id="cpOwnProjectsDonut" width="400" height="360" style="display:block;margin:auto;max-width:100%;height:auto;"></canvas>
                               </div>
                             </div>
                           </div>
@@ -2808,8 +2817,7 @@
                 elements: { center: { text: `${total.toLocaleString('en-IN')} MW`, color: '#333', fontStyle: 'bold', minFontSize: 18 } },
                 plugins: {
                   legend: {
-                    position: 'bottom',
-                    labels: { color: '#6c757d', padding: 12, font: { size: 11 }, boxWidth: 12 }
+                    display: false
                   },
                   tooltip: {
                     callbacks: {
@@ -2825,11 +2833,98 @@
               }
             });
           } catch (e) {
-            console.warn('Contracts & Procurement tendered capacity donut render failed', e);
+            console.warn('Contracts & Procurement schemes donut render failed', e);
             const ctx = document.getElementById('contractsDonut');
             if (ctx) {
               const parent = ctx.parentNode;
-              parent.innerHTML = '<p class="text-muted mt-3">Tendered capacity data unavailable. Upload Excel from Contracts dashboard.</p>';
+              parent.innerHTML = '<p class="text-muted mt-3">Schemes data unavailable.</p>';
+            }
+          }
+        })();
+
+        // render C&P Own Projects donut
+        (async function renderCpOwnProjectsDonut() {
+          try {
+            const res = await authFetch('/api/data/cp/entry/all');
+            if (!res.ok) throw new Error('Failed to fetch C&P own projects');
+            const json = await res.json();
+            const entries = json.data || [];
+
+            if (!entries.length) {
+              const ctx = document.getElementById('cpOwnProjectsDonut');
+              if (ctx) {
+                const parent = ctx.parentNode;
+                parent.innerHTML = '<p class="text-muted mt-3">No C&P own projects found.</p>';
+              }
+              return;
+            }
+
+            const total = entries.reduce((s, e) => s + (e.capacity_mw || 0), 0);
+
+            // Prepare labels and colors (top 8 + Others)
+            const sorted = [...entries].sort((a, b) => (b.capacity_mw || 0) - (a.capacity_mw || 0));
+            const top = sorted.slice(0, 8);
+            const rest = sorted.slice(8);
+
+            const labels = top.map(e => {
+              const name = e.project_name || 'Unknown';
+              return name.length > 30 ? name.substring(0, 30) + '...' : name;
+            });
+            const values = top.map(e => e.capacity_mw || 0);
+
+            if (rest.length > 0) {
+              labels.push('Others');
+              values.push(rest.reduce((s, e) => s + (e.capacity_mw || 0), 0));
+            }
+
+            const CP_COLORS = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#95a5a6'];
+
+            const ctx = document.getElementById('cpOwnProjectsDonut');
+            if (!ctx) return;
+            new Chart(ctx, {
+              type: 'doughnut',
+              data: {
+                labels,
+                datasets: [{
+                  data: values,
+                  backgroundColor: CP_COLORS.slice(0, labels.length),
+                  borderColor: '#fff',
+                  borderWidth: 3,
+                  hoverOffset: 6,
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '50%',
+                elements: { center: { text: `${total.toLocaleString('en-IN')} MW`, color: '#333', fontStyle: 'bold', minFontSize: 18 } },
+                plugins: {
+                  legend: {
+                    display: false
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        const val = context.parsed || 0;
+                        const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                        return ' ' + context.label + ': ' + val.toLocaleString('en-IN') + ' MW (' + pct + '%)';
+                      }
+                    }
+                  }
+                },
+                onClick: (evt, activeEls) => {
+                  if (activeEls.length > 0) {
+                    window.location.href = '/cp_own_projects.html';
+                  }
+                }
+              }
+            });
+          } catch (e) {
+            console.warn('C&P Own Projects donut render failed', e);
+            const ctx = document.getElementById('cpOwnProjectsDonut');
+            if (ctx) {
+              const parent = ctx.parentNode;
+              parent.innerHTML = '<p class="text-muted mt-3">C&P own projects data unavailable.</p>';
             }
           }
         })();

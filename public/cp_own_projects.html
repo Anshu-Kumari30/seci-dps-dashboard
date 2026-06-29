@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>C&P Own Projects</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #3498db;
+      --success-color: #27ae60;
+      --warning-color: #f39c12;
+      --danger-color: #e74c3c;
+      --light-bg: #f8f9fa;
+      --border-color: #dee2e6;
+    }
+
+    body {
+      background-color: #f5f7fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, var(--primary-color), #34495e);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .page-header h2 {
+      font-weight: 600;
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    .nav-tabs {
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .nav-tabs .nav-link {
+      border: none;
+      color: #6c757d;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      margin-right: 0.25rem;
+      border-radius: 8px 8px 0 0;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .nav-tabs .nav-link:hover {
+      color: var(--primary-color);
+      background-color: rgba(44, 62, 80, 0.05);
+    }
+
+    .nav-tabs .nav-link.active {
+      color: var(--primary-color);
+      background-color: white;
+      border-bottom: 3px solid var(--secondary-color);
+      font-weight: 600;
+    }
+
+    .table-container {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 1rem;
+    }
+
+    .table-container table {
+      width: 100%;
+    }
+
+    .table {
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+
+    .table .text-wrap {
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .table thead th {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.65rem 0.75rem;
+      font-weight: 600;
+      font-size: 0.8rem;
+      position: sticky;
+      top: 0;
+      white-space: nowrap;
+    }
+
+    .table tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+      background-color: rgba(52, 152, 219, 0.05);
+    }
+
+    .table tbody td {
+      padding: 0.5rem 0.75rem;
+      vertical-align: middle;
+      border-color: var(--border-color);
+      font-size: 0.875rem;
+    }
+
+    .table tbody td .btn-sm {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sortable:hover {
+      background-color: rgba(44, 62, 80, 0.9);
+    }
+
+    .sortable i {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-left: 0.5rem;
+    }
+
+    .btn-action-group {
+      display: flex;
+      gap: 0.3rem;
+      flex-wrap: nowrap;
+    }
+
+    .btn-sm {
+      padding: 0.25rem 0.75rem;
+      font-size: 0.875rem;
+      border-radius: 6px;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-sm:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .btn-primary {
+      background-color: var(--secondary-color);
+      border-color: var(--secondary-color);
+    }
+
+    .btn-primary:hover {
+      background-color: #2980b9;
+      border-color: #2980b9;
+    }
+
+    .btn-warning {
+      background-color: var(--warning-color);
+      border-color: var(--warning-color);
+      color: white;
+    }
+
+    .btn-danger {
+      background-color: var(--danger-color);
+      border-color: var(--danger-color);
+    }
+
+    .btn-info {
+      background-color: #17a2b8;
+      border-color: #17a2b8;
+    }
+
+    .btn-success {
+      background-color: var(--success-color);
+      border-color: var(--success-color);
+    }
+
+    .search-container {
+      position: relative;
+      max-width: 280px;
+    }
+
+    .search-container .form-control {
+      border-radius: 20px;
+      padding-left: 2.2rem;
+      padding-top: 0.3rem;
+      padding-bottom: 0.3rem;
+      font-size: 0.875rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .search-container .form-control:focus {
+      box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+      border-color: var(--secondary-color);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6c757d;
+      pointer-events: none;
+    }
+
+    .capacity-cell {
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 3rem;
+      color: #6c757d;
+    }
+
+    .no-data i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .modal-content {
+      border-radius: 10px;
+      border: none;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .modal-header {
+      background-color: var(--primary-color);
+      color: white;
+      border-radius: 10px 10px 0 0;
+    }
+
+    .loader-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255,255,255,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loader {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid var(--secondary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .capacity-bar {
+      height: 6px;
+      background: #e9ecef;
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 80px;
+    }
+
+    .capacity-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+
+    @media (max-width: 1200px) {
+      .hide-lg { display: none !important; }
+    }
+    @media (max-width: 992px) {
+      .hide-md { display: none !important; }
+    }
+    @media (max-width: 768px) {
+      .hide-sm { display: none !important; }
+
+      .btn-action-group {
+        flex-direction: column;
+      }
+      
+      .search-container {
+        max-width: 100%;
+        margin-bottom: 0.5rem;
+      }
+      
+      .page-header {
+        text-align: center;
+        padding: 0.75rem 1rem;
+      }
+      
+      .page-header .d-flex {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .page-header h2 {
+        font-size: 1.2rem;
+      }
+
+
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+  </style>
+</head>
+
+<body class="p-3 p-md-4">
+  <!-- Loader -->
+  <div id="globalLoader" class="loader-overlay" style="display: none;">
+    <div class="loader"></div>
+  </div>
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+      <h2><i class="bi bi-building me-2"></i>C&P Own Projects</h2>
+      <div class="d-flex gap-2 mt-2 mt-md-0">
+        <a href="/home.html" class="btn btn-outline-light">
+          <i class="bi bi-arrow-left me-1"></i>Back to Home
+        </a>
+        <a href="/add_cp_entry.html" class="btn btn-light text-primary">
+          <i class="bi bi-plus-circle me-1"></i>Add Entry
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container-fluid">
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="dataTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="cp-tab" data-bs-toggle="tab" data-bs-target="#cp-entries" type="button"
+          role="tab" aria-controls="cp-entries" aria-selected="true">
+          <i class="bi bi-table me-1"></i>C&P Own Projects
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="dataTabsContent">
+      <div class="tab-pane fade show active" id="cp-entries" role="tabpanel" aria-labelledby="cp-tab">
+        <!-- Search and Controls -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2 mt-3 gap-2">
+          <div class="search-container w-100 w-md-auto">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="tableSearch" class="form-control" placeholder="Search..." />
+          </div>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-primary" id="refreshBtn" title="Refresh">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="exportBtn">
+              <i class="bi bi-download"></i> Export
+            </button>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-container" id="tableContainer">
+          <!-- Table will be generated here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit C&P Own Project</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editForm">
+            <input type="hidden" id="editEntryId">
+            <div class="mb-3">
+              <label class="form-label">Name of Work &amp; Location</label>
+              <textarea class="form-control" id="editProjectName" rows="2" required></textarea>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Capacity (MW)</label>
+                <input type="number" class="form-control" id="editCapacity" step="0.01" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Agency</label>
+                <input type="text" class="form-control" id="editAgency">
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Estimated Cost (Cr)</label>
+                <input type="text" class="form-control" id="editEstimatedCost">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Awarded Cost (Cr)</label>
+                <input type="text" class="form-control" id="editAwardedCost">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Agreement No.</label>
+              <input type="text" class="form-control" id="editAgreementNo">
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Date of Start</label>
+                <input type="date" class="form-control" id="editDateOfStart">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Time of Completion</label>
+                <input type="text" class="form-control" id="editCompletionTime">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Remarks</label>
+              <textarea class="form-control" id="editRemarks" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveChangesBtn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    // Global variables
+    let allEntries = [];
+    let currentSortColumn = null;
+    let sortDirection = 'asc';
+
+    // Global loader functions
+    const GlobalLoader = {
+      show: () => $('#globalLoader').show(),
+      hide: () => $('#globalLoader').hide()
+    };
+
+    // Authentication fetch wrapper
+    function authFetch(url, options = {}) {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "/";
+        return Promise.reject("No token found");
+      }
+
+      const defaultHeaders = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...defaultHeaders,
+          ...(options.headers || {}),
+        },
+      }).then((res) => {
+        if (res.status === 401) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Session Expired',
+            text: 'Please login again.',
+            confirmButtonText: 'Login'
+          }).then(() => {
+            localStorage.clear();
+            window.location.href = "/";
+          });
+          throw new Error("Unauthorized");
+        }
+        return res;
+      });
+    }
+
+    // Format date to IST
+    function formatToISTDate(dateString) {
+      if (!dateString) return "-";
+      try {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      } catch {
+        return dateString;
+      }
+    }
+
+    // Escape HTML
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Initialize when DOM is loaded
+    $(document).ready(function() {
+      initializePage();
+    });
+
+    function initializePage() {
+      fetchCpOwnProjects();
+      setupEventListeners();
+    }
+
+    function setupEventListeners() {
+      // Search functionality
+      $('#tableSearch').on('keyup', function() {
+        const value = this.value.toLowerCase();
+        $('#cpTable tbody tr').each(function() {
+          const text = $(this).text().toLowerCase();
+          $(this).toggle(text.indexOf(value) > -1);
+        });
+      });
+
+      // Refresh button
+      $('#refreshBtn').click(fetchCpOwnProjects);
+
+      // Export button
+      $('#exportBtn').click(exportToCSV);
+
+      // Save changes in modal
+      $('#saveChangesBtn').click(saveEntryChanges);
+    }
+
+    function fetchCpOwnProjects() {
+      GlobalLoader.show();
+      authFetch("/api/data/cp/entry/all")
+        .then((res) => res.json())
+        .then((resObj) => {
+          if (resObj.success) {
+            allEntries = resObj.data || [];
+            renderDataTable(allEntries);
+          } else {
+            throw new Error(resObj.message || "Failed to load entries");
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching entries:", err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to load entries. Please try again.',
+          });
+        })
+        .finally(() => GlobalLoader.hide());
+    }
+
+    function renderDataTable(items) {
+      const tableContainer = $("#tableContainer");
+      tableContainer.empty();
+
+      if (!Array.isArray(items) || items.length === 0) {
+        tableContainer.html(`
+          <div class="no-data">
+            <i class="bi bi-inbox"></i>
+            <h5>No entries found</h5>
+            <p>Click "Add Entry" to create your first C&P own project</p>
+          </div>
+        `);
+        return;
+      }
+
+      const maxCapacity = Math.max(...items.map(i => i.capacity_mw || 0), 1);
+
+      const table = $(`
+        <table class="table table-hover" id="cpTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="index">#</th>
+              <th class="sortable" data-sort="project_name">Project Name</th>
+              <th class="sortable" data-sort="capacity_mw">Capacity (MW)</th>
+              <th class="sortable hide-sm" data-sort="agency" style="max-width:200px;">Agency</th>
+              <th class="sortable hide-md" data-sort="estimated_cost">Est. Cost (Cr)</th>
+              <th class="sortable hide-md" data-sort="awarded_cost">Awd. Cost (Cr)</th>
+              <th class="hide-lg" data-sort="agreement_no">Agreement No.</th>
+              <th class="sortable hide-lg" data-sort="date_of_start">Start Date</th>
+              <th class="hide-lg" data-sort="completion_time" style="max-width:100px;">Completion</th>
+              <th class="hide-lg" style="max-width:280px;">Remarks</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item, index) => {
+              const cap = item.capacity_mw || 0;
+              const barPct = maxCapacity > 0 ? (cap / maxCapacity) * 100 : 0;
+              const barColors = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#16a085','#c0392b'];
+              const barColor = barColors[index % barColors.length];
+              return `
+              <tr data-entry-id="${item.cp_entry_id}">
+                <td>${index + 1}</td>
+                <td class="text-wrap" style="max-width:350px;min-width:180px">
+                  <strong>${escapeHtml(item.project_name || '')}</strong>
+                </td>
+                <td class="capacity-cell">
+                  <div class="d-flex align-items-center gap-2">
+                    <span>${cap.toLocaleString()}</span>
+                    <div class="capacity-bar flex-grow-1">
+                      <div class="capacity-bar-fill" style="width:${barPct}%;background-color:${barColor}"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="hide-sm" style="max-width:200px;white-space:normal;word-break:break-word">${escapeHtml(item.agency || '-')}</td>
+                <td class="hide-md">${escapeHtml(item.estimated_cost || '-')}</td>
+                <td class="hide-md">${escapeHtml(item.awarded_cost || '-')}</td>
+                <td class="hide-lg" style="max-width:200px;white-space:normal;word-break:break-word">${escapeHtml(item.agreement_no || '-')}</td>
+                <td class="hide-lg">${formatToISTDate(item.date_of_start)}</td>
+                <td class="hide-lg" style="max-width:100px;white-space:normal;word-break:break-word">${escapeHtml(item.completion_time || '-')}</td>
+                <td class="hide-lg text-wrap" style="max-width:280px">${escapeHtml(item.remarks || '-')}</td>
+                <td class="text-nowrap">
+                  <div class="btn-action-group">
+                    <button class="btn btn-sm btn-warning edit-entry-btn" 
+                            data-entry-id="${item.cp_entry_id}">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-entry-btn" 
+                            data-entry-id="${item.cp_entry_id}">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `);
+
+      tableContainer.append(table);
+
+      table.find('.sortable').click(function() {
+        const column = $(this).data('sort');
+        sortTable(column);
+      });
+
+      table.find('.edit-entry-btn').click(function() {
+        const entryId = $(this).data('entry-id');
+        showEditModal(entryId);
+      });
+
+      table.find('.delete-entry-btn').click(function() {
+        const entryId = $(this).data('entry-id');
+        deleteEntry(entryId);
+      });
+    }
+
+    function sortTable(column) {
+      if (!allEntries.length) return;
+
+      if (currentSortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortColumn = column;
+        sortDirection = 'asc';
+      }
+
+      allEntries.sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+
+        if (column === 'capacity_mw' || column === 'estimated_cost' || column === 'awarded_cost') {
+          valA = parseFloat(valA) || 0;
+          valB = parseFloat(valB) || 0;
+        } else if (column === 'index') {
+          valA = allEntries.indexOf(a);
+          valB = allEntries.indexOf(b);
+        } else {
+          valA = String(valA || '').toLowerCase();
+          valB = String(valB || '').toLowerCase();
+        }
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      renderDataTable(allEntries);
+
+      $('#cpTable th').removeClass('sorted-asc sorted-desc');
+      const header = $(`[data-sort="${column}"]`);
+      header.addClass(sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    }
+
+    function showEditModal(entryId) {
+      const entry = allEntries.find(e => e.cp_entry_id === entryId);
+      if (!entry) {
+        Swal.fire('Error', 'Entry not found', 'error');
+        return;
+      }
+
+      $('#editEntryId').val(entryId);
+      $('#editProjectName').val(entry.project_name || '');
+      $('#editCapacity').val(entry.capacity_mw || '');
+      $('#editAgency').val(entry.agency || '');
+      $('#editEstimatedCost').val(entry.estimated_cost || '');
+      $('#editAwardedCost').val(entry.awarded_cost || '');
+      $('#editAgreementNo').val(entry.agreement_no || '');
+      $('#editDateOfStart').val(entry.date_of_start || '');
+      $('#editCompletionTime').val(entry.completion_time || '');
+      $('#editRemarks').val(entry.remarks || '');
+
+      const modal = new bootstrap.Modal(document.getElementById('editModal'));
+      modal.show();
+    }
+
+    function saveEntryChanges() {
+      const entryId = $('#editEntryId').val();
+      const formData = {
+        project_name: $('#editProjectName').val().trim(),
+        capacity_mw: parseFloat($('#editCapacity').val()) || 0,
+        agency: $('#editAgency').val().trim(),
+        estimated_cost: $('#editEstimatedCost').val().trim(),
+        awarded_cost: $('#editAwardedCost').val().trim(),
+        agreement_no: $('#editAgreementNo').val().trim(),
+        date_of_start: $('#editDateOfStart').val(),
+        completion_time: $('#editCompletionTime').val().trim(),
+        remarks: $('#editRemarks').val().trim(),
+      };
+
+      if (!formData.project_name) {
+        Swal.fire('Error', 'Project Name is required', 'error');
+        return;
+      }
+
+      GlobalLoader.show();
+      authFetch(`/api/data/cp/entry/edit/${entryId}`, {
+        method: 'PUT',
+        body: JSON.stringify(formData)
+      })
+        .then(res => res.json())
+        .then(resObj => {
+          if (resObj.success) {
+            $('#editModal').modal('hide');
+            Swal.fire('Success', 'Entry updated successfully', 'success');
+            fetchCpOwnProjects();
+          } else {
+            throw new Error(resObj.message || 'Update failed');
+          }
+        })
+        .catch(err => {
+          console.error('Error updating entry:', err);
+          Swal.fire('Error', 'Failed to update entry: ' + err.message, 'error');
+        })
+        .finally(() => GlobalLoader.hide());
+    }
+
+    function deleteEntry(entryId) {
+      Swal.fire({
+        title: 'Are you sure?',
+        text: "This entry will be deleted!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          GlobalLoader.show();
+          authFetch(`/api/data/cp/entry/delete/${entryId}`, {
+            method: 'DELETE'
+          })
+            .then(res => res.json())
+            .then(resObj => {
+              if (resObj.success) {
+                Swal.fire('Deleted!', 'Entry has been deleted.', 'success');
+                fetchCpOwnProjects();
+              } else {
+                throw new Error(resObj.message || 'Delete failed');
+              }
+            })
+            .catch(err => {
+              console.error('Error deleting entry:', err);
+              Swal.fire('Error', 'Failed to delete entry: ' + err.message, 'error');
+            })
+            .finally(() => GlobalLoader.hide());
+        }
+      });
+    }
+
+    function exportToCSV() {
+      if (!allEntries.length) {
+        Swal.fire('No Data', 'No entries to export.', 'info');
+        return;
+      }
+
+      const headers = ['#', 'Project Name', 'Capacity (MW)', 'Agency', 'Est. Cost (Cr)', 'Awd. Cost (Cr)', 'Agreement No.', 'Start Date', 'Completion', 'Remarks'];
+      const rows = allEntries.map((item, index) => [
+        index + 1,
+        item.project_name || '',
+        item.capacity_mw || 0,
+        item.agency || '',
+        item.estimated_cost || '',
+        item.awarded_cost || '',
+        item.agreement_no || '',
+        formatToISTDate(item.date_of_start),
+        item.completion_time || '',
+        item.remarks || ''
+      ]);
+
+      let csv = '\uFEFF' + headers.join(',') + '\n';
+      rows.forEach(row => {
+        csv += row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',') + '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'cp_own_projects.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    }
+  </script>
+</body>
+</html>

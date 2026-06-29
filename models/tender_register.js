@@ -71,6 +71,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      storage_capacity_mw: {
+        type: DataTypes.DECIMAL(18, 2),
+        allowNull: true,
+      },
       excel_file_path: {
         type: DataTypes.STRING,
         allowNull: true,
