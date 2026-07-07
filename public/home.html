@@ -1288,7 +1288,7 @@
         button.setAttribute("data-index", i);
         const deptName = dept.dept_name;
         const showIcon = deptName !== "Contracts & Procurement";
-        button.innerHTML = (showIcon ? `<i class="bi ${icons[i % icons.length]} me-2"></i> ` : '') + `<span class="tab-text">${deptName}</span>`;
+        button.innerHTML = (showIcon ? `<i class="bi ${icons[i % icons.length]} me-2"></i> ` : `<i class="bi bi-file-earmark-text me-2"></i> `) + `<span class="tab-text">${deptName}</span>`;
         button.addEventListener("click", () => {
           const name = String(dept.dept_name || '').toLowerCase();
           if (name.includes('engineering')) {

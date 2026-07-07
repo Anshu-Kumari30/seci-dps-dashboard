@@ -280,7 +280,11 @@
       color: #1f4e79;
       border-bottom: 2px solid #e9ecef;
       white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
     }
+    thead th:hover { background: #eef3fa; }
+    thead th .sort-arrow { margin-left: 4px; font-size: 10px; color: #6c757d; }
     tbody tr { border-bottom: 1px solid #f0f0f0; transition: background .1s; }
     tbody tr:hover { background: #f8fbff; }
     tbody td { padding: 10px 14px; color: #333; }
@@ -451,16 +455,17 @@
         <table>
           <thead>
             <tr>
-              <th>Tender Title</th>
-              <th>Tech</th>
-              <th>RfS No</th>
-              <th>RfS Date</th>
-              <th>Capacity (MW)</th>
-              <th>eRA (MW)</th>
-              <th>Unallocated (MW)</th>
-              <th>Tariff</th>
-              <th>Storage (MW)</th>
-              <th>Status of Connectivity</th>
+              <th data-col="tender_title" class="sortable">Tender Title <span class="sort-arrow"></span></th>
+              <th data-col="technology_type" class="sortable">Tech <span class="sort-arrow"></span></th>
+              <th data-col="rfs_number" class="sortable">RfS No <span class="sort-arrow"></span></th>
+              <th data-col="rfs_date" class="sortable">RfS Date <span class="sort-arrow"></span></th>
+              <th data-col="tendered_capacity_mw" class="sortable">Capacity (MW) <span class="sort-arrow"></span></th>
+              <th data-col="era_awarded_capacity_mw" class="sortable">eRA (MW) <span class="sort-arrow"></span></th>
+              <th data-col="unallocated" class="sortable">Unallocated (MW) <span class="sort-arrow"></span></th>
+              <th data-col="tariff" class="sortable">Tariff <span class="sort-arrow"></span></th>
+              <th data-col="storage_capacity_mw" class="sortable">Storage (MW) <span class="sort-arrow"></span></th>
+              <th data-col="stage" class="sortable">Status of Connectivity <span class="sort-arrow"></span></th>
+              <th data-col="commissioned_capacity_mw" class="sortable">Capacity Commissioned (MW) <span class="sort-arrow"></span></th>
             </tr>
           </thead>
           <tbody id="tableBody"></tbody>
@@ -514,6 +519,8 @@ const PAGE_SIZE = 20;
 let currentPage = 1;
 let activeTech  = 'ALL';
 let searchQuery = '';
+let sortColumn = 'rfs_date';
+let sortDirection = 'asc';
 let allTenderData = [];
 let donutChart = null;
 let eraDonutChart = null;
@@ -568,7 +575,8 @@ function renderTariffChart() {
 
   allTenderData.forEach(t => {
     const tariff = Number(t.tariff);
-    if (!tariff || !t.rfs_date) return;
+    // Filter out null/zero AND unreasonably high values (> 100 Rs/kWhr data errors)
+    if (!tariff || tariff > 100 || !t.rfs_date) return;
     const tech = t.technology_type;
     if (!techs.includes(tech)) return;
     const parts = t.rfs_date.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
@@ -591,7 +599,7 @@ function renderTariffChart() {
     techs.forEach(t => techEntries[t] = []);
     allTenderData.forEach(t => {
       const tariff = Number(t.tariff);
-      if (!tariff || !t.rfs_date) return;
+      if (!tariff || tariff > 100 || !t.rfs_date) return;
       const tech = t.technology_type;
       if (!techs.includes(tech)) return;
       const parts = t.rfs_date.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
@@ -965,11 +973,44 @@ function renderTechBarChart(summary) {
   });
 }
 
+function getSortValue(t, col) {
+  if (col === 'unallocated') return formatNumber(t.tendered_capacity_mw) - formatNumber(t.era_awarded_capacity_mw);
+  if (col === 'rfs_date') return t.rfs_date ? parseRfsDate(t.rfs_date) : 0;
+  if (col === 'tariff' || col === 'tendered_capacity_mw' || col === 'era_awarded_capacity_mw' || col === 'storage_capacity_mw' || col === 'commissioned_capacity_mw')
+    return formatNumber(t[col]);
+  return (t[col] || '').toString().toLowerCase();
+}
+
 function filteredData() {
   return allTenderData.filter(t => {
     if (activeTech !== 'ALL' && t.technology_type !== activeTech) return false;
     if (searchQuery && !t.tender_title.toLowerCase().includes(searchQuery)) return false;
     return true;
+  }).sort((a, b) => {
+    const va = getSortValue(a, sortColumn);
+    const vb = getSortValue(b, sortColumn);
+    if (typeof va === 'number' && typeof vb === 'number') return sortDirection === 'asc' ? va - vb : vb - va;
+    const cmp = String(va).localeCompare(String(vb));
+    return sortDirection === 'asc' ? cmp : -cmp;
+  });
+}
+
+function parseRfsDate(str) {
+  const parts = str.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
+  if (!parts) return 0;
+  return new Date(parts[3], parts[2] - 1, parts[1]).getTime();
+}
+
+function updateSortArrows() {
+  document.querySelectorAll('th.sortable').forEach(th => {
+    const arrow = th.querySelector('.sort-arrow');
+    const col = th.dataset.col;
+    if (col === sortColumn) {
+      arrow.textContent = sortDirection === 'asc' ? '\u25B2' : '\u25BC';
+      arrow.style.color = '#0d6efd';
+    } else {
+      arrow.textContent = '';
+    }
   });
 }
 
@@ -978,8 +1019,6 @@ function renderTable() {
   const total = data.length;
   const start = (currentPage - 1) * PAGE_SIZE;
   const page = data.slice(start, start + PAGE_SIZE);
-  const maxCap = Math.max(1, ...page.map(t => formatNumber(t.tendered_capacity_mw)));
-
   document.getElementById('tableCount').textContent = `${total} records`;
   document.getElementById('pageInfo').textContent =
     `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total}`;
@@ -988,7 +1027,6 @@ function renderTable() {
 
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = page.map(t => {
-    const barWidth = Math.round((formatNumber(t.tendered_capacity_mw) / maxCap) * 100);
     const eraRatio = formatNumber(t.era_awarded_capacity_mw) > 0
       ? Math.round((formatNumber(t.era_awarded_capacity_mw) / formatNumber(t.tendered_capacity_mw)) * 100)
       : 0;
@@ -997,19 +1035,16 @@ function renderTable() {
       <td><span class="tech-badge tech-${t.technology_type}">${t.technology_type || '-'}</span></td>
       <td style="color:#6c757d">${t.rfs_number || '-'}</td>
       <td style="color:#6c757d">${t.rfs_date || '-'}</td>
-      <td>
-        <div class="cap-bar-wrap">
-          ${(formatNumber(t.tendered_capacity_mw) || 0).toLocaleString()}
-          <div class="cap-bar"><div class="cap-bar-fill" style="width:${barWidth}%"></div></div>
-        </div>
-      </td>
+      <td style="font-weight:600">${(formatNumber(t.tendered_capacity_mw) || 0).toLocaleString()}</td>
       <td>${(formatNumber(t.era_awarded_capacity_mw) || 0).toLocaleString()} <span style="font-size:11px;color:#6c757d">(${eraRatio}%)</span></td>
       <td style="color:#dc3545;font-weight:600">${(() => { const u = formatNumber(t.tendered_capacity_mw) - formatNumber(t.era_awarded_capacity_mw); return u > 0 ? u.toLocaleString() : (u === 0 ? '0' : '-'); })()}</td>
-      <td style="color:#0d6efd;font-weight:600">${t.tariff ? Number(t.tariff).toFixed(4) : '-'}</td>
+      <td style="color:#0d6efd;font-weight:600">${t.tariff ? Number(t.tariff).toFixed(2) : '-'}</td>
       <td style="color:#6f42c1;font-weight:600">${t.storage_capacity_mw ? Number(t.storage_capacity_mw).toLocaleString() : '-'}</td>
       <td style="color:#28a745;font-weight:600">${t.stage || '-'}</td>
+      <td style="color:#e67e22;font-weight:600">${t.commissioned_capacity_mw ? Number(t.commissioned_capacity_mw).toLocaleString() : '-'}</td>
     </tr>`;
   }).join('');
+  updateSortArrows();
 }
 
 
@@ -1028,6 +1063,21 @@ document.getElementById('searchInput').addEventListener('input', e => {
   searchQuery = e.target.value.toLowerCase().trim();
   currentPage = 1;
   renderTable();
+});
+
+// Sortable headers
+document.querySelectorAll('th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (col === sortColumn) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortColumn = col;
+      sortDirection = 'asc';
+    }
+    currentPage = 1;
+    renderTable();
+  });
 });
 
 // Pager
