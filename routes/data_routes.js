@@ -471,6 +471,13 @@ router.get(
 );
 
 router.get(
+  "/contracts/tenders/download",
+  verifyToken,
+  auditLogger("Downloaded contract tender register Excel"),
+  dataController.downloadTenderRegisterExcel,
+);
+
+router.get(
   "/mapping/all",
   verifyToken,
   verifyAdmin,

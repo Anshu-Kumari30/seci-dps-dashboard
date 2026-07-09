@@ -53,6 +53,14 @@
       background: #0847a5;
       box-shadow: 0 2px 8px rgba(11,94,215,.35);
     }
+    .header-actions .btn-export {
+      background: #198754;
+      color: #fff;
+    }
+    .header-actions .btn-export:hover {
+      background: #146c43;
+      box-shadow: 0 2px 8px rgba(25,135,84,.35);
+    }
     .header-actions .btn-home {
       background: #e9ecef;
       color: #495057;
@@ -344,8 +352,11 @@
     <div class="header-actions">
       <input type="file" id="tenderExcelUpload" accept=".xlsx,.xls" style="display:none" />
       <span id="tenderUploadStatus" style="font-size:12px;color:#6c757d"></span>
-      <button class="btn-action btn-upload" onclick="document.getElementById('tenderExcelUpload').click()">
+      <button class="btn-action btn-upload" id="uploadExcelBtn" style="display:none">
         <i class="bi bi-upload"></i> Upload Excel
+      </button>
+      <button class="btn-action btn-export" id="exportExcelBtn" style="display:none" onclick="exportTenderData()">
+        <i class="bi bi-download"></i> Export
       </button>
       <a href="/home.html" class="btn-action btn-home">
         <i class="bi bi-house-door"></i> Back to Home
@@ -515,12 +526,6 @@ const TECH_COLORS = {
   FDRE:   '#dc3545',
 };
 
-const PAGE_SIZE = 20;
-let currentPage = 1;
-let activeTech  = 'ALL';
-let searchQuery = '';
-let sortColumn = 'rfs_date';
-let sortDirection = 'asc';
 let allTenderData = [];
 let donutChart = null;
 let eraDonutChart = null;
@@ -724,7 +729,8 @@ function renderDonutChart(summary) {
       cutout: '65%',
       onClick: (evt, elements) => {
         if (elements && elements.length > 0) {
-          document.getElementById('tenderExcelUpload').click();
+          const role = getUserRole();
+          if (role === 'admin') document.getElementById('tenderExcelUpload').click();
         }
       },
       plugins: {
@@ -765,7 +771,8 @@ function renderEraDonutChart(summary) {
       cutout: '65%',
       onClick: (evt, elements) => {
         if (elements && elements.length > 0) {
-          document.getElementById('tenderExcelUpload').click();
+          const role = getUserRole();
+          if (role === 'admin') document.getElementById('tenderExcelUpload').click();
         }
       },
       plugins: {
@@ -805,7 +812,8 @@ function renderDonutFromField(summary, field, canvasId) {
       cutout: '65%',
       onClick: (evt, elements) => {
         if (elements && elements.length > 0) {
-          document.getElementById('tenderExcelUpload').click();
+          const role = getUserRole();
+          if (role === 'admin') document.getElementById('tenderExcelUpload').click();
         }
       },
       plugins: {
@@ -972,6 +980,39 @@ function renderTechBarChart(summary) {
     }
   });
 }
+
+// ── Role-based UI ─────────────────────────────────────────
+function getUserRole() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role || 'user';
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyRoleBasedUI() {
+  const role = getUserRole();
+  const uploadBtn = document.getElementById('uploadExcelBtn');
+  const exportBtn = document.getElementById('exportExcelBtn');
+  if (role === 'admin') {
+    uploadBtn.style.display = 'inline-flex';
+    exportBtn.style.display = 'inline-flex';
+  } else {
+    uploadBtn.style.display = 'none';
+    exportBtn.style.display = 'inline-flex';
+  }
+}
+
+// ── Table variables ──────────────────────────────────────
+const PAGE_SIZE = 20;
+let currentPage = 1;
+let activeTech  = 'ALL';
+let searchQuery = '';
+let sortColumn = 'rfs_date';
+let sortDirection = 'asc';
 
 function getSortValue(t, col) {
   if (col === 'unallocated') return formatNumber(t.tendered_capacity_mw) - formatNumber(t.era_awarded_capacity_mw);
@@ -1154,6 +1195,47 @@ async function initTenderDashboard() {
   currentPage = 1;
   renderTable();
   renderTariffChart();
+
+  applyRoleBasedUI();
+}
+
+// ── Export: Download Original Excel ──────────────────────
+function exportTenderData() {
+  if (!allTenderData || allTenderData.length === 0) {
+    alert('No tender data available to export.');
+    return;
+  }
+  // Trigger download of the original uploaded Excel file from the server
+  const token = localStorage.getItem('token');
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/data/contracts/tenders/download', true);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+  xhr.responseType = 'blob';
+  xhr.onload = function () {
+    if (xhr.status === 200) {
+      const blob = xhr.response;
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      let fileName = 'tender_register.xlsx';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (match) fileName = match[1];
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      alert('Failed to download Excel file.');
+    }
+  };
+  xhr.onerror = function () {
+    alert('Network error while downloading Excel file.');
+  };
+  xhr.send();
 }
 
 document.addEventListener('DOMContentLoaded', initTenderDashboard);

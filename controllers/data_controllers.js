@@ -3496,6 +3496,29 @@ exports.getTenderRegisterSummary = async (req, res) => {
   }
 };
 
+exports.downloadTenderRegisterExcel = async (req, res) => {
+  try {
+    const row = await TenderRegister.findOne({
+      where: { is_active: true },
+      order: [["uploaded_at", "DESC"]],
+      attributes: ["excel_file_path", "original_file_name"],
+    });
+    if (!row || !row.excel_file_path) {
+      return res.status(404).json({ error: "No uploaded Excel file found" });
+    }
+    const filePath = row.excel_file_path;
+    const fileName = row.original_file_name || "tender_register.xlsx";
+    if (require("fs").existsSync(filePath)) {
+      return res.download(filePath, fileName);
+    } else {
+      return res.status(404).json({ error: "Excel file not found on server" });
+    }
+  } catch (err) {
+    console.error("Error downloading tender register Excel:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 /**
  *
  * O&M Controllers
