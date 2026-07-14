@@ -1202,29 +1202,37 @@ exports.deleteBusinessDevelopmentEntry = async (req, res) => {
       });
     }
 
-    // Delete associated milestones first to avoid FK constraint violation
-    await BusinessDevelopmentMilestones.destroy({
-      where: { bd_entry_id },
-    });
-
-    // Now delete the entry
-    const deletedEntry = await BusinessDevelopmentTable.destroy({
-      where: { bd_entry_id },
-    });
-
-    // Check if an entry was deleted
-    if (!deletedEntry) {
-      return res.status(404).json({
-        success: false,
-        message: "Business development entry not found.",
+    // Use a transaction to ensure atomicity
+    await sequelize.transaction(async (t) => {
+      // Delete associated milestones first to avoid FK constraint violation
+      await BusinessDevelopmentMilestones.destroy({
+        where: { bd_entry_id },
+        transaction: t,
       });
-    }
+
+      // Now delete the entry
+      const deletedEntry = await BusinessDevelopmentTable.destroy({
+        where: { bd_entry_id },
+        transaction: t,
+      });
+
+      // Check if an entry was deleted
+      if (!deletedEntry) {
+        throw new Error("EntryNotFound");
+      }
+    });
 
     return res.status(200).json({
       success: true,
       message: "Business development entry deleted successfully.",
     });
   } catch (error) {
+    if (error.message === "EntryNotFound") {
+      return res.status(404).json({
+        success: false,
+        message: "Business development entry not found.",
+      });
+    }
     console.error("Error deleting BD entry:", error);
     return res.status(500).json({
       success: false,

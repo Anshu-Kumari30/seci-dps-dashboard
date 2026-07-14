@@ -2758,16 +2758,16 @@
                           <div class="col-md-6 mb-3">
                             <div class="card h-100">
                               <div class="card-body text-center" style="padding:1.75rem;">
-                                <h5 class="card-title mb-3">Schemes</h5>
-                                <canvas id="contractsDonut" width="400" height="360" style="display:block;margin:auto;max-width:100%;height:auto;"></canvas>
+                                <h5 class="card-title mb-3" style="cursor:pointer;" onclick="window.location.href='/contracts_external.html'">Schemes <i class="bi bi-box-arrow-up-right" style="font-size:0.8rem;"></i></h5>
+                                <canvas id="contractsDonut" width="400" height="360" style="display:block;margin:auto;max-width:100%;height:auto;cursor:pointer;" onclick="window.location.href='/contracts_external.html'"></canvas>
                               </div>
                             </div>
                           </div>
                           <div class="col-md-6 mb-3">
                             <div class="card h-100">
                               <div class="card-body text-center" style="padding:1.75rem;">
-                                <h5 class="card-title mb-3">Own Project</h5>
-                                <canvas id="cpOwnProjectsDonut" width="400" height="360" style="display:block;margin:auto;max-width:100%;height:auto;"></canvas>
+                                <h5 class="card-title mb-3" style="cursor:pointer;" onclick="window.location.href='/cp_own_projects.html'">Own Project <i class="bi bi-box-arrow-up-right" style="font-size:0.8rem;"></i></h5>
+                                <canvas id="cpOwnProjectsDonut" width="400" height="360" style="display:block;margin:auto;max-width:100%;height:auto;cursor:pointer;" onclick="window.location.href='/cp_own_projects.html'"></canvas>
                               </div>
                             </div>
                           </div>
@@ -2836,8 +2836,7 @@
             console.warn('Contracts & Procurement schemes donut render failed', e);
             const ctx = document.getElementById('contractsDonut');
             if (ctx) {
-              const parent = ctx.parentNode;
-              parent.innerHTML = '<p class="text-muted mt-3">Schemes data unavailable.</p>';
+              ctx.outerHTML = '<p class="text-muted mt-3">Schemes data unavailable.</p>';
             }
           }
         })();
@@ -2853,8 +2852,7 @@
             if (!entries.length) {
               const ctx = document.getElementById('cpOwnProjectsDonut');
               if (ctx) {
-                const parent = ctx.parentNode;
-                parent.innerHTML = '<p class="text-muted mt-3">No C&P own projects found.</p>';
+                ctx.outerHTML = '<p class="text-muted mt-3">No C&P own projects found.</p>';
               }
               return;
             }
@@ -2923,8 +2921,7 @@
             console.warn('C&P Own Projects donut render failed', e);
             const ctx = document.getElementById('cpOwnProjectsDonut');
             if (ctx) {
-              const parent = ctx.parentNode;
-              parent.innerHTML = '<p class="text-muted mt-3">C&P own projects data unavailable.</p>';
+              ctx.outerHTML = '<p class="text-muted mt-3">C&P own projects data unavailable.</p>';
             }
           }
         })();
