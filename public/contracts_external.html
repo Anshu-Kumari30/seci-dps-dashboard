@@ -352,7 +352,7 @@
     <div class="header-actions">
       <input type="file" id="tenderExcelUpload" accept=".xlsx,.xls" style="display:none" />
       <span id="tenderUploadStatus" style="font-size:12px;color:#6c757d"></span>
-      <button class="btn-action btn-upload" id="uploadExcelBtn" style="display:none">
+      <button type="button" class="btn-action btn-upload" id="uploadExcelBtn" style="display:none">
         <i class="bi bi-upload"></i> Upload Excel
       </button>
       <button class="btn-action btn-export" id="exportExcelBtn" style="display:none" onclick="exportTenderData()">
@@ -441,53 +441,6 @@
       </div>
       <div class="card-body">
         <canvas id="techBarChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tender Table -->
-  <div class="card" style="margin-bottom: 24px;">
-    <div class="card-header">
-      <span class="card-title">Tender Register</span>
-      <span class="card-tag" id="tableCount">0 records</span>
-    </div>
-    <div class="card-body" style="padding:12px 0 0">
-      <div class="filter-row" style="padding:0 14px">
-        <span class="filter-label">Technology:</span>
-        <button class="filter-btn active" data-tech="ALL">All</button>
-        <button class="filter-btn" data-tech="Solar">Solar</button>
-        <button class="filter-btn" data-tech="Wind">Wind</button>
-        <button class="filter-btn" data-tech="Hybrid">Hybrid</button>
-        <button class="filter-btn" data-tech="RTC">RTC</button>
-        <button class="filter-btn" data-tech="FDRE">FDRE</button>
-        <input class="filter-input" id="searchInput" placeholder="Search tender title…" />
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th data-col="tender_title" class="sortable">Tender Title <span class="sort-arrow"></span></th>
-              <th data-col="technology_type" class="sortable">Tech <span class="sort-arrow"></span></th>
-              <th data-col="rfs_number" class="sortable">RfS No <span class="sort-arrow"></span></th>
-              <th data-col="rfs_date" class="sortable">RfS Date <span class="sort-arrow"></span></th>
-              <th data-col="tendered_capacity_mw" class="sortable">Capacity (MW) <span class="sort-arrow"></span></th>
-              <th data-col="era_awarded_capacity_mw" class="sortable">eRA (MW) <span class="sort-arrow"></span></th>
-              <th data-col="unallocated" class="sortable">Unallocated (MW) <span class="sort-arrow"></span></th>
-              <th data-col="tariff" class="sortable">Tariff <span class="sort-arrow"></span></th>
-              <th data-col="storage_capacity_mw" class="sortable">Storage (MW) <span class="sort-arrow"></span></th>
-              <th data-col="stage" class="sortable">Status of Connectivity <span class="sort-arrow"></span></th>
-              <th data-col="commissioned_capacity_mw" class="sortable">Capacity Commissioned (MW) <span class="sort-arrow"></span></th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
-      <div class="table-footer">
-        <span class="page-info" id="pageInfo"></span>
-        <div>
-          <button id="prevBtn">← Prev</button>
-          <button id="nextBtn">Next →</button>
-        </div>
       </div>
     </div>
   </div>
@@ -581,16 +534,23 @@ function renderTariffChart() {
   allTenderData.forEach(t => {
     const tariff = Number(t.tariff);
     // Filter out null/zero AND unreasonably high values (> 100 Rs/kWhr data errors)
-    if (!tariff || tariff > 100 || !t.rfs_date) return;
+    if (!tariff || tariff > 100) return;
     const tech = t.technology_type;
     if (!techs.includes(tech)) return;
-    const parts = t.rfs_date.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
-    if (!parts) return;
-    const year = parseInt(parts[3], 10);
+    // Extract year from rfs_date first, fall back to t.year numeric field.
+    // Some continuation/developer rows have tariff but no rfs_date — they rely on t.year instead.
+    let year = null;
+    if (t.rfs_date) {
+      const parts = t.rfs_date.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
+      if (parts) year = parseInt(parts[3], 10);
+    }
+    if (!year || year < 1900 || year > 2100) {
+      year = Number(t.year);
+    }
     if (!year || year < 1900 || year > 2100) return;
     yearSet.add(year);
-    if (!techYearMap[tech][year]) techYearMap[tech][year] = { sum: 0, count: 0 };
-    techYearMap[tech][year].sum += tariff;
+    if (!techYearMap[tech][year]) techYearMap[tech][year] = { max: 0, count: 0 };
+    if (tariff > techYearMap[tech][year].max) techYearMap[tech][year].max = tariff;
     techYearMap[tech][year].count++;
   });
 
@@ -604,12 +564,17 @@ function renderTariffChart() {
     techs.forEach(t => techEntries[t] = []);
     allTenderData.forEach(t => {
       const tariff = Number(t.tariff);
-      if (!tariff || tariff > 100 || !t.rfs_date) return;
+      if (!tariff || tariff > 100) return;
       const tech = t.technology_type;
       if (!techs.includes(tech)) return;
-      const parts = t.rfs_date.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
-      if (!parts) return;
-      const year = parseInt(parts[3], 10);
+      let year = null;
+      if (t.rfs_date) {
+        const parts = t.rfs_date.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
+        if (parts) year = parseInt(parts[3], 10);
+      }
+      if (!year || year < 1900 || year > 2100) {
+        year = Number(t.year);
+      }
       if (!year || year < 1900 || year > 2100) return;
       techEntries[tech].push({ val: tariff, year });
     });
@@ -635,7 +600,7 @@ function renderTariffChart() {
   const datasets = techs.map(tech => {
     const yValues = years.map(yr => {
       const d = techYearMap[tech][yr];
-      return d ? +(d.sum / d.count).toFixed(4) : null;
+      return d ? +d.max.toFixed(4) : null;
     });
     const radii = years.map(yr => {
       const d = techYearMap[tech][yr];
@@ -679,8 +644,7 @@ function renderTariffChart() {
               const yr = years[ctx.dataIndex];
               const d = techYearMap[tech]?.[yr];
               const count = d?.count || 0;
-              const cap = d?.sum || 0;
-              return ` ${tech}: ₹${ctx.parsed.y?.toFixed(4) || '-'}/kWhr  |  ${count} tender(s)  |  Total cap: ${cap.toFixed(2)} MW`;
+              return ` ${tech}: ₹${ctx.parsed.y?.toFixed(4) || '-'}/kWhr  |  ${count} tender(s)`;
             }
           }
         }
@@ -696,7 +660,8 @@ function renderTariffChart() {
             callback: v => '₹' + v.toFixed(2)
           },
           grid: { color: '#e9ecef' },
-          title: { display: true, text: 'Avg Tariff (Rs/kWhr)', color: '#6c757d', font: { size: 12 } }
+          title: { display: true, text: 'Avg Tariff (Rs/kWhr)', color: '#6c757d', font: { size: 12 } },
+          max: 10
         }
       }
     }
@@ -1006,127 +971,26 @@ function applyRoleBasedUI() {
   }
 }
 
-// ── Table variables ──────────────────────────────────────
-const PAGE_SIZE = 20;
-let currentPage = 1;
-let activeTech  = 'ALL';
-let searchQuery = '';
-let sortColumn = 'rfs_date';
-let sortDirection = 'asc';
-
-function getSortValue(t, col) {
-  if (col === 'unallocated') return formatNumber(t.tendered_capacity_mw) - formatNumber(t.era_awarded_capacity_mw);
-  if (col === 'rfs_date') return t.rfs_date ? parseRfsDate(t.rfs_date) : 0;
-  if (col === 'tariff' || col === 'tendered_capacity_mw' || col === 'era_awarded_capacity_mw' || col === 'storage_capacity_mw' || col === 'commissioned_capacity_mw')
-    return formatNumber(t[col]);
-  return (t[col] || '').toString().toLowerCase();
-}
-
-function filteredData() {
-  return allTenderData.filter(t => {
-    if (activeTech !== 'ALL' && t.technology_type !== activeTech) return false;
-    if (searchQuery && !t.tender_title.toLowerCase().includes(searchQuery)) return false;
-    return true;
-  }).sort((a, b) => {
-    const va = getSortValue(a, sortColumn);
-    const vb = getSortValue(b, sortColumn);
-    if (typeof va === 'number' && typeof vb === 'number') return sortDirection === 'asc' ? va - vb : vb - va;
-    const cmp = String(va).localeCompare(String(vb));
-    return sortDirection === 'asc' ? cmp : -cmp;
-  });
-}
-
-function parseRfsDate(str) {
-  const parts = str.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
-  if (!parts) return 0;
-  return new Date(parts[3], parts[2] - 1, parts[1]).getTime();
-}
-
-function updateSortArrows() {
-  document.querySelectorAll('th.sortable').forEach(th => {
-    const arrow = th.querySelector('.sort-arrow');
-    const col = th.dataset.col;
-    if (col === sortColumn) {
-      arrow.textContent = sortDirection === 'asc' ? '\u25B2' : '\u25BC';
-      arrow.style.color = '#0d6efd';
-    } else {
-      arrow.textContent = '';
-    }
-  });
-}
-
-function renderTable() {
-  const data = filteredData();
-  const total = data.length;
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const page = data.slice(start, start + PAGE_SIZE);
-  document.getElementById('tableCount').textContent = `${total} records`;
-  document.getElementById('pageInfo').textContent =
-    `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total}`;
-  document.getElementById('prevBtn').disabled = currentPage === 1;
-  document.getElementById('nextBtn').disabled = start + PAGE_SIZE >= total;
-
-  const tbody = document.getElementById('tableBody');
-  tbody.innerHTML = page.map(t => {
-    const eraRatio = formatNumber(t.era_awarded_capacity_mw) > 0
-      ? Math.round((formatNumber(t.era_awarded_capacity_mw) / formatNumber(t.tendered_capacity_mw)) * 100)
-      : 0;
-    return `<tr>
-      <td style="font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis">${t.tender_title || '-'}</td>
-      <td><span class="tech-badge tech-${t.technology_type}">${t.technology_type || '-'}</span></td>
-      <td style="color:#6c757d">${t.rfs_number || '-'}</td>
-      <td style="color:#6c757d">${t.rfs_date || '-'}</td>
-      <td style="font-weight:600">${(formatNumber(t.tendered_capacity_mw) || 0).toLocaleString()}</td>
-      <td>${(formatNumber(t.era_awarded_capacity_mw) || 0).toLocaleString()} <span style="font-size:11px;color:#6c757d">(${eraRatio}%)</span></td>
-      <td style="color:#dc3545;font-weight:600">${(() => { const u = formatNumber(t.tendered_capacity_mw) - formatNumber(t.era_awarded_capacity_mw); return u > 0 ? u.toLocaleString() : (u === 0 ? '0' : '-'); })()}</td>
-      <td style="color:#0d6efd;font-weight:600">${t.tariff ? Number(t.tariff).toFixed(2) : '-'}</td>
-      <td style="color:#6f42c1;font-weight:600">${t.storage_capacity_mw ? Number(t.storage_capacity_mw).toLocaleString() : '-'}</td>
-      <td style="color:#28a745;font-weight:600">${t.stage || '-'}</td>
-      <td style="color:#e67e22;font-weight:600">${t.commissioned_capacity_mw ? Number(t.commissioned_capacity_mw).toLocaleString() : '-'}</td>
-    </tr>`;
-  }).join('');
-  updateSortArrows();
-}
 
 
-// Filters
-document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeTech = btn.dataset.tech;
-    currentPage = 1;
-    renderTable();
-  });
-});
-
-document.getElementById('searchInput').addEventListener('input', e => {
-  searchQuery = e.target.value.toLowerCase().trim();
-  currentPage = 1;
-  renderTable();
-});
-
-// Sortable headers
-document.querySelectorAll('th.sortable').forEach(th => {
-  th.addEventListener('click', () => {
-    const col = th.dataset.col;
-    if (col === sortColumn) {
-      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-      sortColumn = col;
-      sortDirection = 'asc';
-    }
-    currentPage = 1;
-    renderTable();
-  });
-});
-
-// Pager
-document.getElementById('prevBtn').addEventListener('click', () => { currentPage--; renderTable(); });
-document.getElementById('nextBtn').addEventListener('click', () => { currentPage++; renderTable(); });
 
 // Upload
-document.getElementById('tenderExcelUpload').addEventListener('change', async function (e) {
+const tenderExcelInput = document.getElementById('tenderExcelUpload');
+const uploadExcelButton = document.getElementById('uploadExcelBtn');
+
+if (uploadExcelButton) {
+  uploadExcelButton.addEventListener('click', function (e) {
+    e.preventDefault();
+    const role = getUserRole();
+    if (role !== 'admin') {
+      alert('Only admins can upload tender Excel files.');
+      return;
+    }
+    tenderExcelInput?.click();
+  });
+}
+
+tenderExcelInput.addEventListener('change', async function (e) {
   const file = e.target.files[0];
   if (!file) return;
   if (!file.name.match(/\.(xlsx|xls)$/i)) {
@@ -1192,8 +1056,6 @@ async function initTenderDashboard() {
 
   const registersResponse = await fetchTenderRegisters();
   allTenderData = registersResponse.data || [];
-  currentPage = 1;
-  renderTable();
   renderTariffChart();
 
   applyRoleBasedUI();

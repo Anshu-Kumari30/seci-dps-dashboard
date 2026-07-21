@@ -3016,6 +3016,45 @@ function parseTenderValue(value) {
   return Number.isNaN(num) ? null : num;
 }
 
+const CANONICAL_TECHNOLOGIES = ["Solar", "Wind", "Hybrid", "RTC", "FDRE"];
+
+function normalizeTechnologyType(value) {
+  const tech = String(value || "").trim().toLowerCase();
+  if (!tech) return null;
+  if (tech.includes("solar")) return "Solar";
+  if (tech.includes("wind")) return "Wind";
+  if (tech.includes("hybrid")) return "Hybrid";
+  if (tech.includes("rtc")) return "RTC";
+  if (tech.includes("fdre")) return "FDRE";
+  return null;
+}
+
+function isValidTenderRow(row, mapped) {
+  const normalizedTech = normalizeTechnologyType(mapped?.technology_type || row?.technology_type);
+  if (!normalizedTech || !CANONICAL_TECHNOLOGIES.includes(normalizedTech)) {
+    return false;
+  }
+
+  // Accept rows that have at least one positive numeric value in any key field.
+  // This matches the business rule: exclude rows that are completely empty/invalid,
+  // but keep rows that have data in any field (ERA, PPA, PSA, Commissioned, Tariff).
+  const capacity = parseTenderValue(mapped?.tendered_capacity_mw ?? row?.tendered_capacity_mw);
+  const era = parseTenderValue(mapped?.era_awarded_capacity_mw ?? row?.era_awarded_capacity_mw);
+  const ppa = parseTenderValue(mapped?.ppa_capacity_mw ?? row?.ppa_capacity_mw);
+  const psa = parseTenderValue(mapped?.psa_capacity_mw ?? row?.psa_capacity_mw);
+  const commissioned = parseTenderValue(mapped?.commissioned_capacity_mw ?? row?.commissioned_capacity_mw);
+  const tariff = parseTenderValue(mapped?.tariff ?? row?.tariff);
+
+  const hasAnyPositiveValue = [capacity, era, ppa, psa, commissioned, tariff]
+    .some(v => typeof v === "number" && v > 0);
+
+  if (!hasAnyPositiveValue) {
+    return false;
+  }
+
+  return true;
+}
+
 function buildTenderLookupWhere(tender) {
   if (!tender) return {};
 
@@ -3087,10 +3126,20 @@ function mapTenderRow(row, normMap) {
     return undefined;
   }
 
-  // Helper: get parsed numeric value from first matching column
+  // Helper: get parsed positive numeric value, skipping 0 so fallback columns are tried.
+  // A cell containing 0 means "no value" for this field — we continue searching other
+  // column name variants (e.g. "Commissioning Capacity (MW)" after "Capacity Commissioned (MW)"=0).
   function getNumeric(...normalizedNames) {
-    const val = getValue(...normalizedNames);
-    return parseTenderValue(val);
+    for (const name of normalizedNames) {
+      const keys = normMap[name];
+      if (!keys) continue;
+      for (const key of keys) {
+        const val = row[key];
+        const parsed = parseTenderValue(val);
+        if (parsed !== null && parsed > 0) return parsed;
+      }
+    }
+    return null;
   }
 
   return {
@@ -3117,7 +3166,7 @@ function mapTenderRow(row, normMap) {
         const yearVal = getNumeric('year', 'fy');
         if (yearVal !== null && yearVal >= 1900 && yearVal <= 2100) return yearVal;
         // Extract year from date columns
-        const dateVal = getValue('date of issue of rfs', 'rfs date', 'rfs issue date', 'date of issue of nit');
+        const dateVal = getValue('date of issue of rfs', 'rfs date', 'rfs issue date', 'date of issue of nit', 'date of issue of loa');
         if (dateVal) {
           const ds = String(dateVal).trim();
           let m = ds.match(/(\d{4})[-/]\d{2}[-/]\d{2}/);
@@ -3128,91 +3177,131 @@ function mapTenderRow(row, normMap) {
         return null;
       })(),
     rfs_number: getValue('rfs number', 'rfs', 'rfs no', 'nit number', 'nit', 'nit no') || null,
-    rfs_date: getValue('date of issue of rfs', 'rfs date', 'rfs issue date', 'date of issue of nit') || null,
+    rfs_date: getValue('date of issue of rfs', 'rfs date', 'rfs issue date', 'date of issue of nit', 'date of issue of loa') || null,
     tariff: getNumeric('tariff (rs/kwhr) loa', 'tariff (rs/kwhr)', 'tariff (rs)', 'tariff') || null,
     tendered_capacity_mw: getNumeric('tendered capacity (mw)', 'tendered capacity', 'capacity (mw)', 'capacity') || null,
     era_awarded_capacity_mw: getNumeric('capacity awarded by era (mw)', 'capacity awarded by era', 'era awarded capacity (mw)', 'era awarded capacity') || null,
     loa_loi_capacity_mw: getNumeric('loa/loi capacity', 'loa capacity (mw)', 'loa capacity', 'loi capacity (mw)', 'loi capacity', 'awarded capacity (mw)', 'awarded capacity') || null,
-    commissioned_capacity_mw: getNumeric('capacity commissioned (mw)', 'capacity commissioned', 'commissioning capacity (mw)', 'commissioning capacity', 'commissioned capacity (mw)', 'commissioned capacity', 'commissioned') || null,
-    psa_capacity_mw: getNumeric('psa capacity (mw)', 'psa capacity', 'psa') || null,
-    ppa_capacity_mw: getNumeric('ppa capacity (mw)', 'ppa capacity', 'ppa') || null,
-    psa_ppa_capacity_mw: getNumeric('psa/ppa signed (mw)', 'psa/ppa signed') || null,
+    commissioned_capacity_mw: getNumeric('capacity commissioned (mw)', 'capacity commissioned', 'commissioned capacity (mw)', 'commissioned capacity', 'commissioned', 'commissioned capacity signed (mw)', 'commissioned signed') || null,
+    psa_capacity_mw: getNumeric('psa capacity (mw)', 'psa capacity', 'psa', 'psa signed capacity (mw)', 'psa signed (mw)', 'psa signed', 'psa capacity signed (mw)') || null,
+    ppa_capacity_mw: getNumeric('ppa capacity (mw)', 'ppa capacity', 'ppa', 'ppa signed capacity (mw)', 'ppa signed (mw)', 'ppa signed', 'ppa capacity signed (mw)') || null,
+    psa_ppa_capacity_mw: getNumeric('psa/ppa signed (mw)', 'psa/ppa signed', 'ppa/psa signed (mw)', 'ppa/psa signed') || null,
     storage_capacity_mw: getNumeric('storage capacity (mw)', 'storage capacity') || null,
     stage: getValue('status of connectivity', 'tender stage', 'stage', 'status') || null,
   };
+}
+
+/**
+ * Helper: return the parsed numeric value if it is a positive number, else 0.
+ * Used for per-KPI inclusion — a row contributes to a KPI only if that field > 0.
+ */
+function positiveValue(value) {
+  const n = parseTenderValue(value);
+  return (typeof n === "number" && n > 0) ? n : 0;
 }
 
 function summarizeTenderRows(rows) {
   const techMap = {};
   const stageMap = {};
   const yearMap = {};
+
+  // Unique tender tracking — use rfs_number first, fall back to tender_title
+  const globalTenderKeys = new Set();
+  const techTenderKeys = {};
+  const yearTenderKeys = {};
+  const stageTenderKeys = {};
+
   let totalTendered = 0;
   let totalEraAwarded = 0;
   let totalLoaLoi = 0;
-  // Cumulative sums across ALL rows for fields that are correctly stored
-  // (the upload/save logic already avoids double-counting by design)
   let totalCommissioned = 0;
   let totalPsa = 0;
   let totalPpa = 0;
 
-  rows.forEach((row) => {
-    const tech = row.technology_type || "Unknown";
+  for (const row of rows) {
+    // ── Commissioned: count ALL rows regardless of technology ───
+    // The Excel's Grand Total = sum of col71 for all data rows.
+    // Developer sub-rows (no technology) also contribute actual commissioned
+    // capacity. Skipping them loses ~19,565 MW. So we sum commissioned
+    // BEFORE the technology filter, using only columns representing actual
+    // commissioned capacity (col71), not planned commissioning (col58).
+    totalCommissioned += positiveValue(row.commissioned_capacity_mw);
+
+    // Base validation: only include rows with a recognized technology
+    // for all other KPIs (tendered, ERA, PPA, PSA, tariff, etc.)
+    const tech = normalizeTechnologyType(row.technology_type);
+    if (!tech || !CANONICAL_TECHNOLOGIES.includes(tech)) continue;
+
+    const tenderKey = String(row.rfs_number || row.tender_title || "").trim();
+    if (tenderKey) {
+      globalTenderKeys.add(tenderKey);
+      if (!techTenderKeys[tech]) techTenderKeys[tech] = new Set();
+      techTenderKeys[tech].add(tenderKey);
+    }
+
     const stage = row.stage || "Unknown";
-    const year = row.year || "Unknown";
+    const year = String(row.year || "Unknown").trim();
 
-    const tenderCapacity = Number(row.tendered_capacity_mw) || 0;
-    const eraCapacity = Number(row.era_awarded_capacity_mw) || 0;
-    const loaCapacity = Number(row.loa_loi_capacity_mw) || 0;
-    const commissioned = Number(row.commissioned_capacity_mw) || 0;
-    const psaCapacity = Number(row.psa_capacity_mw) || 0;
-    const ppaCapacity = Number(row.ppa_capacity_mw) || 0;
+    // ── Per-KPI inclusion ──────────────────────────────────────
+    // Each field contributes to its KPI only when its value is positive (> 0).
+    const tc = positiveValue(row.tendered_capacity_mw);
+    const ec = positiveValue(row.era_awarded_capacity_mw);
+    const lc = positiveValue(row.loa_loi_capacity_mw);
+    const cc = positiveValue(row.commissioned_capacity_mw);
+    const psc = positiveValue(row.psa_capacity_mw);
+    const ppc = positiveValue(row.ppa_capacity_mw);
 
-    // A main record has a non-null tendered_capacity_mw;
-    // developer sub-records always have tendered_capacity_mw = null.
-    const isMain = row.tendered_capacity_mw != null;
+    totalTendered += tc;
+    totalEraAwarded += ec;
+    totalLoaLoi += lc;
+    totalPsa += psc;
+    totalPpa += ppc;
 
-    // Tendered capacity & eRA awarded: count main records only
-    if (isMain) {
-      totalTendered += tenderCapacity;
-      totalEraAwarded += eraCapacity;
-    }
-
-    // LOA/LOI, PPA, PSA, Commissioned: sum from ALL records
-    // (the upload logic ensures each value appears exactly once)
-    totalLoaLoi += loaCapacity;
-    totalCommissioned += commissioned;
-    totalPsa += psaCapacity;
-    totalPpa += ppaCapacity;
-
-    // ── Technology breakdown ──────────────────────────
+    // ── Technology breakdown ───────────────────────────────────
     if (!techMap[tech]) {
-      techMap[tech] = { count: 0, capacity: 0, era_capacity: 0, ppa_capacity: 0, psa_capacity: 0, commissioned_capacity: 0 };
+      techMap[tech] = { capacity: 0, era_capacity: 0, ppa_capacity: 0, psa_capacity: 0, commissioned_capacity: 0 };
     }
-    // Count & tendered capacity from main records only
-    if (isMain) {
-      techMap[tech].count += 1;
-      techMap[tech].capacity += tenderCapacity;
-      techMap[tech].era_capacity += eraCapacity;
-    }
-    // PPA/PSA/Commissioned from ALL rows (direct sum, no ÷2 needed)
-    techMap[tech].ppa_capacity += ppaCapacity;
-    techMap[tech].psa_capacity += psaCapacity;
-    techMap[tech].commissioned_capacity += commissioned;
+    techMap[tech].capacity += tc;
+    techMap[tech].era_capacity += ec;
+    techMap[tech].ppa_capacity += ppc;
+    techMap[tech].psa_capacity += psc;
+    techMap[tech].commissioned_capacity += cc;
 
-    // ── Stage & year breakdown: main records only ─────
-    if (isMain) {
-      stageMap[stage] = stageMap[stage] || { count: 0, capacity: 0 };
-      stageMap[stage].count += 1;
-      stageMap[stage].capacity += tenderCapacity;
-
-      yearMap[year] = yearMap[year] || { count: 0, capacity: 0 };
-      yearMap[year].count += 1;
-      yearMap[year].capacity += tenderCapacity;
+    // ── Year breakdown (tendered capacity only) ────────────────
+    if (!yearMap[year]) yearMap[year] = { capacity: 0 };
+    yearMap[year].capacity += tc;
+    if (tenderKey) {
+      if (!yearTenderKeys[year]) yearTenderKeys[year] = new Set();
+      yearTenderKeys[year].add(tenderKey);
     }
+
+    // ── Stage breakdown (tendered capacity only) ───────────────
+    if (!stageMap[stage]) stageMap[stage] = { capacity: 0 };
+    stageMap[stage].capacity += tc;
+    if (tenderKey) {
+      if (!stageTenderKeys[stage]) stageTenderKeys[stage] = new Set();
+      stageTenderKeys[stage].add(tenderKey);
+    }
+  }
+
+  // Build final response with unique-tender counts
+  const byTechnology = Object.entries(techMap).map(([technology_type, values]) => {
+    const keys = techTenderKeys[technology_type];
+    return { technology_type, count: keys ? keys.size : 0, ...values };
+  });
+
+  const byYear = Object.entries(yearMap).map(([year, values]) => {
+    const keys = yearTenderKeys[year];
+    return { year, count: keys ? keys.size : 0, capacity: values.capacity };
+  });
+
+  const byStage = Object.entries(stageMap).map(([stage, values]) => {
+    const keys = stageTenderKeys[stage];
+    return { stage, count: keys ? keys.size : 0, capacity: values.capacity };
   });
 
   return {
-    total_tenders: rows.filter((r) => r.tendered_capacity_mw != null).length,
+    total_tenders: globalTenderKeys.size,
     tendered_capacity_mw: totalTendered,
     era_awarded_capacity_mw: totalEraAwarded,
     loa_loi_capacity_mw: totalLoaLoi,
@@ -3220,11 +3309,13 @@ function summarizeTenderRows(rows) {
     psa_capacity_mw: totalPsa,
     ppa_capacity_mw: totalPpa,
     psa_ppa_capacity_mw: totalPsa + totalPpa,
-    by_technology: Object.entries(techMap).map(([technology_type, values]) => ({ technology_type, ...values })),
-    by_stage: Object.entries(stageMap).map(([stage, values]) => ({ stage, ...values })),
-    by_year: Object.entries(yearMap).map(([year, values]) => ({ year, ...values })),
+    by_technology: byTechnology,
+    by_stage: byStage,
+    by_year: byYear,
   };
 }
+
+exports.summarizeTenderRows = summarizeTenderRows;
 
 /**
  * Read rows from a tender register Excel, handling merged/two-row headers.
@@ -3300,19 +3391,22 @@ exports.uploadTenderRegisterExcel = async (req, res) => {
 
     const rowKeys = Object.keys(rows[0]);
     // Build a normalized column mapping once, used by mapTenderRow for all rows.
-    // This is more robust than per-field fuzzy matching against thousands of rowKeys.
     const normMap = buildColumnMapping(rowKeys);
     const persistedRows = [];
     let inserted = 0;
-    let updated = 0;
 
+    // ── Deactivate ALL previously active rows BEFORE processing ──────────
+    // This eliminates the overwrite risk: each Excel row becomes its own
+    // independent DB row.  No upsert means a developer sub-row can never
+    // overwrite a main tender row's values.
+    await TenderRegister.update(
+      { is_active: false },
+      { where: { is_active: true } }
+    );
+
+    // ── Process each Excel row → INSERT as a new record ───────────────────
     async function saveTender(tender) {
       if (!tender) return null;
-      let existing = null;
-      const where = buildTenderLookupWhere(tender);
-      if (Object.keys(where).length) {
-        existing = await TenderRegister.findOne({ where });
-      }
       const payload = {
         tender_title: tender.tender_title,
         tendering_agency: tender.tendering_agency,
@@ -3336,24 +3430,12 @@ exports.uploadTenderRegisterExcel = async (req, res) => {
         uploaded_at: new Date(),
         is_active: true,
       };
-      let saved;
-      if (existing) {
-        saved = await existing.update(payload);
-        updated += 1;
-      } else {
-        saved = await TenderRegister.create(payload);
-        inserted += 1;
-      }
+      const saved = await TenderRegister.create(payload);
+      inserted += 1;
       const json = saved.toJSON();
       persistedRows.push(json);
       return json;
     }
-
-    let currentTender = null;
-    let lastDeveloperName = null;
-    let devSequence = 0;
-    // Track used (tender_title, tariff) combos for developer records to prevent overwrites
-    const devRecordKeys = new Set();
 
     for (const row of rows) {
       // Skip rows where first cell looks like a sub-header label
@@ -3361,100 +3443,32 @@ exports.uploadTenderRegisterExcel = async (req, res) => {
       if (/^(si\s*\.?\s*no|sno|sl\s*\.?\s*no|#)$/i.test(firstCell)) continue;
 
       const mapped = mapTenderRow(row, normMap);
+      const normalizedTech = normalizeTechnologyType(mapped.technology_type);
+      const normalizedTender = {
+        ...mapped,
+        technology_type: normalizedTech,
+      };
 
-      const isMainRow = !!(mapped.tender_title || mapped.rfs_number || mapped.tendering_agency);
-
-      if (isMainRow) {
-        // Save previous aggregated tender before starting a new one
-        if (currentTender) {
-          await saveTender(currentTender);
-        }
-        // Start new aggregated tender from this main row
-        currentTender = { ...mapped };
-        // Track the developer name from the main row for continuation sub-rows
-        lastDeveloperName = mapped.developer_name || null;
-        devSequence = 0;
-      } else if (currentTender) {
-        // Update last known developer name if this row has one
-        if (mapped.developer_name) {
-          lastDeveloperName = mapped.developer_name;
-        }
-
-        // Sub-row: check if it has its own tariff — save as separate record
-        if (mapped.tariff != null) {
-          // Build a developer-specific record inheriting parent tender info
-          // Use developer_name (Project Developer Name col) if available, else fall back to tendering_agency
-          const devName = String(lastDeveloperName || mapped.tendering_agency || '').trim();
-          let tenderTitle;
-          if (devName && devName !== 'Developer') {
-            tenderTitle = (currentTender.tender_title || '') + ' - ' + devName;
-          } else {
-            // No developer identifier — use sequence number to ensure uniqueness
-            devSequence++;
-            tenderTitle = (currentTender.tender_title || '') + ' - Developer (' + devSequence + ')';
-          }
-          // Ensure uniqueness by appending counter if (title, tariff) already used
-          const devKey = tenderTitle + '|' + mapped.tariff;
-          if (devRecordKeys.has(devKey)) {
-            let counter = 2;
-            let newTitle, newKey;
-            do {
-              newTitle = tenderTitle + ' (' + counter + ')';
-              newKey = newTitle + '|' + mapped.tariff;
-              counter++;
-            } while (devRecordKeys.has(newKey));
-            devRecordKeys.add(newKey);
-            tenderTitle = newTitle;
-          } else {
-            devRecordKeys.add(devKey);
-          }
-          const subTender = {
-            ...currentTender,
-            tender_title: tenderTitle,
-            tariff: mapped.tariff,
-            // Only include capacities from this sub-row
-            tendered_capacity_mw: null,
-            era_awarded_capacity_mw: null,
-            loa_loi_capacity_mw: mapped.loa_loi_capacity_mw,
-            commissioned_capacity_mw: mapped.commissioned_capacity_mw,
-            psa_capacity_mw: mapped.psa_capacity_mw,
-            ppa_capacity_mw: mapped.ppa_capacity_mw,
-          };
-          await saveTender(subTender);
-        }
-
-        // Aggregate developer-level capacities into the current tender
-        // BUT only if the sub-row was NOT already saved as a separate developer record above
-        // (rows saved separately already have their own PPA/PSA/Commissioned captured)
-        if (mapped.tariff == null) {
-          const hasDevData = mapped.loa_loi_capacity_mw != null || mapped.commissioned_capacity_mw != null || mapped.psa_capacity_mw != null || mapped.ppa_capacity_mw != null;
-          if (hasDevData) {
-            if (mapped.loa_loi_capacity_mw != null) {
-              currentTender.loa_loi_capacity_mw = (currentTender.loa_loi_capacity_mw || 0) + Number(mapped.loa_loi_capacity_mw);
-            }
-            if (mapped.commissioned_capacity_mw != null) {
-              currentTender.commissioned_capacity_mw = (currentTender.commissioned_capacity_mw || 0) + Number(mapped.commissioned_capacity_mw);
-            }
-            if (mapped.psa_capacity_mw != null) {
-              currentTender.psa_capacity_mw = (currentTender.psa_capacity_mw || 0) + Number(mapped.psa_capacity_mw);
-            }
-            if (mapped.ppa_capacity_mw != null) {
-              currentTender.ppa_capacity_mw = (currentTender.ppa_capacity_mw || 0) + Number(mapped.ppa_capacity_mw);
-            }
-          }
-        } else {
-          // Sub-row was saved as separate developer record, only aggregate LOA/LOI
-          // (LOA/LOI at the tender level represents the total awarded capacity)
-          if (mapped.loa_loi_capacity_mw != null) {
-            currentTender.loa_loi_capacity_mw = (currentTender.loa_loi_capacity_mw || 0) + Number(mapped.loa_loi_capacity_mw);
-          }
-        }
+      if (!isValidTenderRow(row, normalizedTender)) {
+        // Still insert rows that have commissioned capacity > 0 even if they
+        // have no recognized technology. These are developer sub-rows under a
+        // main tender — they lack tender-level fields (tech, title, RFS) but
+        // contain actual commissioned capacity (col71) that must be counted.
+        // CRITICAL: Only insert if commissioned is the ONLY positive field.
+        // The Grand Total summary row also has no tech and commissioned > 0,
+        // but it contains ALL summary values — inserting it would double-count.
+        const hasOtherFields = (normalizedTender.commissioned_capacity_mw > 0) && (
+          parseTenderValue(normalizedTender.tendered_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.era_awarded_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.loa_loi_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.psa_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.ppa_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.tariff) > 0
+        );
+        if (hasOtherFields || !normalizedTender.commissioned_capacity_mw || normalizedTender.commissioned_capacity_mw <= 0) continue;
       }
-    }
 
-    // Don't forget the LAST tender
-    if (currentTender) {
-      await saveTender(currentTender);
+      await saveTender(normalizedTender);
     }
 
     const summary = summarizeTenderRows(persistedRows);
@@ -3462,7 +3476,6 @@ exports.uploadTenderRegisterExcel = async (req, res) => {
     return res.status(200).json({
       message: "Tender register uploaded successfully",
       inserted,
-      updated,
       total: persistedRows.length,
       summary,
       rows: persistedRows,
