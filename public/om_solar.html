@@ -635,12 +635,12 @@
                 <th>GHI (kWh/sq.m)</th>
                 <th>Net Generation (kWh)</th>
                 <th>CUF (%)</th>
-                <th>Peak Power (MW)</th>
+                <th>Peak Power (kW)</th>
                 <th>Remarks</th>
                 <th>GHI (kWh/sq.m)</th>
                 <th>Net Generation (kWh)</th>
                 <th>CUF (%)</th>
-                <th>Peak Power (MW)</th>
+                <th>Peak Power (kW)</th>
               </tr>
             </thead>
             <tbody id="last7DaysTableBody">
@@ -1049,14 +1049,14 @@
               <td>${cur?.radiation ? cur.radiation.toFixed(2) : ""}</td>
               <td>${cur?.generation ?? ""}</td>
               <td>${cur ? cur.cuf.toFixed(2) + "%" : ""}</td>
-              <td>${cur?.peak_power ?? ""}</td>
+              <td>${cur?.peak_power != null ? cur.peak_power.toFixed(3) : ""}</td>
               <td title="${cur?.remarks || ""}">${cur?.remarks ? cur.remarks.substring(0, 30) + (cur.remarks.length > 30 ? "..." : "") : ""}</td>
 
               <!-- Previous Year -->
               <td>${prev?.radiation ? prev.radiation.toFixed(2) : ""}</td>
               <td>${prev?.generation ?? ""}</td>
               <td>${prev ? prev.cuf.toFixed(2) + "%" : ""}</td>
-              <td>${prev?.peak_power ?? ""}</td>
+              <td>${prev?.peak_power != null ? prev.peak_power.toFixed(3) : ""}</td>
             </tr>
           `;
         });
