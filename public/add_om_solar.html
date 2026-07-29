@@ -322,7 +322,7 @@
               min="0"
               required
             />
-            <span class="unit">kW</span>
+            <span class="unit">MW</span>
           </div>
           <div class="error-message" id="peak-power-error">
             Please enter a valid peak power value
@@ -589,7 +589,7 @@
     function setDefaultValues(data) {
       generationInput.value = data.generation ?? "";
       radiationInput.value = data.radiation ?? "";
-      peakPowerInput.value = data.peak_power ?? "";
+      peakPowerInput.value = data.peak_power != null ? (data.peak_power / 1000) : "";
       machineAvailabilityInput.value = data.machine_availability ?? "";
       gridAvailabilityInput.value = data.grid_availability ?? "";
       cumulativeGenerationInput.value = data.cumulative_generation ?? "";
@@ -743,7 +743,7 @@
         days: daysInput.value,
         generation: generationInput.value,
         radiation: radiationInput.value,
-        peak_power: peakPowerInput.value,
+        peak_power: peakPowerInput.value !== "" ? Number(peakPowerInput.value) * 1000 : "",
         machine_availability: machineAvailabilityInput.value,
         grid_availability: gridAvailabilityInput.value,
         cumulative_generation: cumulativeGenerationInput.value,

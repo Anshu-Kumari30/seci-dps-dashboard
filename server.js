@@ -12,10 +12,8 @@ const {
 const config = require("./config");
 const logger = require("./logger");
 
-console.log("config.DB_USER", config.DB_USER);
-console.log("config.DB_PASS", config.DB_PASS);
-console.log("config.DB_HOST", config.DB_HOST);
-console.log("config.DB_PORT", config.DB_PORT);
+// Security: Never log credentials
+logger.info(`Starting with DB_HOST=${config.DB_HOST} DB_PORT=${config.DB_PORT} DB_USER=${config.DB_USER}`);
 
 process.on("uncaughtException", (err) => {
   logger.error("UNCAUGHT EXCEPTION", err);
@@ -36,7 +34,6 @@ const { sequelize, models } = require("./models");
 
 const mysql = require("mysql2/promise");
 const Sequelize = require("sequelize");
-const { log } = require("console");
 
 // Ensure database exists
 async function ensureDatabaseExists() {
@@ -157,6 +154,53 @@ function startExpressServer() {
   const app = express();
 
   const morgan = require("morgan");
+  const helmet = require("helmet");
+  const cors = require("cors");
+  const rateLimit = require("express-rate-limit");
+
+  // ─── Security Headers ───
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "same-origin" },
+    contentSecurityPolicy: false, // Disabled for HTML pages that use inline scripts
+  }));
+
+  // ─── CORS - restrict to same origin ───
+  app.use(cors({
+    origin: false, // Only allow same-origin requests
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    maxAge: 86400,
+  }));
+
+  // ─── Rate Limiting ───
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 200, // limit each IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later." },
+  });
+  app.use("/api/", limiter);
+
+  // Stricter rate limit for login
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many login attempts, please try again later." },
+  });
+  app.use("/api/auth/login", loginLimiter);
+
+  // Stricter rate limit for password reset
+  const resetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many reset attempts, please try again later." },
+  });
+  app.use("/api/auth/password", resetLimiter);
 
   app.use(
     morgan("combined", {
@@ -177,8 +221,8 @@ function startExpressServer() {
   app.use("/api/data/om/excel/upload", require("./routes/document_upload"));
   app.use("/api/data/om/upload", require("./routes/document_upload"));
 
-  app.use(express.json({ limit: "100mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
   const publicIconsDir = path.join(__dirname, "public", "icons");
   const rootIconsDir = path.join(__dirname, "icons");
   if (!fs.existsSync(publicIconsDir) && !fs.existsSync(rootIconsDir)) {
@@ -188,7 +232,9 @@ function startExpressServer() {
   app.use(express.static(path.join(__dirname, "public")));
   app.use("/icons", express.static(publicIconsDir));
   app.use("/icons", express.static(rootIconsDir));
-  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+  // 🔒 Uploads are protected behind authentication via the document routes
+  // Static /uploads is NOT exposed to prevent unauthorized file access
+  // Files are served through authenticated API endpoints only
 
   app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "login.html"));
@@ -205,6 +251,24 @@ function startExpressServer() {
   // Serve a friendly route for the PMC projects page (DPR/PFR/BMS)
   app.get("/pmc_projects", (req, res) => {
     return res.sendFile(path.join(__dirname, "public", "pmc_projects.html"));
+  });
+
+  // ─── Global Error Handler (must be last) ───
+  app.use((err, req, res, next) => {
+    logger.error("Unhandled error:", { message: err.message, stack: err.stack });
+
+    // Multer file size error
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ error: "File too large. Maximum size is 10MB." });
+    }
+
+    // Multer file type error
+    if (err.message && err.message.includes("Invalid file type")) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    // Generic — don't leak error details in production
+    res.status(err.status || 500).json({ error: "Internal server error" });
   });
 
   const port = process.env.PORT || SERVER_PORT;

@@ -52,7 +52,9 @@ async function login_user(req, res) {
 
 async function getAllUsers(req, res) {
   try {
-    const foundUsers = await User.findAll();
+    const foundUsers = await User.findAll({
+      attributes: { exclude: ["password"] },
+    });
     res.json(foundUsers);
   } catch (err) {
     console.error(err);
@@ -91,7 +93,7 @@ async function createUser(req, res) {
     // Determine default password based on role
     let defaultPassword;
     if (role === "admin") {
-      defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin1234";
+      defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || "Admin@123_";
     } else if (role === "user") {
       defaultPassword = process.env.DEFAULT_USER_PASSWORD || "user1234";
     } else if (role === "viewer") {
@@ -107,8 +109,6 @@ async function createUser(req, res) {
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-
-    logger.info("Hashed password generated", { hashedPassword });
 
     // Create the user
     const newUser = await User.create({
@@ -303,18 +303,12 @@ async function forgotPassword(req, res) {
       // ensure 'from' uses EMAIL_FROM when provided
       const from = process.env.EMAIL_FROM || process.env.EMAIL_HOST_USER;
       mailInfo = await sendMail({ to: email, subject, text, from });
-      console.log('Password reset mail sent', {
-        to: email,
-        accepted: mailInfo && mailInfo.accepted,
-        rejected: mailInfo && mailInfo.rejected,
-        messageId: mailInfo && mailInfo.messageId,
-        response: mailInfo && mailInfo.response,
-      });
+      logger.info('Password reset mail sent', { to: email });
     } catch (mailErr) {
-      console.warn('Failed to send reset mail', mailErr && mailErr.message ? mailErr.message : mailErr);
-      if (mailErr && mailErr.response) console.warn('SMTP response', mailErr.response);
+      logger.warn('Failed to send reset email');
     }
-    //persist messageId/response on user for tracing (if possible)
+
+    // Persist delivery metadata for tracing (stored in DB, not returned to user)
 
     try {
       if (mailInfo && mailInfo.messageId) {
@@ -327,17 +321,8 @@ async function forgotPassword(req, res) {
       console.warn('Failed to persist reset mail metadata', updErr && updErr.message ? updErr.message : updErr);
     }
 
-    const responsePayload = { message: 'If an account exists, a reset email will be sent.' };
-    if (mailInfo) {
-      responsePayload.mail_debug = {
-        accepted: mailInfo.accepted,
-        rejected: mailInfo.rejected,
-        messageId: mailInfo.messageId,
-        response: mailInfo.response,
-      };
-    }
-
-    return res.json(responsePayload);
+    // Security: Only return a generic message — never leak email delivery details
+    return res.json({ message: 'If an account exists, a reset email will be sent.' });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Internal server error' });

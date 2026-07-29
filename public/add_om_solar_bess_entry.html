@@ -290,7 +290,7 @@
           </div>
         </div>
 
-        <!-- Peak Power (kW) -->
+        <!-- Peak Power (MW) -->
         <div class="form-group">
           <label for="peak_power" class="required">Peak Power</label>
           <div class="input-with-unit">
@@ -301,7 +301,7 @@
               min="0"
               required
             />
-            <span class="unit">kW</span>
+            <span class="unit">MW</span>
           </div>
         </div>
 
@@ -613,7 +613,7 @@
       // Generation & BESS
       generationInput.value = data.generation ?? "";
       radiationInput.value = data.radiation ?? "";
-      peakPowerInput.value = data.peak_power ?? "";
+      peakPowerInput.value = data.peak_power != null ? (data.peak_power / 1000) : "";
       bessExportInput.value = data.bess_export ?? "";
       bessImportInput.value = data.bess_import ?? "";
 
@@ -832,7 +832,7 @@
         days: daysInput.value,
         generation: generationInput.value,
         radiation: radiationInput.value,
-        peak_power: peakPowerInput.value,
+        peak_power: peakPowerInput.value !== "" ? Number(peakPowerInput.value) * 1000 : "",
         bess_export: bessExportInput.value,
         bess_import: bessImportInput.value,
         plant_availability: plantAvailabilityInput.value,

@@ -17,9 +17,31 @@ const storage = multer.diskStorage({
   },
 });
 
+const allowedMimeTypes = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+];
+
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
+  fileFilter: (req, file, cb) => {
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only PDF, images, documents, and spreadsheets are allowed."), false);
+    }
+  },
 });
 
 // --- Read-only data-fetch POST routes (before requireDeptEditAccess so viewers can access them) ---
@@ -222,40 +244,47 @@ router.post(
 // PMC slice editor routes (moved from pmc_slice_routes.js)
 router.get(
   "/pmc/slice_editor/segment/:segment",
+  verifyToken,
   dataController.getPmcSliceMetaBySegment,
 );
 
 router.post(
   "/pmc/slice_editor/save",
+  verifyToken,
   requireDeptHeadAccess,
   dataController.savePmcSliceMeta,
 );
 
 router.delete(
   "/pmc/slice_editor/item/:id",
+  verifyToken,
   requireDeptHeadAccess,
   dataController.deletePmcSliceMetaItem,
 );
 
 router.post(
   "/pmc/slice_editor/cleanup",
+  verifyToken,
   dataController.cleanupPmcExecution,
 );
 
 // Legacy-compatible aliases from pmc_slice_routes.js
 router.get(
   "/pmc_slice/segment/:segment",
+  verifyToken,
   dataController.getPmcSliceMetaBySegment,
 );
 
 router.post(
   "/pmc_slice/save",
+  verifyToken,
   requireDeptHeadAccess,
   dataController.savePmcSliceMeta,
 );
 
 router.post(
   "/pmc_slice/cleanup",
+  verifyToken,
   dataController.cleanupPmcExecution,
 );
 
