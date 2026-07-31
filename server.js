@@ -156,7 +156,6 @@ function startExpressServer() {
   const morgan = require("morgan");
   const helmet = require("helmet");
   const cors = require("cors");
-  const rateLimit = require("express-rate-limit");
 
   // ─── Security Headers ───
   app.use(helmet({
@@ -173,34 +172,10 @@ function startExpressServer() {
   }));
 
   // ─── Rate Limiting ───
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 200, // limit each IP
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests, please try again later." },
-  });
-  app.use("/api/", limiter);
-
-  // Stricter rate limit for login
-  const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many login attempts, please try again later." },
-  });
-  app.use("/api/auth/login", loginLimiter);
-
-  // Stricter rate limit for password reset
-  const resetLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 5,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many reset attempts, please try again later." },
-  });
-  app.use("/api/auth/password", resetLimiter);
+  // IP-based limiting removed: behind the IIS/ARR proxy every user shares one IP,
+  // so it blocked innocent users. Login brute-force protection is now handled
+  // per-account in auth_controller.js (failed-attempt lockout per email).
+  // app.use("/api/", limiter);
 
   app.use(
     morgan("combined", {

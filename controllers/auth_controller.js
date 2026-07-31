@@ -7,11 +7,53 @@ const crypto = require("crypto");
 
 require("dotenv").config(); // Load environment variables from .env file
 
+// ─── Per-account login throttling (in-memory) ───
+// Tracks failed attempts per email address. Blocks only THAT account.
+const MAX_FAILED_ATTEMPTS = 20;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+const loginAttempts = new Map(); // email -> { count, lockedUntil }
+
+function checkLoginLock(email) {
+  const entry = loginAttempts.get(String(email || "").toLowerCase());
+  if (!entry) return null;
+  if (entry.lockedUntil && entry.lockedUntil > Date.now()) {
+    const minsLeft = Math.ceil((entry.lockedUntil - Date.now()) / 60000);
+    return minsLeft;
+  }
+  if (entry.lockedUntil && entry.lockedUntil <= Date.now()) {
+    loginAttempts.delete(String(email || "").toLowerCase());
+  }
+  return null;
+}
+
+function recordFailedAttempt(email) {
+  const key = String(email || "").toLowerCase();
+  const entry = loginAttempts.get(key) || { count: 0, lockedUntil: null };
+  entry.count += 1;
+  if (entry.count >= MAX_FAILED_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOCKOUT_MS;
+    entry.count = 0;
+  }
+  loginAttempts.set(key, entry);
+}
+
+function clearLoginAttempts(email) {
+  loginAttempts.delete(String(email || "").toLowerCase());
+}
+
 // Get all active users (excluding passwords)
 async function login_user(req, res) {
   const { email, password } = req.body;
 
   const bcrypt = require("bcrypt");
+
+  // Block this account if it was locked due to repeated failures
+  const lockMinsLeft = checkLoginLock(email);
+  if (lockMinsLeft !== null) {
+    return res.status(429).json({
+      error: `Too many failed attempts for this account. Try again in ${lockMinsLeft} minute(s).`,
+    });
+  }
 
   try {
     await User.findOne({
@@ -24,6 +66,7 @@ async function login_user(req, res) {
       }
       const match = await bcrypt.compare(password, user.password);
       if (match) {
+        clearLoginAttempts(email);
         const token = jwt.sign(
           {
             user_id: user.user_id,
@@ -42,6 +85,7 @@ async function login_user(req, res) {
         });
         return;
       }
+      recordFailedAttempt(email);
       return res.status(401).json({ error: "Invalid credentials" });
     });
   } catch (err) {
