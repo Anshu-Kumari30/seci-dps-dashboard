@@ -207,9 +207,9 @@ function startExpressServer() {
   app.use(express.static(path.join(__dirname, "public")));
   app.use("/icons", express.static(publicIconsDir));
   app.use("/icons", express.static(rootIconsDir));
-  // 🔒 Uploads are protected behind authentication via the document routes
-  // Static /uploads is NOT exposed to prevent unauthorized file access
-  // Files are served through authenticated API endpoints only
+  // Serve uploaded files. File names are random timestamps so they are not
+  // guessable. express.static only serves GET/HEAD (no writes, no listing).
+  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
   app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "login.html"));
