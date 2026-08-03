@@ -4,22 +4,61 @@ const router = express.Router();
 const dataController = require("../controllers/data_controllers");
 const { verifyToken, verifyAdmin } = require("../middleware/verify_token");
 const { requireDeptEditAccess } = require("../middleware/require_dept_edit_access");
+const { requireDeptHeadAccess } = require("../middleware/require_dept_head_access");
 const auditLogger = require("../middleware/audit_logger");
 const multer = require("multer");
 const path = require("path");
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
+  destination: (req, file, cb) => cb(null, path.join(__dirname, "..", "uploads")),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   },
 });
 
+const allowedMimeTypes = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+];
+
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
+  fileFilter: (req, file, cb) => {
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only PDF, images, documents, and spreadsheets are allowed."), false);
+    }
+  },
 });
+
+// --- Read-only data-fetch POST routes (before requireDeptEditAccess so viewers can access them) ---
+
+router.post(
+  "/om/solar_bess/date/one",
+  verifyToken,
+  auditLogger("Fetched the OM Solar+BESS data for a specific date"),
+  dataController.getOMSolarBESSDataForDate,
+);
+
+router.post(
+  "/om/solar/date/one",
+  verifyToken,
+  auditLogger("Fetched the OM Solar data for a specific date"),
+  dataController.getOMSolarDataForDate,
+);
 
 router.use(requireDeptEditAccess);
 
@@ -91,6 +130,50 @@ router.post(
   dataController.createBusinessDevelopmentEntry,
 );
 
+// ──────────────────────────────────────────────
+// C&P Own Projects routes
+// ──────────────────────────────────────────────
+
+// get all C&P own projects
+router.get(
+  "/cp/entry/all",
+  verifyToken,
+  auditLogger("Viewed all C&P own projects"),
+  dataController.getAllCpOwnProjects,
+);
+
+// get one C&P own project
+router.get(
+  "/cp/entry/one/:cp_entry_id",
+  verifyToken,
+  auditLogger("Viewed a C&P own project"),
+  dataController.getOneCpOwnProject,
+);
+
+// add a C&P own project
+router.post(
+  "/cp/entry/add",
+  verifyToken,
+  auditLogger("Added a C&P own project"),
+  dataController.createCpOwnProject,
+);
+
+// edit a C&P own project
+router.put(
+  "/cp/entry/edit/:cp_entry_id",
+  verifyToken,
+  auditLogger("Edited a C&P own project"),
+  dataController.editCpOwnProject,
+);
+
+// delete a C&P own project
+router.delete(
+  "/cp/entry/delete/:cp_entry_id",
+  verifyToken,
+  auditLogger("Deleted a C&P own project"),
+  dataController.deleteCpOwnProject,
+);
+
 // PMC entries
 router.get(
   "/pmc/entry/all",
@@ -153,6 +236,7 @@ router.get(
 router.post(
   "/pmc/slice_meta/save",
   verifyToken,
+  requireDeptHeadAccess,
   auditLogger("Saved PMC slice metadata"),
   dataController.savePmcSliceMeta,
 );
@@ -160,37 +244,47 @@ router.post(
 // PMC slice editor routes (moved from pmc_slice_routes.js)
 router.get(
   "/pmc/slice_editor/segment/:segment",
+  verifyToken,
   dataController.getPmcSliceMetaBySegment,
 );
 
 router.post(
   "/pmc/slice_editor/save",
+  verifyToken,
+  requireDeptHeadAccess,
   dataController.savePmcSliceMeta,
 );
 
 router.delete(
   "/pmc/slice_editor/item/:id",
+  verifyToken,
+  requireDeptHeadAccess,
   dataController.deletePmcSliceMetaItem,
 );
 
 router.post(
   "/pmc/slice_editor/cleanup",
+  verifyToken,
   dataController.cleanupPmcExecution,
 );
 
 // Legacy-compatible aliases from pmc_slice_routes.js
 router.get(
   "/pmc_slice/segment/:segment",
+  verifyToken,
   dataController.getPmcSliceMetaBySegment,
 );
 
 router.post(
   "/pmc_slice/save",
+  verifyToken,
+  requireDeptHeadAccess,
   dataController.savePmcSliceMeta,
 );
 
 router.post(
   "/pmc_slice/cleanup",
+  verifyToken,
   dataController.cleanupPmcExecution,
 );
 
@@ -381,6 +475,35 @@ router.delete(
   verifyToken,
   auditLogger("Deleted an entry from the contract table"),
   dataController.deleteEntryFromContractsTable,
+);
+
+router.post(
+  "/contracts/tenders/upload",
+  verifyToken,
+  upload.single("excelFile"),
+  auditLogger("Uploaded contract tender register Excel"),
+  dataController.uploadTenderRegisterExcel,
+);
+
+router.get(
+  "/contracts/tenders/all",
+  verifyToken,
+  auditLogger("Viewed contract tender register entries"),
+  dataController.getTenderRegisters,
+);
+
+router.get(
+  "/contracts/tenders/summary",
+  verifyToken,
+  auditLogger("Viewed contract tender register summary"),
+  dataController.getTenderRegisterSummary,
+);
+
+router.get(
+  "/contracts/tenders/download",
+  verifyToken,
+  auditLogger("Downloaded contract tender register Excel"),
+  dataController.downloadTenderRegisterExcel,
 );
 
 router.get(
@@ -678,11 +801,11 @@ router.get(
   dataController.getOAllMSolarBESSData,
 );
 
-router.post(
-  "/om/solar_bess/date/one",
+router.get(
+  "/om/solar_bess/last-date",
   verifyToken,
-  auditLogger("Fetched the OM Solar+BESS data for a specific date"),
-  dataController.getOMSolarBESSDataForDate,
+  auditLogger("Fetched latest OM Solar+BESS date for entity"),
+  dataController.getOMSolarBESSLatestDate,
 );
 
 router.post(
@@ -699,11 +822,11 @@ router.post(
   dataController.updateOMDGRSolarForOneDate,
 );
 
-router.post(
-  "/om/solar/date/one",
+router.get(
+  "/om/solar/last-date",
   verifyToken,
-  auditLogger("Fetched the OM Solar data for a specific date"),
-  dataController.getOMSolarDataForDate,
+  auditLogger("Fetched latest OM Solar date for entity"),
+  dataController.getOMSolarLatestDate,
 );
 
 router.get(

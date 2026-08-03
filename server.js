@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 // Load .env from this src directory to avoid relying on process.cwd()
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { performance } = require("perf_hooks");
@@ -11,10 +12,8 @@ const {
 const config = require("./config");
 const logger = require("./logger");
 
-console.log("config.DB_USER", config.DB_USER);
-console.log("config.DB_PASS", config.DB_PASS);
-console.log("config.DB_HOST", config.DB_HOST);
-console.log("config.DB_PORT", config.DB_PORT);
+// Security: Never log credentials
+logger.info(`Starting with DB_HOST=${config.DB_HOST} DB_PORT=${config.DB_PORT} DB_USER=${config.DB_USER}`);
 
 process.on("uncaughtException", (err) => {
   logger.error("UNCAUGHT EXCEPTION", err);
@@ -35,7 +34,6 @@ const { sequelize, models } = require("./models");
 
 const mysql = require("mysql2/promise");
 const Sequelize = require("sequelize");
-const { log } = require("console");
 
 // Ensure database exists
 async function ensureDatabaseExists() {
@@ -156,6 +154,28 @@ function startExpressServer() {
   const app = express();
 
   const morgan = require("morgan");
+  const helmet = require("helmet");
+  const cors = require("cors");
+
+  // ─── Security Headers ───
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "same-origin" },
+    contentSecurityPolicy: false, // Disabled for HTML pages that use inline scripts
+  }));
+
+  // ─── CORS - restrict to same origin ───
+  app.use(cors({
+    origin: false, // Only allow same-origin requests
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    maxAge: 86400,
+  }));
+
+  // ─── Rate Limiting ───
+  // IP-based limiting removed: behind the IIS/ARR proxy every user shares one IP,
+  // so it blocked innocent users. Login brute-force protection is now handled
+  // per-account in auth_controller.js (failed-attempt lockout per email).
+  // app.use("/api/", limiter);
 
   app.use(
     morgan("combined", {
@@ -176,10 +196,19 @@ function startExpressServer() {
   app.use("/api/data/om/excel/upload", require("./routes/document_upload"));
   app.use("/api/data/om/upload", require("./routes/document_upload"));
 
-  app.use(express.json({ limit: "100mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+  const publicIconsDir = path.join(__dirname, "public", "icons");
+  const rootIconsDir = path.join(__dirname, "icons");
+  if (!fs.existsSync(publicIconsDir) && !fs.existsSync(rootIconsDir)) {
+    logger.warn("Icons directory not found in public/icons or /icons.");
+  }
+
   app.use(express.static(path.join(__dirname, "public")));
-  app.use("/icons", express.static(path.join(__dirname, "icons")));
+  app.use("/icons", express.static(publicIconsDir));
+  app.use("/icons", express.static(rootIconsDir));
+  // Serve uploaded files. File names are random timestamps so they are not
+  // guessable. express.static only serves GET/HEAD (no writes, no listing).
   app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
   app.get("/", (req, res) => {
@@ -197,6 +226,24 @@ function startExpressServer() {
   // Serve a friendly route for the PMC projects page (DPR/PFR/BMS)
   app.get("/pmc_projects", (req, res) => {
     return res.sendFile(path.join(__dirname, "public", "pmc_projects.html"));
+  });
+
+  // ─── Global Error Handler (must be last) ───
+  app.use((err, req, res, next) => {
+    logger.error("Unhandled error:", { message: err.message, stack: err.stack });
+
+    // Multer file size error
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ error: "File too large. Maximum size is 10MB." });
+    }
+
+    // Multer file type error
+    if (err.message && err.message.includes("Invalid file type")) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    // Generic — don't leak error details in production
+    res.status(err.status || 500).json({ error: "Internal server error" });
   });
 
   const port = process.env.PORT || SERVER_PORT;

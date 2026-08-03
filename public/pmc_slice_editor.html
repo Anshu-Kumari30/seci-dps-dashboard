@@ -57,14 +57,14 @@
         </div>
 
         <div style="margin-top:8px;">
-          <button id="addProjectTop" type="button" class="btn btn-success">+ Add Project</button>
+          <button id="addProjectTop" type="button" class="btn btn-success head-only">+ Add Project</button>
         </div>
 
         <div id="slices"></div>
       </div>
       <div class="btn-actions">
         <button id="cancelBtn" type="button" class="btn btn-secondary">Cancel</button>
-        <button id="saveAll" type="button" class="btn btn-success">Save Changes</button>
+        <button id="saveAll" type="button" class="btn btn-success head-only">Save Changes</button>
       </div>
     </div>
   </div>
@@ -137,6 +137,68 @@
   <script>
   const apiBase = '/api/data/pmc/slice_editor';
 
+  function authFetch(url, options) {
+    const token = localStorage.getItem("token");
+    return fetch(url, {
+      ...(options || {}),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...((options && options.headers) || {}),
+      },
+    });
+  }
+
+  async function resolvePmcAccessLevel() {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return "none";
+      const payload = JSON.parse(atob(token.split(".")[1] || ""));
+      if (payload && payload.role === "admin") return "head";
+
+      const userId = payload && payload.user_id;
+      if (!userId) return "none";
+
+      const deptRes = await authFetch(`/api/data/departments/user/${userId}`);
+      if (!deptRes.ok) return "none";
+      const deptPayload = await deptRes.json();
+      const deptList = Array.isArray(deptPayload.departments) ? deptPayload.departments : [];
+
+      for (const item of deptList) {
+        const deptId = item && item.dept_id;
+        if (!deptId) continue;
+        const nameRes = await authFetch(`/api/data/departments/${deptId}`);
+        if (!nameRes.ok) continue;
+        const dept = await nameRes.json();
+        if (dept && dept.dept_name === "PMC") {
+          const rawLevel = String(item.access_level || "").trim().toLowerCase();
+          if (rawLevel === "view" || rawLevel === "edit" || rawLevel === "head") return rawLevel;
+          return item.can_edit === true ? "edit" : "view";
+        }
+      }
+      return "none";
+    } catch (e) {
+      return "none";
+    }
+  }
+
+  async function applyPmcSliceAccess() {
+    const level = await resolvePmcAccessLevel();
+    if (level !== "edit" && level !== "head") {
+      alert("View access only. Editing is not allowed for this department.");
+      window.location.href = "/home.html";
+      return;
+    }
+
+    const isHead = level === "head";
+    // expose flags for runtime checks
+    window.canPmcHead = isHead;
+    window.canPmcEdit = (level === 'edit' || level === 'head');
+    document.querySelectorAll(".head-only").forEach((el) => {
+      el.style.display = isHead ? "" : "none";
+    });
+  }
+
   async function loadSegment(){
     const stat = (document.getElementById('statistic_name')||{}).value || '';
     const seg = stat || new URLSearchParams(window.location.search).get('segment') || 'pmc';
@@ -150,7 +212,7 @@
       c.appendChild(makeSliceCard());
       return;
     }
-    const res = await fetch(`${apiBase}/segment/${encodeURIComponent(seg)}`);
+    const res = await authFetch(`${apiBase}/segment/${encodeURIComponent(seg)}`);
     const data = await res.json();
     const items = data.items || [];
     renderSlices(items);
@@ -249,7 +311,7 @@
         if (itemId) {
           try {
             const delUrl = `${apiBase}/item/${encodeURIComponent(itemId)}?segment=${encodeURIComponent(segParam)}&project_name=${encodeURIComponent(pname)}`;
-            const delRes = await fetch(delUrl, { method: 'DELETE' });
+            const delRes = await authFetch(delUrl, { method: 'DELETE' });
             const delData = await delRes.json().catch(() => ({}));
             // 404 means row already removed/not found on server; allow UI removal to proceed.
             if ((delRes.status !== 404) && (!delRes.ok || !delData.ok)) {
@@ -350,6 +412,7 @@
 
   document.getElementById('saveAll').addEventListener('click', async (ev)=>{
     try { ev.preventDefault(); } catch(e) {}
+    if (!window.canPmcHead) { return alert('Head access is required to save chart slices.'); }
     const seg = new URLSearchParams(window.location.search).get('segment') || (document.getElementById('statistic_name')||{}).value || 'pmc';
     const sliceNodes = Array.from(document.querySelectorAll('.slice-item'));
     const items = sliceNodes.map(n=>{
@@ -373,9 +436,8 @@
       };
     });
 
-    const res = await fetch(`${apiBase}/save`, {
+    const res = await authFetch(`${apiBase}/save`, {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ segment: seg, replaceAll: true, items })
     });
     const data = await res.json();
@@ -431,7 +493,7 @@
         else if (seg.toLowerCase().includes('execution')) sel.value = 'pmc-execution';
       }
     }
-    loadSegment();
+    applyPmcSliceAccess().then(loadSegment);
   })();
   
   </script>

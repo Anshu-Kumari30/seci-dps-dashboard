@@ -1,136 +1,1106 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Contracts & Procurement</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="css/style.css" />
-    <style>
-      .table-container {
-        margin-top: 30px;
-      }
-    </style>
-  </head>
-  <body class="p-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="mb-0">Contracts & Procurement</h2>
-      <div>
-        <a href="/home.html" class="btn btn-secondary me-2">Back to Home</a>
-        <a href="/add_contract_entry.html" class="btn btn-primary">Add Entry</a>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contracts & Procurements- scheme</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body {
+      font-family: "Roboto", sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .page-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1f4e79;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .header-actions .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+    }
+    .header-actions .btn-upload {
+      background: #0b5ed7;
+      color: #fff;
+    }
+    .header-actions .btn-upload:hover {
+      background: #0847a5;
+      box-shadow: 0 2px 8px rgba(11,94,215,.35);
+    }
+    .header-actions .btn-export {
+      background: #198754;
+      color: #fff;
+    }
+    .header-actions .btn-export:hover {
+      background: #146c43;
+      box-shadow: 0 2px 8px rgba(25,135,84,.35);
+    }
+    .header-actions .btn-home {
+      background: #e9ecef;
+      color: #495057;
+    }
+    .header-actions .btn-home:hover {
+      background: #dee2e6;
+      color: #212529;
+    }
+
+    .donut-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      text-align: center;
+      padding-bottom: 2px;
+      margin-bottom: 2px;
+    }
+    .tariff-info {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      padding: 12px 14px;
+      background: #fff;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 11px;
+      color: #495057;
+      line-height: 1.6;
+    }
+    .tariff-info .ti-block {
+      text-align: left;
+      padding: 4px 6px;
+    }
+    .donut-card {
+      background: #fff;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 12px 6px 8px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .dc-value-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 6px 14px 5px;
+      margin-bottom: 8px;
+      width: 100%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .s-blue-bg  { border-left: 3px solid #f0a500; }
+    .s-green-bg { border-left: 3px solid #28a745; }
+    .s-teal-bg  { border-left: 3px solid #0d6efd; }
+    .s-purple-bg{ border-left: 3px solid #6f42c1; }
+    .s-red-bg   { border-left: 3px solid #dc3545; }
+
+    .donut-card .dc-value {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .donut-card .dc-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #6c757d;
+      margin-bottom: 0;
+    }
+    .donut-card .dc-chart {
+      width: 100%;
+    }
+    .donut-card .dc-legend {
+      font-size: 11px;
+      color: #495057;
+      margin-top: 4px;
+    }
+    .donut-card .dc-legend .dc-dot { font-size: 13px; }
+
+    .charts-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .charts-row .donut-card {
+      padding: 14px 8px 12px;
+    }
+    .charts-row .donut-card .dc-value {
+      font-size: 20px;
+    }
+    .charts-row .donut-card .dc-chart {
+      max-height: 175px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .tech-legend-box {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #495057;
+    }
+    .tech-legend-box .legend-item {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .bottom-row .card {
+      margin-bottom: 0;
+    }
+
+    .s-blue { color: #f0a500; }
+    .s-green { color: #28a745; }
+    .s-teal { color: #0d6efd; }
+    .s-purple { color: #6f42c1; }
+    .s-red { color: #dc3545; }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e9ecef;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: #f8fbff;
+      border-bottom: 1px solid #e9ecef;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1f4e79;
+    }
+    .card-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: #0b5ed7;
+      background: #eaf1fb;
+      padding: 3px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.02em;
+    }
+    .card-body {
+      padding: 16px 18px;
+    }
+
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .filter-label {
+      font-size: 12px;
+      color: #6c757d;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .filter-btn {
+      padding: 4px 14px;
+      border-radius: 20px;
+      border: 1px solid #ced4da;
+      background: transparent;
+      color: #6c757d;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-btn:hover { border-color: #0b5ed7; color: #0b5ed7; }
+    .filter-btn.active {
+      background: #eaf1fb;
+      border-color: #0b5ed7;
+      color: #0b5ed7;
+      font-weight: 600;
+    }
+    .filter-input {
+      background: #fff;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      outline: none;
+      margin-left: auto;
+      width: 220px;
+      transition: border-color .15s;
+    }
+    .filter-input:focus { border-color: #0b5ed7; }
+    .filter-input::placeholder { color: #adb5bd; }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    thead th {
+      background: #f8fbff;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #1f4e79;
+      border-bottom: 2px solid #e9ecef;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:hover { background: #eef3fa; }
+    thead th .sort-arrow { margin-left: 4px; font-size: 10px; color: #6c757d; }
+    tbody tr { border-bottom: 1px solid #f0f0f0; transition: background .1s; }
+    tbody tr:hover { background: #f8fbff; }
+    tbody td { padding: 10px 14px; color: #333; }
+
+    .tech-badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .tech-Solar { background: #fff4e0; color: #cc7a00; }
+    .tech-Wind { background: #e6f7e6; color: #1b7a2b; }
+    .tech-Hybrid { background: #e6f0ff; color: #0056b3; }
+    .tech-RTC { background: #f0e6ff; color: #5a2d9c; }
+    .tech-FDRE { background: #ffe6e6; color: #b30000; }
+
+    .cap-bar-wrap { display: flex; align-items: center; gap: 6px; }
+    .cap-bar {
+      flex: 1; height: 6px; background: #e9ecef; border-radius: 4px; overflow: hidden; min-width: 50px;
+    }
+    .cap-bar-fill { height: 100%; background: linear-gradient(90deg, #0d6efd, #0b5ed7); border-radius: 4px; }
+
+    .table-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: #f8fbff;
+      border-top: 1px solid #e9ecef;
+      font-size: 12px;
+    }
+    .table-footer button {
+      padding: 4px 14px;
+      border: 1px solid #ced4da;
+      background: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .table-footer button:disabled { opacity: .4; cursor: default; }
+    .table-footer .page-info { color: #6c757d; }
+
+    @media (max-width: 1100px) {
+      .charts-row { grid-template-columns: repeat(3, 1fr); }
+      .bottom-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .charts-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body style="padding:20px">
+
+  <div class="page-title">
+    Contracts &amp; Procurement - Schemes
+    <div class="header-actions">
+      <input type="file" id="tenderExcelUpload" accept=".xlsx,.xls" style="display:none" />
+      <span id="tenderUploadStatus" style="font-size:12px;color:#6c757d"></span>
+      <button type="button" class="btn-action btn-upload" id="uploadExcelBtn" style="display:none">
+        <i class="bi bi-upload"></i> Upload Excel
+      </button>
+      <button class="btn-action btn-export" id="exportExcelBtn" style="display:none" onclick="exportTenderData()">
+        <i class="bi bi-download"></i> Export
+      </button>
+      <a href="/home.html" class="btn-action btn-home">
+        <i class="bi bi-house-door"></i> Back to Home
+      </a>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <span class="card-title"><h5 style="margin:0;color:#1f4e79">Schemes Summary (MW)</h5></span>
+    </div>
+    <div class="card-body" style="padding:16px 12px 8px">
+      <div class="charts-row" style="margin-bottom:0">
+        <div class="donut-card" style="padding:14px 8px 12px">
+          <div class="dc-value-card s-blue-bg">
+            <div class="dc-value s-blue" id="kpiTenderedCapacity">0</div>
+            <div class="dc-label">Tendered Capacity</div>
+          </div>
+          <div class="dc-chart"><canvas id="donutChart" style="cursor:pointer"></canvas></div>
+        </div>
+        <div class="donut-card" style="padding:14px 8px 12px">
+          <div class="dc-value-card s-green-bg">
+            <div class="dc-value s-green" id="kpiEraAwarded">0</div>
+            <div class="dc-label">eRA Awarded</div>
+          </div>
+          <div class="dc-chart"><canvas id="eraDonutChart" style="cursor:pointer"></canvas></div>
+        </div>
+        <div class="donut-card" style="padding:14px 8px 12px">
+          <div class="dc-value-card s-teal-bg">
+            <div class="dc-value s-teal" id="kpiPpa">0</div>
+            <div class="dc-label">PPA Signed</div>
+          </div>
+          <div class="dc-chart"><canvas id="ppaDonutChart" style="cursor:pointer"></canvas></div>
+        </div>
+        <div class="donut-card" style="padding:14px 8px 12px">
+          <div class="dc-value-card s-purple-bg">
+            <div class="dc-value s-purple" id="kpiPsa">0</div>
+            <div class="dc-label">PSA Signed</div>
+          </div>
+          <div class="dc-chart"><canvas id="psaDonutChart" style="cursor:pointer"></canvas></div>
+        </div>
+        <div class="donut-card" style="padding:14px 8px 12px">
+          <div class="dc-value-card s-red-bg">
+            <div class="dc-value s-red" id="kpiCommissioned">0</div>
+            <div class="dc-label">Commissioned</div>
+          </div>
+          <div class="dc-chart"><canvas id="commissionedDonutChart" style="cursor:pointer"></canvas></div>
+        </div>
+      </div>
+      <div class="tech-legend-box">
+        <span class="legend-item"><span style="color:#f0a500;font-size:16px">●</span> Solar</span>
+        <span class="legend-item"><span style="color:#28a745;font-size:16px">●</span> Wind</span>
+        <span class="legend-item"><span style="color:#0d6efd;font-size:16px">●</span> Hybrid</span>
+        <span class="legend-item"><span style="color:#6f42c1;font-size:16px">●</span> RTC</span>
+        <span class="legend-item"><span style="color:#dc3545;font-size:16px">●</span> FDRE</span>
       </div>
     </div>
-    <div class="table-container">
-      <table class="table table-bordered table-striped">
-        <thead class="table-dark">
-          <tr>
-            <th>S. No.</th>
-            <th>Project Name</th>
-            <th>Capacity (MW)</th>
-            <th>Tender Type</th>
-            <th>Tender Status</th>
-            <th>Target Date</th>
-            <th>Created At</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="contractsTableBody">
-          <!-- Rows will be populated here -->
-        </tbody>
-      </table>
+  </div>
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <span class="card-title"><h5>Tariff  Discovered (₹/KWh)</h5></span>
+      <span class="card-tag">Yearly stream</span>
     </div>
+    <div class="tariff-info" id="tariffInfo" style="border:none;border-bottom:1px solid #e9ecef;border-radius:0;margin-bottom:0;padding:10px 18px;font-size:11px;"></div>
+    <div class="card-body">
+      <canvas id="tariffChart"></canvas>
+    </div>
+  </div>
 
-    <script src="./js/main.js"></script>
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const params = new URLSearchParams(window.location.search);
-        const dept_id = params.get("dept_id");
-        const statistic_id = params.get("statistic_id");
-        const entity_id = params.get("entity_id");
+  <div class="bottom-row">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Capacity Timeline</span>
+        <span class="card-tag" id="yearRangeTag"></span>
+      </div>
+      <div class="card-body">
+        <canvas id="timelineChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Technology-wise Capacity &amp; Tender Count</span>
+      </div>
+      <div class="card-body">
+        <canvas id="techBarChart"></canvas>
+      </div>
+    </div>
+  </div>
 
-        authFetch(`/api/data/contracts/all`)
-          .then((res) => res.json())
-          .then((resObject) => {
-            populateContractsTable(resObject.data);
-          })
-          .catch((err) => {
-            console.error("Error loading data:", err);
-            alert("Failed to load contracts data.");
-          });
 
-        function populateContractsTable(items) {
-          const tbody = document.getElementById("contractsTableBody");
-          tbody.innerHTML = "";
 
-          if (!Array.isArray(items) || items.length === 0) {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td colspan="8" class="text-center text-muted">
-                No contract or procurement data available.
-              </td>
-            `;
-            tbody.appendChild(tr);
-            return;
+<script>
+// ── Chart.js centerText plugin ────────────────────────
+const centerText = {
+  id: 'centerText',
+  beforeDraw(chart) {
+    const centerConfig = chart.config.options.elements?.center;
+    if (!centerConfig) return;
+    const ctx = chart.ctx;
+    const { text, color, fontStyle, minFontSize } = centerConfig;
+    const fontSize = minFontSize || 16;
+    const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+    const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+    ctx.save();
+    ctx.font = `${fontStyle || "bold"} ${fontSize}px Roboto, Arial, sans-serif`;
+    ctx.fillStyle = color || "#000";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, centerX, centerY);
+    ctx.restore();
+  },
+};
+Chart.register(centerText);
+
+// ── TECH COLORS ─────────────────────────────────────────
+const TECH_COLORS = {
+  Solar:  '#f0a500',
+  Wind:   '#28a745',
+  Hybrid: '#0d6efd',
+  RTC:    '#6f42c1',
+  FDRE:   '#dc3545',
+};
+
+let allTenderData = [];
+let donutChart = null;
+let eraDonutChart = null;
+let ppaDonutChart = null;
+let psaDonutChart = null;
+let commissionedDonutChart = null;
+let timelineChart = null;
+let techBarChart = null;
+let tariffChart = null;
+
+function formatNumber(value) {
+  if (value === null || value === undefined || value === "") return 0;
+  const num = Number(value);
+  return Number.isNaN(num) ? 0 : num;
+}
+
+function formatValue(value) {
+  const num = formatNumber(value);
+  return num.toLocaleString('en-IN');
+}
+
+function updateKPIs(summary) {
+  document.getElementById('kpiTenderedCapacity').textContent = formatValue(summary.tendered_capacity_mw || 0) + ' MW';
+  document.getElementById('kpiEraAwarded').textContent = formatValue(summary.era_awarded_capacity_mw || 0) + ' MW';
+  document.getElementById('kpiPpa').textContent = formatValue(summary.ppa_capacity_mw || 0) + ' MW';
+  document.getElementById('kpiPsa').textContent = formatValue(summary.psa_capacity_mw || 0) + ' MW';
+  document.getElementById('kpiCommissioned').textContent = formatValue(summary.commissioned_capacity_mw || 0) + ' MW';
+}
+
+async function authFetch(url, options = {}) {
+  const token = localStorage.getItem('token');
+  const headers = { ...(options.headers || {}) };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  if (options.body instanceof FormData) {
+    // let browser set Content-Type
+  } else if (options.body) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  }
+  return res;
+}
+
+function renderTariffChart() {
+  const techs = ['Solar', 'Wind', 'Hybrid', 'RTC', 'FDRE'];
+  const techYearMap = {};
+  const yearSet = new Set();
+  techs.forEach(t => { techYearMap[t] = {}; });
+
+  allTenderData.forEach(t => {
+    const tariff = Number(t.tariff);
+    // Filter out null/zero AND unreasonably high values (> 100 Rs/kWhr data errors)
+    if (!tariff || tariff > 100) return;
+    const tech = t.technology_type;
+    if (!techs.includes(tech)) return;
+    // Extract year from rfs_date first, fall back to t.year numeric field.
+    // Some continuation/developer rows have tariff but no rfs_date — they rely on t.year instead.
+    let year = null;
+    if (t.rfs_date) {
+      const parts = t.rfs_date.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
+      if (parts) year = parseInt(parts[3], 10);
+    }
+    if (!year || year < 1900 || year > 2100) {
+      year = Number(t.year);
+    }
+    if (!year || year < 1900 || year > 2100) return;
+    yearSet.add(year);
+    if (!techYearMap[tech][year]) techYearMap[tech][year] = { max: 0, count: 0 };
+    if (tariff > techYearMap[tech][year].max) techYearMap[tech][year].max = tariff;
+    techYearMap[tech][year].count++;
+  });
+
+  const years = Array.from(yearSet).sort((a, b) => a - b);
+
+  // Min / Max tariff info per technology — populate into tariffInfo div
+  // Uses individual tender tariffs (not yearly averages) so values match the source Excel
+  const infoDiv = document.getElementById('tariffInfo');
+  if (infoDiv) {
+    const techEntries = {};
+    techs.forEach(t => techEntries[t] = []);
+    allTenderData.forEach(t => {
+      const tariff = Number(t.tariff);
+      if (!tariff || tariff > 100) return;
+      const tech = t.technology_type;
+      if (!techs.includes(tech)) return;
+      let year = null;
+      if (t.rfs_date) {
+        const parts = t.rfs_date.match(/(\d{2})[-\/](\d{2})[-\/](\d{4})/);
+        if (parts) year = parseInt(parts[3], 10);
+      }
+      if (!year || year < 1900 || year > 2100) {
+        year = Number(t.year);
+      }
+      if (!year || year < 1900 || year > 2100) return;
+      techEntries[tech].push({ val: tariff, year });
+    });
+    infoDiv.innerHTML = techs.map((tech) => {
+      const entries = techEntries[tech];
+      if (entries.length === 0) return '';
+      const minEntry = entries.reduce((a, b) => a.val < b.val ? a : b);
+      const maxEntry = entries.reduce((a, b) => a.val > b.val ? a : b);
+      return `<div class="ti-block">` +
+        `<div style="font-weight:700;color:${TECH_COLORS[tech]};font-size:12px;margin-bottom:3px"><span style="font-size:14px">●</span> ${tech}</div>` +
+        `<div style="color:#0d6efd;font-weight:600">Min ₹${minEntry.val.toFixed(2)} (${minEntry.year})</div>` +
+        `<div style="color:#28a745;font-weight:600">Max ₹${maxEntry.val.toFixed(2)} (${maxEntry.year})</div></div>`;
+    }).join('');
+  }
+
+  // Calculate max count for point-radius scaling
+  let maxCount = 0;
+  techs.forEach(t => {
+    Object.values(techYearMap[t]).forEach(d => { if (d.count > maxCount) maxCount = d.count; });
+  });
+  const radiusScale = maxCount > 0 ? 16 / maxCount : 1;
+
+  const datasets = techs.map(tech => {
+    const yValues = years.map(yr => {
+      const d = techYearMap[tech][yr];
+      return d ? +d.max.toFixed(4) : null;
+    });
+    const radii = years.map(yr => {
+      const d = techYearMap[tech][yr];
+      return d ? 4 + d.count * radiusScale : 0;
+    });
+    return {
+      label: tech,
+      data: yValues,
+      borderColor: TECH_COLORS[tech],
+      backgroundColor: TECH_COLORS[tech] + '33',
+      borderWidth: 2.5,
+      pointRadius: radii,
+      pointHoverRadius: radii.map(r => r + 3),
+      pointBackgroundColor: TECH_COLORS[tech],
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1.5,
+      tension: 0.35,
+      fill: true,
+      spanGaps: false,
+    };
+  });
+
+  const ctx = document.getElementById('tariffChart').getContext('2d');
+  if (tariffChart) tariffChart.destroy();
+  tariffChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: years, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#495057', font: { size: 12, weight: '600' }, boxWidth: 14, padding: 16 }
+        },
+        tooltip: {
+          callbacks: {
+            title: items => items[0]?.label || '',
+            label: ctx => {
+              const tech = ctx.dataset.label;
+              const yr = years[ctx.dataIndex];
+              const d = techYearMap[tech]?.[yr];
+              const count = d?.count || 0;
+              return ` ${tech}: ₹${ctx.parsed.y?.toFixed(4) || '-'}/kWhr  |  ${count} tender(s)`;
+            }
           }
-
-          items.forEach((item, index) => {
-            const tr = document.createElement("tr");
-
-            tr.innerHTML = `
-              <td>${index + 1}</td>
-              <td>${item.project_name || "-"}</td>
-              <td>${item.capacity || "-"}</td>
-              <td>${item.tender || "-"}</td>
-              <td>${item.activity || "-"}</td>
-              <td>${formatToISTDate(item.target_date)}</td>
-              <td>${formatToISTDate(item.createdAt)}</td>
-              <td>
-                <button class="btn btn-sm btn-danger" onclick="deleteEntry('${
-                  item.entry_id
-                }', this)">
-                  Delete
-                </button>
-              </td>
-            `;
-
-            tbody.appendChild(tr);
-          });
         }
-
-        window.deleteEntry = function (entry_id, buttonElement) {
-          if (!confirm("Are you sure you want to delete this entry?")) return;
-
-          authFetch(`api/data/contracts/remove/${entry_id}`, {
-            method: "DELETE",
-          })
-            .then((res) => {
-              if (!res.ok) throw new Error("Failed to delete entry.");
-              // Remove the row from the table
-              const row = buttonElement.closest("tr");
-              row?.remove();
-            })
-            .catch((err) => {
-              console.error(err);
-              alert("Error deleting entry.");
-            });
-        };
-
-        function formatToISTDate(dateString) {
-          if (!dateString) return "-";
-          const date = new Date(dateString);
-          const istOffset = 5.5 * 60 * 60000;
-          const istDate = new Date(date.getTime() + istOffset);
-          const day = String(istDate.getUTCDate()).padStart(2, "0");
-          const month = String(istDate.getUTCMonth() + 1).padStart(2, "0");
-          const year = istDate.getUTCFullYear();
-          return `${day}/${month}/${year}`;
+      },
+      scales: {
+        x: {
+          ticks: { color: '#495057', font: { size: 12, weight: '600' } },
+          grid: { color: '#e9ecef' },
+          title: { display: true, text: 'Year', color: '#6c757d', font: { size: 12 } }
+        },
+        y: {
+          ticks: { color: '#495057', font: { size: 11 },
+            callback: v => '₹' + v.toFixed(2)
+          },
+          grid: { color: '#e9ecef' },
+          title: { display: true, text: 'Avg Tariff (Rs/kWhr)', color: '#6c757d', font: { size: 12 } },
+          max: 10
         }
-      });
-    </script>
+      }
+    }
+  });
+}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  </body>
+function renderDonutChart(summary) {
+  const techGroups = summary.by_technology || [];
+  const labels = techGroups.map(t => t.technology_type || "Unknown");
+  const data = techGroups.map(t => t.capacity || 0);
+  const colors = labels.map(l => TECH_COLORS[l] || '#6c757d');
+
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  if (donutChart) donutChart.destroy();
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderColor: '#fff',
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '65%',
+      onClick: (evt, elements) => {
+        if (elements && elements.length > 0) {
+          const role = getUserRole();
+          if (role === 'admin') document.getElementById('tenderExcelUpload').click();
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('en-IN')} MW`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderEraDonutChart(summary) {
+  const techGroups = summary.by_technology || [];
+  const labels = techGroups.map(t => t.technology_type || "Unknown");
+  const data = techGroups.map(t => t.era_capacity || 0);
+  const colors = labels.map(l => TECH_COLORS[l] || '#6c757d');
+
+  const ctx = document.getElementById('eraDonutChart').getContext('2d');
+  if (eraDonutChart) eraDonutChart.destroy();
+  eraDonutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderColor: '#fff',
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '65%',
+      onClick: (evt, elements) => {
+        if (elements && elements.length > 0) {
+          const role = getUserRole();
+          if (role === 'admin') document.getElementById('tenderExcelUpload').click();
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('en-IN')} MW`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderDonutFromField(summary, field, canvasId) {
+  const techGroups = summary.by_technology || [];
+  const labels = techGroups.map(t => t.technology_type || "Unknown");
+  const data = techGroups.map(t => t[field] || 0);
+  const colors = labels.map(l => TECH_COLORS[l] || '#6c757d');
+
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderColor: '#fff',
+        borderWidth: 3,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '65%',
+      onClick: (evt, elements) => {
+        if (elements && elements.length > 0) {
+          const role = getUserRole();
+          if (role === 'admin') document.getElementById('tenderExcelUpload').click();
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('en-IN')} MW`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderPpaDonutChart(summary) {
+  if (ppaDonutChart) ppaDonutChart.destroy();
+  ppaDonutChart = renderDonutFromField(summary, 'ppa_capacity', 'ppaDonutChart');
+}
+
+function renderPsaDonutChart(summary) {
+  if (psaDonutChart) psaDonutChart.destroy();
+  psaDonutChart = renderDonutFromField(summary, 'psa_capacity', 'psaDonutChart');
+}
+
+function renderCommissionedDonutChart(summary) {
+  if (commissionedDonutChart) commissionedDonutChart.destroy();
+  commissionedDonutChart = renderDonutFromField(summary, 'commissioned_capacity', 'commissionedDonutChart');
+}
+
+function renderTimelineChart(summary) {
+  const yearData = (summary.by_year || []).filter(d => {
+    const y = Number(d.year);
+    return !isNaN(y) && y >= 1900 && y <= 2100;
+  });
+  yearData.sort((a, b) => Number(a.year) - Number(b.year));
+
+  const years = yearData.map(d => Number(d.year));
+  const yrRange = years.length >= 2 ? `${years[0]}–${years[years.length-1]}` : (years.length ? years[0] : '');
+  document.getElementById('yearRangeTag').textContent = yrRange;
+
+  const labels = years;
+  const capacities = yearData.map(d => d.capacity || 0);
+  const counts = yearData.map(d => d.count || 0);
+
+  const ctx = document.getElementById('timelineChart').getContext('2d');
+  if (timelineChart) timelineChart.destroy();
+  timelineChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Capacity (MW)',
+          data: capacities,
+          backgroundColor: 'rgba(13,110,253,0.12)',
+          borderColor: '#0d6efd',
+          borderWidth: 1.5,
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        {
+          label: 'No. of Tenders',
+          data: counts,
+          type: 'line',
+          borderColor: '#f0a500',
+          backgroundColor: 'rgba(240,165,0,0.1)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#f0a500',
+          tension: 0.35,
+          fill: false,
+          yAxisID: 'y2',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#6c757d', font: { size: 12 }, boxWidth: 12 }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#6c757d', font: { size: 11 } }, grid: { color: '#e9ecef' } },
+        y: {
+          ticks: { color: '#6c757d', font: { size: 11 },
+            callback: v => v >= 1000 ? (v/1000)+'k' : v },
+          grid: { color: '#e9ecef' },
+          title: { display: true, text: 'Capacity (MW)', color: '#6c757d', font: { size: 11 } }
+        },
+        y2: {
+          position: 'right',
+          ticks: { color: '#f0a500', font: { size: 11 } },
+          grid: { display: false },
+          title: { display: true, text: 'Tenders', color: '#f0a500', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function renderTechBarChart(summary) {
+  const techGroups = summary.by_technology || [];
+  const labels = techGroups.map(t => t.technology_type || "Unknown");
+  const capacities = techGroups.map(t => t.capacity || 0);
+  const counts = techGroups.map(t => t.count || 0);
+  const colors = labels.map(l => TECH_COLORS[l] || '#6c757d');
+
+  const ctx = document.getElementById('techBarChart').getContext('2d');
+  if (techBarChart) techBarChart.destroy();
+  techBarChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Capacity (MW)',
+          data: capacities,
+          backgroundColor: colors.map(c => c + '22'),
+          borderColor: colors,
+          borderWidth: 1.5,
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        {
+          label: 'No. of Tenders',
+          data: counts,
+          type: 'line',
+          borderColor: '#1f4e79',
+          backgroundColor: 'rgba(31,78,121,0.08)',
+          borderWidth: 2.5,
+          pointRadius: 5,
+          pointBackgroundColor: '#1f4e79',
+          tension: 0.3,
+          fill: false,
+          yAxisID: 'y2',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#6c757d', font: { size: 12 }, boxWidth: 12 } }
+      },
+      scales: {
+        x: { ticks: { color: '#6c757d', font: { size: 12 } }, grid: { color: '#e9ecef' } },
+        y: {
+          ticks: { color: '#6c757d', font: { size: 11 },
+            callback: v => v >= 1000 ? (v/1000)+'k' : v },
+          grid: { color: '#e9ecef' },
+          title: { display: true, text: 'Capacity (MW)', color: '#6c757d', font: { size: 11 } }
+        },
+        y2: {
+          position: 'right',
+          ticks: { color: '#1f4e79', font: { size: 11 } },
+          grid: { display: false },
+          title: { display: true, text: 'Tenders', color: '#1f4e79', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+// ── Role-based UI ─────────────────────────────────────────
+function getUserRole() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role || 'user';
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyRoleBasedUI() {
+  const role = getUserRole();
+  const uploadBtn = document.getElementById('uploadExcelBtn');
+  const exportBtn = document.getElementById('exportExcelBtn');
+  if (role === 'admin') {
+    uploadBtn.style.display = 'inline-flex';
+    exportBtn.style.display = 'inline-flex';
+  } else {
+    uploadBtn.style.display = 'none';
+    exportBtn.style.display = 'inline-flex';
+  }
+}
+
+
+
+
+// Upload
+const tenderExcelInput = document.getElementById('tenderExcelUpload');
+const uploadExcelButton = document.getElementById('uploadExcelBtn');
+
+if (uploadExcelButton) {
+  uploadExcelButton.addEventListener('click', function (e) {
+    e.preventDefault();
+    const role = getUserRole();
+    if (role !== 'admin') {
+      alert('Only admins can upload tender Excel files.');
+      return;
+    }
+    tenderExcelInput?.click();
+  });
+}
+
+tenderExcelInput.addEventListener('change', async function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.name.match(/\.(xlsx|xls)$/i)) {
+    alert('Please upload a valid Excel file (.xls or .xlsx)');
+    e.target.value = '';
+    return;
+  }
+
+  const status = document.getElementById('tenderUploadStatus');
+  const formData = new FormData();
+  formData.append('excelFile', file);
+  try {
+    const res = await authFetch('/api/data/contracts/tenders/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || data.message || 'Upload failed');
+    status.textContent = 'Upload successful. Tender data refreshed.';
+    await initTenderDashboard();
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Upload failed: ' + err.message;
+  } finally {
+    e.target.value = '';
+  }
+});
+
+async function fetchTenderSummary() {
+  try {
+    const res = await authFetch('/api/data/contracts/tenders/summary');
+    if (!res.ok) throw new Error('Failed to fetch summary');
+    return await res.json();
+  } catch (err) {
+    console.error(err);
+    return { data: {} };
+  }
+}
+
+async function fetchTenderRegisters() {
+  try {
+    const res = await authFetch('/api/data/contracts/tenders/all');
+    if (!res.ok) throw new Error('Failed to fetch tenders');
+    return await res.json();
+  } catch (err) {
+    console.error(err);
+    return { data: [] };
+  }
+}
+
+async function initTenderDashboard() {
+  const summaryResponse = await fetchTenderSummary();
+  const summary = summaryResponse.data || {};
+
+  updateKPIs(summary);
+  renderDonutChart(summary);
+  renderEraDonutChart(summary);
+  renderPpaDonutChart(summary);
+  renderPsaDonutChart(summary);
+  renderCommissionedDonutChart(summary);
+  renderTimelineChart(summary);
+  renderTechBarChart(summary);
+
+  const registersResponse = await fetchTenderRegisters();
+  allTenderData = registersResponse.data || [];
+  renderTariffChart();
+
+  applyRoleBasedUI();
+}
+
+// ── Export: Download Original Excel ──────────────────────
+function exportTenderData() {
+  if (!allTenderData || allTenderData.length === 0) {
+    alert('No tender data available to export.');
+    return;
+  }
+  // Trigger download of the original uploaded Excel file from the server
+  const token = localStorage.getItem('token');
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/data/contracts/tenders/download', true);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+  xhr.responseType = 'blob';
+  xhr.onload = function () {
+    if (xhr.status === 200) {
+      const blob = xhr.response;
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      let fileName = 'tender_register.xlsx';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (match) fileName = match[1];
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      alert('Failed to download Excel file.');
+    }
+  };
+  xhr.onerror = function () {
+    alert('Network error while downloading Excel file.');
+  };
+  xhr.send();
+}
+
+document.addEventListener('DOMContentLoaded', initTenderDashboard);
+</script>
+</body>
 </html>

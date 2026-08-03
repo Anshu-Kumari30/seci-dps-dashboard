@@ -637,7 +637,7 @@
                     <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">S.No</th>
                     <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Type of Service</th>
                     <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Client</th>
-                    <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Project Details</th>
+                    <th style="padding: 10px; text-align: left; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Project Details</th>
                     <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">LOA to SECI</th>
                     <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Start Date</th>
                     <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">End Date</th>
@@ -675,7 +675,7 @@
             <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${itemIdx + 1}</td>
             <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${type}</td>
             <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${item.client || '-'}</td>
-            <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${item.project_details || item.projectDetails || '-'}</td>
+            <td style="padding: 10px; text-align: left; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem; white-space: normal; word-break: break-word; overflow-wrap: anywhere;">${item.project_details || item.projectDetails || '-'}</td>
             <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${loaDate}</td>
             <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${startDate}</td>
             <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${endDate}</td>
@@ -698,7 +698,7 @@
                     <thead>
                       <tr style="background: #e9ecef;">
                         <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Sr No</th>
-                        <th style="padding: 10px; text-align: center; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Milestone</th>
+                        <th style="padding: 10px; text-align: left; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Milestone</th>
                         <th style="padding: 10px; text-align: right; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Stage Payment (%)</th>
                         <th style="padding: 10px; text-align: right; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Invoice Amount</th>
                         <th style="padding: 10px; text-align: right; border-right: 1px solid #ddd; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">Invoice Raised</th>
@@ -727,7 +727,7 @@
                         return `
                           <tr style="border-bottom: 1px solid #e9ecef;">
                             <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${msIdx + 1}</td>
-                            <td style="padding: 10px; text-align: center; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${ms.milestone || '-'}</td>
+                            <td style="padding: 10px; text-align: left; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem; white-space: normal; word-break: break-word; overflow-wrap: anywhere;">${ms.milestone || '-'}</td>
                             <td style="padding: 10px; text-align: right; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">${msStagePayment.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}%</td>
                             <td style="padding: 10px; text-align: right; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">₹${msInvoiceAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             <td style="padding: 10px; text-align: right; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">₹${msInvoiceRaised.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>

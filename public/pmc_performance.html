@@ -256,6 +256,32 @@
         border-spacing: 0;
       }
 
+      /* Use automatic table layout so table adjusts to container and prevents horizontal scrollbar */
+      table.table {
+        table-layout: auto;
+        width: 100%;
+      }
+      /* Project Details (col 4) should be left-aligned and wrap inside the cell */
+      table.table tbody td:nth-child(4) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        max-width: 380px;
+        overflow-wrap: anywhere;
+      }
+      /* Center other numeric/date/action columns and prevent wrapping */
+      table.table tbody td:not(:nth-child(4)) {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Status column: left-align and wrap long status text (col 12) */
+      table.table tbody td:nth-child(12) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+
       /* Header styling */
       thead tr:first-child th {
         background: linear-gradient(135deg, #1f4e79, #0b5ed7);
@@ -275,13 +301,40 @@
         border-bottom: 1px solid #e0e6ef;
       }
 
+      /* Make table body cells left-aligned and allow long text to wrap inside the cell */
       tbody td {
         padding: 12px 10px;
         background: #fff;
         color: #333;
         font-size: 13px;
+        text-align: left;
+        vertical-align: middle;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+
+      /* Keep date and monetary columns centered (LOA..Amount Pending are columns 5-11) */
+      table.table tbody td:nth-child(5),
+      table.table tbody td:nth-child(6),
+      table.table tbody td:nth-child(7),
+      table.table tbody td:nth-child(8),
+      table.table tbody td:nth-child(9),
+      table.table tbody td:nth-child(10),
+      table.table tbody td:nth-child(11) {
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      /* Actions column: keep buttons stacked neatly and prevent wrapping */
+      table.table tbody td.actions-cell {
         text-align: center;
         vertical-align: middle;
+        padding: 8px 10px;
+        white-space: nowrap;
+      }
+      table.table tbody td.actions-cell .btn {
+        display: inline-block;
       }
 
       tbody tr:nth-child(even) td {
@@ -876,8 +929,11 @@
                         View
                       </button>
                     </td>
-                  <td>
-                    <button class="btn btn-sm btn-secondary" onclick="editEntry('${project.pmc_entry_id}')">Edit</button>
+                  <td class="actions-cell">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                      <button class="btn btn-sm btn-secondary" style="min-width:68px;" onclick="editEntry('${project.pmc_entry_id}')">Edit</button>
+                      <button class="btn btn-sm btn-danger" style="min-width:68px;" onclick="deleteEntry('${project.pmc_entry_id}')">Delete</button>
+                    </div>
                   </td>
                 `;
                 tbody.appendChild(tr);
@@ -1009,13 +1065,13 @@
           .map((m, index) => `
             <tr>
               <td style="text-align:center; padding: 10px;">${index + 1}</td>
-              <td style="text-align:center; padding: 10px;">${m.milestone || ''}</td>
+              <td style="text-align:left; padding: 10px;"><div class="milestone-text">${m.milestone || ''}</div></td>
               <td style="text-align:center; padding: 10px;">${m.stage_payment ?? ''}</td>
               <td style="text-align:center; padding: 10px;">${formatCurrency(m.invoice_amount)}</td>
               <td style="text-align:center; padding: 10px;">${formatCurrency(m.invoice_raised)}</td>
               <td style="text-align:center; padding: 10px;">${formatDateForTable(m.invoice_date) || ''}</td>
               <td style="text-align:center; padding: 10px;">${m.invoice_number || ''}</td>
-              <td style="text-align:center; padding: 10px;">${m.status || ''}</td>
+              <td style="text-align:left; padding: 10px;"><div class="invoice-status">${m.status || ''}</div></td>
               <td style="text-align:center; padding: 10px;">${getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status)}</td>
             </tr>
           `)
@@ -1282,6 +1338,24 @@
 
       function editEntry(projectId) {
         window.location.href = `/add_pmc_entry.html?edit=${projectId}`;
+      }
+
+      function deleteEntry(pid) {
+        if (!pid || /^slice-/i.test(String(pid))) {
+          alert('Only saved entries can be deleted.');
+          return;
+        }
+        if (!confirm('Are you sure you want to delete this entry?')) return;
+        authFetch('/api/data/pmc/entry/delete/' + encodeURIComponent(pid), { method: 'DELETE' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('Delete failed');
+            alert('Entry deleted successfully');
+            fetchPMCData();
+          })
+          .catch(function (err) {
+            console.error(err);
+            alert('Failed to delete entry');
+          });
       }
 
       // Back to home button already handled in HTML

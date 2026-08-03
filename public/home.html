@@ -301,16 +301,36 @@
 
     let activeDeptId = null;
 
+    function getDeptAccessLevel(deptId) {
+      if (role === "admin") return "head";
+      if (role === "viewer") return "view";
+      const raw = deptId && departmentAccess[deptId];
+      if (!raw) return "none";
+      // normalize boolean can_edit values
+      if (typeof raw === "boolean") return raw ? "edit" : "view";
+      const s = String(raw || "").trim().toLowerCase();
+      if (s === "head" || s === "edit" || s === "view") return s;
+      return "none";
+    }
+
     function canEditDept(deptId) {
-      if (role === "admin") return true;
-      if (role === "viewer") return false;
-      return deptId && departmentAccess[deptId] === true;
+      const level = getDeptAccessLevel(deptId);
+      return level === "edit" || level === "head";
+    }
+
+    function canHeadDept(deptId) {
+      const level = getDeptAccessLevel(deptId);
+      return level === "head";
     }
 
     function applyEditVisibility(deptId) {
       const allowEdit = canEditDept(deptId);
+      const allowHead = canHeadDept(deptId);
       document.querySelectorAll(".edit-only").forEach((el) => {
         el.style.display = allowEdit ? "" : "none";
+      });
+      document.querySelectorAll(".head-only").forEach((el) => {
+        el.style.display = allowHead ? "" : "none";
       });
     }
 
@@ -433,6 +453,7 @@
       if (key.includes("pmc")) return "pmc";
       if (key.includes("energy") && key.includes("management")) return "energymanagement";
       if (key.includes("energymangement")) return "energymanagement";
+      if (key.includes("engineer") || key.includes("engineering")) return "engineering";
 
       return key;
     }
@@ -440,15 +461,15 @@
     function applyPreferredDepartmentOrder() {
       const preferredOrder = [
         "home",
-        "businessdevelopment",
-        "contractsandprocurement",
         "projects",
-        "livetenders",
-        "om",
-        "reia",
         "pmc",
+        "om",
+        "businessdevelopment",
         "energymanagement",
-        "energymangement",
+        "reia",
+        "engineering",
+        "contractsandprocurement",
+        "livetenders",
       ];
 
       const homeDept = departments.find((d) => canonicalDepartmentKey(d.dept_name) === "home") || { dept_name: "Home" };
@@ -687,14 +708,14 @@
               <div class="edit-modal-header">
                 <span>Edit Chart Slices</span>
                 <div style="display:flex; gap:8px; align-items:center;">
-                  <button class="btn btn-sm btn-light edit-only" onclick="addSliceCard()">Add Slice</button>
+                  <button class="btn btn-sm btn-light head-only" onclick="addSliceCard()">Add Slice</button>
                   <button class="btn btn-sm btn-outline-light" onclick="closeEditSliceModal()">✕</button>
                 </div>
               </div>
               <div class="edit-modal-body" id="editSliceContainer"></div>
               <div class="edit-modal-footer">
                 <button class="btn btn-secondary" onclick="closeEditSliceModal()">Cancel</button>
-                <button class="btn btn-primary edit-only" onclick="saveSliceMeta()">Save Changes</button>
+                <button class="btn btn-primary head-only" onclick="saveSliceMeta()">Save Changes</button>
               </div>
             </div>
           </div>`;
@@ -706,6 +727,13 @@
 
       async function openEditSliceModal(segment) {
         sliceEditingSegment = segment;
+        // only Heads may open the slice editor
+        try {
+          const pmcDeptId = departments.find(d => String(d.dept_name || '').toUpperCase() === 'PMC')?.dept_id;
+          if (!canHeadDept(pmcDeptId)) {
+            return alert('Head access is required to edit chart slices.');
+          }
+        } catch (e) { /* ignore */ }
         // set dynamic header label (modal is appended to body)
         try {
           const headerEl = document.querySelector('#editSliceModal .edit-modal-header span');
@@ -776,6 +804,13 @@
 
       async function saveSliceMeta() {
         if (!sliceEditingSegment) return alert('Unknown segment');
+        // ensure only Heads can save slice metadata
+        try {
+          const pmcDeptId = departments.find(d => String(d.dept_name || '').toUpperCase() === 'PMC')?.dept_id;
+          if (!canHeadDept(pmcDeptId)) {
+            return alert('Head access is required to save chart slices.');
+          }
+        } catch (e) { /* ignore */ }
         try {
           const payload = { segment: sliceEditingSegment, items: editSlices, replaceAll: true };
           const res = await authFetch('/api/data/pmc/slice_meta/save', { method: 'POST', body: JSON.stringify(payload) });
@@ -1076,17 +1111,19 @@
         console.log("Departments fetched:", departmentList);
         // get details for all departments for which user has access to
         for (const deptInfo of departmentList) {
-          // Accept both shapes: { dept_id, can_edit } or plain dept_id string
-          const dept_id = deptInfo && (deptInfo.dept_id || deptInfo) || null;
-          let canEdit = false;
-          if (deptInfo && typeof deptInfo === 'object' && Object.prototype.hasOwnProperty.call(deptInfo, 'can_edit')) {
-            canEdit = deptInfo.can_edit === true;
-          } else {
-            // if API returned just ids (legacy), assume edit allowed on frontend until backend enforces
-            canEdit = true;
+          // Accept both shapes: { dept_id, access_level, can_edit } or plain dept_id string
+          const dept_id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+          let accessLevel = "edit";
+          if (deptInfo && typeof deptInfo === "object") {
+            const rawLevel = String(deptInfo.access_level || "").trim().toLowerCase();
+            if (rawLevel === "view" || rawLevel === "edit" || rawLevel === "head") {
+              accessLevel = rawLevel;
+            } else if (Object.prototype.hasOwnProperty.call(deptInfo, "can_edit")) {
+              accessLevel = deptInfo.can_edit === true ? "edit" : "view";
+            }
           }
-          departmentAccess[dept_id] = canEdit;
-          console.log(`departmentAccess[${dept_id}] = ${canEdit}`);
+          departmentAccess[dept_id] = accessLevel;
+          console.log(`departmentAccess[${dept_id}] = ${accessLevel}`);
           const departmentResponse = await authFetch(
             `/api/data/departments/${dept_id}`
           );
@@ -1249,17 +1286,25 @@
         const button = document.createElement("button");
         button.className = `btn tab-button ${i === 0 ? "active" : ""}`;
         button.setAttribute("data-index", i);
-        button.innerHTML = `<i class="bi ${icons[i % icons.length]
-          } me-2"></i> <span class="tab-text">${dept.dept_name}</span>`;
-        button.addEventListener("click", () => switchDepartment(i));
+        const deptName = dept.dept_name;
+        const showIcon = deptName !== "Contracts & Procurement";
+        button.innerHTML = (showIcon ? `<i class="bi ${icons[i % icons.length]} me-2"></i> ` : `<i class="bi bi-file-earmark-text me-2"></i> `) + `<span class="tab-text">${deptName}</span>`;
+        button.addEventListener("click", () => {
+          const name = String(dept.dept_name || '').toLowerCase();
+          if (name.includes('engineering')) {
+            window.open('https://edms.seci.co.in', '_blank');
+            return;
+          }
+          switchDepartment(i);
+        });
         sidebar.appendChild(button);
       });
       switchDepartment(0);
     }
 
     function updateREIAInfo(type) {
-      if (!canEditDept(activeDeptId)) {
-        alert("Edit access is not allowed for this department.");
+      if (!canHeadDept(activeDeptId)) {
+        alert("Head access is required to edit this department.");
         return;
       }
       console.log(`/update_reia_info.html?reia_doc_type=${type}`);
@@ -1268,8 +1313,8 @@
 
     function openPmcEditForm() {
       const pmcDeptId = departments.find(d => d.dept_name === "PMC")?.dept_id;
-      if (!canEditDept(pmcDeptId)) {
-        alert("Edit access is not allowed for this department.");
+      if (!canHeadDept(pmcDeptId)) {
+        alert("Head access is required to edit PMC charts.");
         return;
       }
       const pmcStatistics = pmcDeptId ? (departmentStatistics[pmcDeptId] || []) : [];
@@ -1293,6 +1338,7 @@
     async function initializePmcDashboard() {
       console.log("🔵 Initializing PMC Dashboard");
       try {
+        const pmcDeptId = departments.find(d => d.dept_name === "PMC")?.dept_id || null;
         // Get canvas elements for charts
         const ctx1 = document.getElementById("pmcChart1")?.getContext("2d");
         const ctx2 = document.getElementById("pmcChart2")?.getContext("2d");
@@ -1433,6 +1479,10 @@
                 }
               },
               onClick: (evt, activeEls) => {
+                if (!canHeadDept(pmcDeptId)) {
+                  alert("Head access is required to perform this action.");
+                  return;
+                }
                 if (!activeEls.length) return;
                 const idx = activeEls[0].index;
                 const selected = dprPfrEntries[idx];
@@ -1458,7 +1508,11 @@
             const canvasEl = ctx1 && ctx1.canvas ? ctx1.canvas : null;
             if (canvasEl && window.pmcChart1Instance && !canvasEl.__pmc1_click_bound) {
               canvasEl.addEventListener('click', function (ev) {
-                try {
+                  try {
+                  if (!canHeadDept(pmcDeptId)) {
+                    alert("Head access is required to perform this action.");
+                    return;
+                  }
                   const points = window.pmcChart1Instance.getElementsAtEventForMode(ev, 'nearest', { intersect: true }, false) || [];
                   if (points.length) {
                     const idx = points[0].index;
@@ -1550,6 +1604,10 @@
               },
               // keep Chart.js onClick but also add a reliable canvas-level fallback below
               onClick: (evt, activeEls) => {
+                if (!canHeadDept(pmcDeptId)) {
+                  alert("Head access is required to perform this action.");
+                  return;
+                }
                 try {
                   if (activeEls && activeEls.length) {
                     const idx = activeEls[0].index;
@@ -1588,6 +1646,10 @@
             if (!window.__pmcChart3_doc_delegate_bound) {
               window._pmcChart3ClickDelegate = function (ev) {
                 try {
+                  if (!canHeadDept(pmcDeptId)) {
+                    alert("Head access is required to perform this action.");
+                    return;
+                  }
                   const canvasEl = (window.pmcChart3Instance && window.pmcChart3Instance.ctx && window.pmcChart3Instance.ctx.canvas) || document.getElementById('pmcChart3');
                   if (!canvasEl) return;
                   const rect = canvasEl.getBoundingClientRect();
@@ -1625,6 +1687,10 @@
             const wrapperEl = canvasEl ? canvasEl.parentElement : null;
             function handlePmcChart3Click(ev) {
               try {
+                if (!canHeadDept(pmcDeptId)) {
+                  alert("Head access is required to perform this action.");
+                  return;
+                }
                 console.log('pmcChart3 received click/pointer event', ev.type);
                 // Try Chart.js hit-test with the native event first
                 let points = [];
@@ -1781,6 +1847,10 @@
                   }
                 },
                 onClick: (evt, activeEls) => {
+                  if (!canHeadDept(pmcDeptId)) {
+                    alert("Head access is required to perform this action.");
+                    return;
+                  }
                   if (!activeEls.length) return;
                   const idx = activeEls[0].index;
                   const sel = ceProjects[idx];
@@ -1823,7 +1893,7 @@
                 if (grouped[type] && grouped[type].length) {
                   const anchorRow = document.createElement('tr');
                   const displayLabel = type === 'DPR/PFR' ? 'DPR / PFR' : type;
-                  anchorRow.innerHTML = `<td colspan="8" style="background:#f5f5f5;font-weight:bold;font-size:1rem;text-align:left;"><a href='/pmc_dpr_projects.html' style='font-size:1rem;text-align:left;'>${displayLabel} Projects</a></td>`;
+                  anchorRow.innerHTML = `<td colspan="7" style="background:#f5f5f5;font-weight:bold;font-size:1rem;text-align:left;"><a href='/pmc_dpr_projects.html' style='font-size:1rem;text-align:left;'>${displayLabel} Projects</a></td>`;
                   tbody.appendChild(anchorRow);
                   // For DPR/PFR combined group, ensure DPR rows appear before PFR
                   const renderItems = (type === 'DPR/PFR')
@@ -1849,9 +1919,8 @@
                         <td style='font-size:1rem;'>${item.total_amount || ''}</td>
                         <td style='font-size:1rem;'>${item.amount_received || ''}</td>
                         <td style='font-size:1rem;'>${item.amount_pending || ''}</td>
-                        <td style='font-size:1rem;'>${item.status || ''}</td>
                         <td style="white-space:nowrap;font-size:1rem;">
-                          <button class="btn btn-sm btn-danger pmc-delete-row edit-only">Delete</button>
+                          <button class="btn btn-sm btn-primary">View</button>
                         </td>
                       `;
                     tbody.appendChild(tr);
@@ -1967,7 +2036,18 @@
               .om-banner { background: linear-gradient(135deg, #1f4e79, #0b5ed7); color: #fff; border-radius: 6px; padding: 10px 16px; margin-bottom: 12px; }
               .om-table { width: 100%; border-collapse: separate; border-spacing: 0; }
               .om-table thead th { background: linear-gradient(135deg, #1f4e79, #0b5ed7); color: #ffffff; font-size: 14px; font-weight: 700; text-transform: uppercase; border: none; padding: 14px 10px; text-align: center; }
-              .om-table tbody td { padding: 12px 10px; background: #fff; border: 1px solid #e0e6ef; text-align: center; }
+              /* Summary table: left-align body cells with wrapping for long text */
+              .om-table tbody td { padding: 12px 10px; background: #fff; border: 1px solid #e0e6ef; text-align: left; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
+              /* Center monetary columns (PO Value, Invoice Raised, PO Amount Pending) - columns 4-6 */
+              .om-table tbody td:nth-child(4),
+              .om-table tbody td:nth-child(5),
+              .om-table tbody td:nth-child(6) { text-align: center; white-space: nowrap; }
+              /* Let summary table auto-size to available space; allow horizontal scrolling on small screens */
+              .om-table { table-layout: auto; width: 100%; }
+              .pmc-summary-scroll { overflow-x: auto; }
+              #pmcSummaryTable { min-width: 900px; }
+              /* Actions column: keep centered and prevent wrapping */
+              .om-table tbody tr td:last-child { text-align: center; white-space: nowrap; }
               .edit-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 9999; }
               .edit-modal { width: 100%; max-width: 820px; max-height: 90vh; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.25); display: flex; flex-direction: column; }
               .edit-modal-header { background: #0b5ed7; color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; }
@@ -1989,7 +2069,7 @@
                 <div class="chart-title">PMC - DPR</div>
                 <div class="chart-wrapper"><canvas id="pmcChart1"></canvas></div>
                 <div style="text-align:center; margin-top:10px;">
-                  <button class="btn btn-success edit-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc_dpr'">Add / Edit</button>
+                  <button class="btn btn-success head-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc_dpr'">Add / Edit</button>
                 </div>
               </div>
               <div class="chart-card">
@@ -1997,14 +2077,14 @@
                 <div class="chart-wrapper"><canvas id="pmcChart3"></canvas></div>
                 <div id="pmcChart3ClientLinks" style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:8px; padding:8px;"></div>
                 <div style="text-align:center; margin-top:10px; display:flex; gap:8px; justify-content:center; align-items:center;">
-                  <button class="btn btn-success edit-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc-bms'">Add / Edit</button>
+                  <button class="btn btn-success head-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc-bms'">Add / Edit</button>
                 </div>
               </div>
               <div class="chart-card">
                 <div class="chart-title">PMC - Execution</div>
                 <div class="chart-wrapper"><canvas id="pmcChart2"></canvas></div>
                 <div style="text-align:center; margin-top:10px;">
-                  <button class="btn btn-success edit-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc-execution'">Add / Edit</button>
+                  <button class="btn btn-success head-only" onclick="window.location.href='/pmc_slice_editor.html?segment=pmc-execution'">Add / Edit</button>
                 </div>
               </div>
             </div>
@@ -2027,7 +2107,7 @@
                 </div>
               </div>
             </div>
-            <div style="background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e0e6ef;">
+            <div class="pmc-summary-scroll" style="background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e0e6ef;">
               <table class="om-table" id="pmcSummaryTable">
                 <thead>
                   <tr>
@@ -2327,11 +2407,11 @@
                         <th class="om-bess-header" rowspan="3">Remarks</th>
                       </tr>
                       <tr>
-                        <th class="om-solar-header" colspan="4">AS ON DATE</th>
+                        <th class="om-solar-header" colspan="4" id="omSolarAsOnDateHeader">AS ON DATE</th>
                         <th class="om-solar-header" colspan="2">YEAR TILL DATE</th>
                         <th class="om-solar-header" colspan="2">LAST FY PERFORMANCE</th>
 
-                        <th class="om-bess-header" colspan="2">AS ON DATE</th>
+                        <th class="om-bess-header" colspan="2" id="omBessAsOnDateHeader">AS ON DATE</th>
                         <th class="om-bess-header" colspan="2">YEAR TILL DATE</th>
                         <th class="om-bess-header" colspan="2">LAST FY PERFORMANCE</th>
                       </tr>
@@ -2545,14 +2625,67 @@
           if (omDateFilter) {
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
-            omDateFilter.value = yesterday.toISOString().split("T")[0];
-            omDateFilter.addEventListener("change", loadOMHomeTableData);
-          }
+            const defaultDate = yesterday.toISOString().split("T")[0];
+            omDateFilter.value = defaultDate;
 
-          loadOMHomeTableData();
+            function formatDisplayDate(dateStr) {
+              try {
+                const d = new Date(dateStr + "T00:00:00");
+                const day = String(d.getDate()).padStart(2, "0");
+                const month = d.toLocaleString("en-GB", { month: "short" }).toUpperCase();
+                const year = d.getFullYear();
+                return `${day} ${month} ${year}`;
+              } catch (e) {
+                return dateStr;
+              }
+            }
+
+            const updateHeaderAndReload = () => {
+              const sel = omDateFilter.value || defaultDate;
+              const disp = formatDisplayDate(sel);
+              const solarHdr = document.getElementById("omSolarAsOnDateHeader");
+              const bessHdr = document.getElementById("omBessAsOnDateHeader");
+              if (solarHdr) solarHdr.textContent = disp;
+              if (bessHdr) bessHdr.textContent = disp;
+              loadOMHomeTableData();
+            };
+
+            omDateFilter.addEventListener("change", updateHeaderAndReload);
+
+            // initialize header and table
+            updateHeaderAndReload();
+          } else {
+            loadOMHomeTableData();
+          }
         } catch (e) {
           console.error("O&M inline render failed", e);
         }
+      } else if (dept.dept_name === "Engineering") {
+        // Render Engineering as an external EDMS link with icon and button
+        try {
+          document.getElementById("departmentContent").innerHTML = `
+              <div class="container-fluid">
+                <h3><b>Engineering</b></h3>
+                <div class="mt-3 mb-2 small text-muted"><strong>External EDMS</strong></div>
+                <div style="width:820px; max-width:100%; margin:12px auto 6px auto;">
+                  <div style="text-align:center;">
+                    <img src="/icons/Engineering.png" alt="Engineering" style="max-width:280px; width:100%; height:auto;" />
+                  </div>
+                  <div style="text-align:center; margin-top:12px;">
+                    <button class="btn btn-outline-primary" id="engineering-open-btn">Open EDMS</button>
+                  </div>
+                </div>
+              </div>
+            `;
+
+          setTimeout(() => {
+            const btn = document.getElementById('engineering-open-btn');
+            if (!btn) return;
+            btn.onclick = () => {
+              window.open('https://edms.seci.co.in', '_blank');
+            };
+          }, 80);
+        } catch (e) { console.error('Engineering inline render failed', e); }
       } else if (dept.dept_name === "Energy Mangement") {
         // Render Energy Management main view inline on Home (large donut + Edit button)
         try {
@@ -2573,7 +2706,7 @@
                 <div style="width:820px; max-width:100%; margin:12px auto 6px auto;">
                   <div style="height:520px;"><canvas id="home-energy-large-ppa" style="width:100%;height:100%"></canvas></div>
                   <div style="text-align:center; margin-top:12px;">
-                    <button class="btn btn-outline-primary edit-only" id="home-energy-edit-btn">Edit</button>
+                    <button class="btn btn-outline-primary head-only" id="home-energy-edit-btn">Edit</button>
                   </div>
                 </div>
               </div>
@@ -2618,73 +2751,180 @@
           }, 100);
         } catch (e) { console.error('Energy Mangement inline render failed', e); }
       } else if (dept.dept_name === "Contracts & Procurement") {
-        // For Contracts & Procurement show Key Issues/Targets with a single donut and Edit button
+        // For Contracts & Procurement show Schemes donut + C&P Own Projects donut side by side
         document.getElementById("departmentContent").innerHTML = `
                     <h3><b>${dept.dept_name}</b></h3>
                         <div id="contractsPanel" class="row mt-4">
-                          <div class="col-12 d-flex justify-content-center mb-4">
-                            <div class="card" style="width:780px;">
+                          <div class="col-md-6 mb-3">
+                            <div class="card h-100">
                               <div class="card-body text-center" style="padding:1.75rem;">
-                                <canvas id="contractsDonut" width="480" height="360" style="display:block;margin:auto;max-width:100%;height:auto;"></canvas>
-                                <div class="mt-3">
-                                  <button id="contractsEditBtn" class="btn btn-sm btn-outline-primary edit-only"><i class="bi bi-pencil"></i> Edit</button>
-                                </div>
+                                <h5 class="card-title mb-3" style="cursor:pointer;" onclick="window.location.href='/contracts_external.html'">Schemes <i class="bi bi-box-arrow-up-right" style="font-size:0.8rem;"></i></h5>
+                                <canvas id="contractsDonut" width="400" height="360" style="display:block;margin:auto;max-width:100%;height:auto;cursor:pointer;" onclick="window.location.href='/contracts_external.html'"></canvas>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                              <div class="card-body text-center" style="padding:1.75rem;">
+                                <h5 class="card-title mb-3" style="cursor:pointer;" onclick="window.location.href='/cp_own_projects.html'">Own Project <i class="bi bi-box-arrow-up-right" style="font-size:0.8rem;"></i></h5>
+                                <canvas id="cpOwnProjectsDonut" width="400" height="360" style="display:block;margin:auto;max-width:100%;height:auto;cursor:pointer;" onclick="window.location.href='/cp_own_projects.html'"></canvas>
                               </div>
                             </div>
                           </div>
                         </div>
                       `;
 
-        // render donut for Contracts & Procurement using department statistics/entities
-        try {
-          const deptStats = departmentStatistics[dept.dept_id] || [];
-          const stat = deptStats.length ? deptStats[0] : null;
-          const relatedEntities = departmentStatisticEntities.filter(e => e.dept_id === dept.dept_id && (stat ? e.statistic_id === stat.statistic_id : true));
-          const filteredEntityFields = departmentStatisticEntityFields.filter(f => f.dept_id === dept.dept_id && (stat ? f.statistic_id === stat.statistic_id : true));
+        // render tendered capacity donut from tender summary API
+        (async function renderContractsDonut() {
+          try {
+            const res = await authFetch('/api/data/contracts/tenders/summary');
+            if (!res.ok) throw new Error('Failed to fetch tender summary');
+            const json = await res.json();
+            const summary = json.data || json;
+            const techGroups = summary.by_technology || [];
 
-          const labels = relatedEntities.map(r => r.entity_name || 'Item');
-          const data = relatedEntities.map(r => Number(r.entity_value) || 1);
-          const total = data.reduce((s, v) => s + v, 0);
+            const labels = techGroups.map(t => t.technology_type || 'Unknown');
+            const values = techGroups.map(t => Number(t.capacity) || 0);
+            const total = values.reduce((s, v) => s + v, 0);
 
-          const ctx = document.getElementById('contractsDonut');
-          if (ctx) {
-            const contractsChart = new Chart(ctx, {
+            const TECH_COLORS_CONTRACTS = {
+              Solar:  '#f0a500',
+              Wind:   '#28a745',
+              Hybrid: '#0d6efd',
+              RTC:    '#6f42c1',
+              FDRE:   '#dc3545',
+            };
+            const colors = labels.map(l => TECH_COLORS_CONTRACTS[l] || '#6c757d');
+
+            const ctx = document.getElementById('contractsDonut');
+            if (!ctx) return;
+            new Chart(ctx, {
               type: 'doughnut',
               data: {
-                labels: labels.length ? labels : ['No Data'],
-                datasets: [{ data: data.length ? data : [1], backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6610f2', '#fd7e14'] }]
+                labels,
+                datasets: [{
+                  data: values,
+                  backgroundColor: colors,
+                  borderColor: '#fff',
+                  borderWidth: 3,
+                  hoverOffset: 6,
+                }]
               },
               options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                plugins: { legend: { display: false } },
-                elements: { center: { text: `${total} MW`, color: '#333', minFontSize: 16 } },
-                onClick: (evt, activeEls, chart) => {
+                cutout: '50%',
+                elements: { center: { text: `${total.toLocaleString('en-IN')} MW`, color: '#333', fontStyle: 'bold', minFontSize: 18 } },
+                plugins: {
+                  legend: {
+                    display: false
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('en-IN')} MW`
+                    }
+                  }
+                },
+                onClick: (evt, activeEls) => {
                   if (activeEls.length > 0) {
-                    // navigate to contracts page when any slice is clicked
                     window.location.href = '/contracts_external.html';
                   }
                 }
               }
             });
-
-            // attach meta so other code can inspect
-            contractsChart.dept_id = dept.dept_id;
-            contractsChart.dept_name = dept.dept_name;
-            contractsChart.statistic_id = stat ? stat.statistic_id : null;
-            contractsChart.statistic_name = stat ? stat.statistic_name : 'Key Issues/Targets';
-            contractsChart.relatedEntities = relatedEntities;
-
-            // Wire the Edit button to open the existing edit modal for this statistic (if available)
-            const editBtn = document.getElementById('contractsEditBtn');
-            if (editBtn) {
-              editBtn.onclick = () => {
-                if (!stat || !stat.statistic_id) return alert('No statistic configured for Contracts & Procurement');
-                editStatistic(dept.dept_id, stat.statistic_id);
-              };
+          } catch (e) {
+            console.warn('Contracts & Procurement schemes donut render failed', e);
+            const ctx = document.getElementById('contractsDonut');
+            if (ctx) {
+              ctx.outerHTML = '<p class="text-muted mt-3">Schemes data unavailable.</p>';
             }
           }
-        } catch (e) { console.warn('Contracts & Procurement chart render failed', e); }
+        })();
+
+        // render C&P Own Projects donut
+        (async function renderCpOwnProjectsDonut() {
+          try {
+            const res = await authFetch('/api/data/cp/entry/all');
+            if (!res.ok) throw new Error('Failed to fetch C&P own projects');
+            const json = await res.json();
+            const entries = json.data || [];
+
+            if (!entries.length) {
+              const ctx = document.getElementById('cpOwnProjectsDonut');
+              if (ctx) {
+                ctx.outerHTML = '<p class="text-muted mt-3">No C&P own projects found.</p>';
+              }
+              return;
+            }
+
+            const total = entries.reduce((s, e) => s + (e.capacity_mw || 0), 0);
+
+            // Prepare labels and colors (top 8 + Others)
+            const sorted = [...entries].sort((a, b) => (b.capacity_mw || 0) - (a.capacity_mw || 0));
+            const top = sorted.slice(0, 8);
+            const rest = sorted.slice(8);
+
+            const labels = top.map(e => {
+              const name = e.project_name || 'Unknown';
+              return name.length > 30 ? name.substring(0, 30) + '...' : name;
+            });
+            const values = top.map(e => e.capacity_mw || 0);
+
+            if (rest.length > 0) {
+              labels.push('Others');
+              values.push(rest.reduce((s, e) => s + (e.capacity_mw || 0), 0));
+            }
+
+            const CP_COLORS = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#95a5a6'];
+
+            const ctx = document.getElementById('cpOwnProjectsDonut');
+            if (!ctx) return;
+            new Chart(ctx, {
+              type: 'doughnut',
+              data: {
+                labels,
+                datasets: [{
+                  data: values,
+                  backgroundColor: CP_COLORS.slice(0, labels.length),
+                  borderColor: '#fff',
+                  borderWidth: 3,
+                  hoverOffset: 6,
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '50%',
+                elements: { center: { text: `${total.toLocaleString('en-IN')} MW`, color: '#333', fontStyle: 'bold', minFontSize: 18 } },
+                plugins: {
+                  legend: {
+                    display: false
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        const val = context.parsed || 0;
+                        const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                        return ' ' + context.label + ': ' + val.toLocaleString('en-IN') + ' MW (' + pct + '%)';
+                      }
+                    }
+                  }
+                },
+                onClick: (evt, activeEls) => {
+                  if (activeEls.length > 0) {
+                    window.location.href = '/cp_own_projects.html';
+                  }
+                }
+              }
+            });
+          } catch (e) {
+            console.warn('C&P Own Projects donut render failed', e);
+            const ctx = document.getElementById('cpOwnProjectsDonut');
+            if (ctx) {
+              ctx.outerHTML = '<p class="text-muted mt-3">C&P own projects data unavailable.</p>';
+            }
+          }
+        })();
       } else if (dept.dept_name !== "Home") {
         document.getElementById("departmentContent").innerHTML = `
                     <h3><b>${dept.dept_name}</b></h3>
@@ -2869,15 +3109,20 @@
             .toLowerCase()
             .replace(/&/g, "and")
             .replace(/\s+/g, "");
-          if (key.includes("business") && key.includes("development")) return "/icons/Bd.png";
-          if (key.includes("contract") && key.includes("procurement")) return "/icons/contract&procurement.png";
-          if (key.includes("project")) return "/icons/Projects.png";
-          if (key === "om" || key.includes("oandm") || key.includes("operationmaintenance")) return "/icons/o&m.png";
-          if (key.includes("reia")) return "/icons/reia.png";
-          if (key.includes("pmc")) return "/icons/pmc.png";
-          if (key.includes("energy") && key.includes("management")) return "/icons/Energy%20Management.png";
-          if (key.includes("energymangement")) return "/icons/Energy%20Management.png";
-          return "";
+
+          let filename = "";
+          if (key.includes("business") && key.includes("development")) filename = "BD.png";
+          else if (key.includes("contract") && key.includes("procurement")) filename = "contract&procurement.png";
+          else if (key.includes("project")) filename = "Projects.png";
+          else if (key === "om" || key.includes("oandm") || key.includes("operationmaintenance")) filename = "o&m.png";
+          else if (key.includes("reia")) filename = "reia.png";
+          else if (key.includes("pmc")) filename = "pmc.png";
+          else if (key.includes("engineering")) filename = "Engineering.png";
+          else if (key.includes("energy") && key.includes("management")) filename = "Energy Management.png";
+          else if (key.includes("energymangement")) filename = "Energy Management.png";
+
+          if (!filename) return "";
+          return "/icons/" + encodeURIComponent(filename);
         }
         let homeHtml = `<h3><b>Departments Overview</b></h3><div class="row">`;
         departments.slice(1).forEach((d) => {
@@ -2960,9 +3205,13 @@
           const bodyStyle = isFullImageDept ? "padding:0;" : "";
 
           const cardStyle = isFullImageDept ? 'min-height:420px;' : '';
+          const openAction = (d.dept_name && String(d.dept_name).toLowerCase().includes('engineering'))
+            ? `window.open('https://edms.seci.co.in','_blank')`
+            : `switchDepartment(${deptIndex})`;
+
           homeHtml += `
                       <div class="col-md-6 mb-4 d-flex justify-content-center">
-                        <div id="dept-card-${d.dept_id}" class="card h-100 clickable-card dept-overview-card" onclick="switchDepartment(${deptIndex})" style="cursor: pointer; ${cardStyle}">
+                        <div id="dept-card-${d.dept_id}" class="card h-100 clickable-card dept-overview-card" onclick="${openAction}" style="cursor: pointer; ${cardStyle}">
                           <div class="card-body dept-card-body" style="${bodyStyle}">
                             ${titleHtml}
                             ${chartCanvas}
@@ -3290,6 +3539,8 @@
                   setTimeout(() => { window.location.href = '/business_development_external.html'; }, 180);
                 } else if (txt.includes('energy management')) {
                   setTimeout(() => { window.location.href = '/energy_management.html'; }, 180);
+                } else if (txt.includes('engineering')) {
+                  setTimeout(() => { window.open('https://edms.seci.co.in', '_blank'); }, 180);
                 } else {
                   // for other departments, attempt to switch department (find dept index by id)
                   const id = btn.id && btn.id.replace('view-btn-', '') || null;
@@ -3351,7 +3602,7 @@
                   </div>
                   <div class="mb-2">
                     <label class="form-label">Entity Value</label>
-                    <input type="number" class="form-control entity-value" required />
+                    <input type="number" class="form-control entity-value" step="0.01" required />
                   </div>
                   <div class="mb-2">
                     <label class="form-label">Fields</label>
@@ -3393,7 +3644,7 @@
         .querySelectorAll("#entitiesContainer > .card")
         .forEach((card) => {
           const entityName = card.querySelector(".entity-name").value.trim();
-          const entityValue = parseInt(
+          const entityValue = parseFloat(
             card.querySelector(".entity-value").value
           );
           if (!entityName || isNaN(entityValue)) return;
@@ -3445,8 +3696,8 @@
     let editingStatId = null;
 
     function editStatistic(deptId, statId) {
-      if (!canEditDept(deptId)) {
-        alert("Edit access is not allowed for this department.");
+      if (!canHeadDept(deptId)) {
+        alert("Head access is required to edit this department.");
         return;
       }
       editingDeptId = deptId;
@@ -3481,7 +3732,7 @@
                     </div>
                     <div class="mb-2">
                       <label class="form-label">Entity Value</label>
-                      <input type="number" class="form-control entity-value" value="${entity.entity_value}" />
+                      <input type="number" class="form-control entity-value" step="0.01" value="${entity.entity_value}" />
                     </div>
                     <div class="mb-2">
                       <label class="form-label">Fields</label>
@@ -3540,7 +3791,7 @@
                   </div>
                   <div class="mb-2">
                     <label class="form-label">Entity Value</label>
-                    <input type="number" class="form-control entity-value" />
+                    <input type="number" class="form-control entity-value" step="0.01" />
                   </div>
                   <div class="mb-2">
                     <label class="form-label">Fields</label>
@@ -3585,7 +3836,7 @@
         .forEach((card) => {
           const entity_id = card.dataset.entityId || null; // get entity_id if exists
           const entity_name = card.querySelector(".entity-name").value.trim();
-          const entity_value = parseInt(
+          const entity_value = parseFloat(
             card.querySelector(".entity-value").value.trim()
           );
           if (!entity_name || isNaN(entity_value)) return;

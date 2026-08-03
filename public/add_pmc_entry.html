@@ -482,6 +482,56 @@
       });
     }
 
+    function normalizeDeptName(name) {
+      return String(name || '')
+        .toLowerCase()
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9]/g, '');
+    }
+
+    function getJwtPayload() {
+      try {
+        const token = localStorage.getItem("token") || '';
+        const payload = token.split('.')[1] || '';
+        return JSON.parse(atob(payload));
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function resolveDeptAccessLevelByName(targetName) {
+      const payload = getJwtPayload();
+      if (payload && payload.role === 'admin') return Promise.resolve('head');
+      const userId = payload && payload.user_id;
+      if (!userId) return Promise.resolve('none');
+      return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+        .then((res) => (res.ok ? res.json() : { departments: [] }))
+        .then((data) => {
+          const list = Array.isArray(data.departments) ? data.departments : [];
+          const targetKey = normalizeDeptName(targetName);
+          const lookups = list.map((deptInfo) => {
+            const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+            if (!id) return Promise.resolve(null);
+            return authFetch(`/api/data/departments/${encodeURIComponent(id)}`)
+              .then((res) => (res.ok ? res.json() : null))
+              .then((dept) => {
+                if (!dept) return null;
+                if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
+                const raw = String((deptInfo && deptInfo.access_level) || '').trim().toLowerCase();
+                if (raw === 'view' || raw === 'edit' || raw === 'head') return raw;
+                return (deptInfo && deptInfo.can_edit === true) ? 'edit' : 'view';
+              });
+          });
+          return Promise.all(lookups).then((levels) => {
+            for (let i = 0; i < levels.length; i++) {
+              if (levels[i]) return levels[i];
+            }
+            return 'none';
+          });
+        })
+        .catch(() => 'none');
+    }
+
     function getEditId() {
       const params = new URLSearchParams(window.location.search);
       return params.get("edit");
@@ -602,24 +652,33 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-      applyBmsOnlyMode();
-      applyProjectContextPreset();
-      // Auto-set service type based on segment/from when provided (helps keep donut clicks consistent)
-      try {
-        const seg = (getQueryParam('segment') || '').toLowerCase();
-        const from = (getQueryParam('from') || '').toLowerCase();
-        const svcEl = document.getElementById('serviceType');
-        if (svcEl && !svcEl.value) {
-          if (seg.includes('bms') || from === 'bms') svcEl.value = 'BMS';
-          else if (seg.includes('execution') || from === 'execution') svcEl.value = 'Execution';
-          // PFR removed; do not set PFR service type
-          else if (seg.includes('dpr')) svcEl.value = 'DPR';
+      resolveDeptAccessLevelByName('PMC').then((level) => {
+        const canEdit = level === 'edit' || level === 'head';
+        if (!canEdit) {
+          alert('View access only. Editing PMC entries is not allowed.');
+          window.location.href = '/home.html';
+          return;
         }
-      } catch (e) { console.warn('preset serviceType failed', e); }
-      const editId = getEditId();
-      if (editId) {
-        loadPmcEntry(editId);
-      }
+
+        applyBmsOnlyMode();
+        applyProjectContextPreset();
+        // Auto-set service type based on segment/from when provided (helps keep donut clicks consistent)
+        try {
+          const seg = (getQueryParam('segment') || '').toLowerCase();
+          const from = (getQueryParam('from') || '').toLowerCase();
+          const svcEl = document.getElementById('serviceType');
+          if (svcEl && !svcEl.value) {
+            if (seg.includes('bms') || from === 'bms') svcEl.value = 'BMS';
+            else if (seg.includes('execution') || from === 'execution') svcEl.value = 'Execution';
+            // PFR removed; do not set PFR service type
+            else if (seg.includes('dpr')) svcEl.value = 'DPR';
+          }
+        } catch (e) { console.warn('preset serviceType failed', e); }
+        const editId = getEditId();
+        if (editId) {
+          loadPmcEntry(editId);
+        }
+      });
     });
 
     // Auto-calculate financial amounts from milestone data

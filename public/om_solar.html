@@ -23,6 +23,7 @@
         background: #f3f6fb;
         font-family: "Segoe UI", Roboto, Arial, sans-serif;
         color: #333;
+        overflow-x: auto;
       }
 
       /* Improved container */
@@ -549,7 +550,7 @@
             <div
               class="d-flex align-items-center justify-content-md-end flex-wrap gap-3"
             >
-              <div class="toolbar-group">
+              <div class="toolbar-group" id="uploadGroup">
                 <span class="toolbar-label"
                   ><i class="fas fa-file-upload"></i> Upload Excel:</span
                 >
@@ -564,6 +565,7 @@
 
               <a
                 href="add_om_solar.html"
+                id="addOmDataLink"
                 class="btn btn-success btn-sm"
                 onclick="
                   this.href = 'add_om_solar.html' + window.location.search
@@ -587,7 +589,7 @@
           <table class="table table-bordered mb-0">
             <thead>
               <tr>
-                <th colspan="5">As on Date</th>
+                <th colspan="5" id="asOnDateHeader">As on Date</th>
                 <th colspan="2">Year Till Date</th>
                 <th colspan="2">Last FY Performance</th>
               </tr>
@@ -687,7 +689,7 @@
             placeholder="Enter action plan..."
           ></textarea>
 
-          <button class="btn btn-primary" onclick="saveIssuesAction()">
+          <button class="btn btn-primary" id="saveIssuesBtn" onclick="saveIssuesAction()">
             <i class="fas fa-save"></i> Save
           </button>
         </div>
@@ -701,6 +703,9 @@
       const statistic_id = params.get("statistic_id");
       const entity_id = params.get("entity_id");
       let dailyGenerationChart = null;
+      let omAccessLevel = "view";
+      let canOmEdit = false;
+      let canOmHead = false;
 
       function authFetch(url, options = {}) {
         const token = localStorage.getItem("token");
@@ -726,9 +731,92 @@
         });
       }
 
+      function normalizeDeptName(name) {
+        return String(name || "")
+          .toLowerCase()
+          .replace(/&/g, "and")
+          .replace(/[^a-z0-9]/g, "");
+      }
+
+      function getJwtPayload() {
+        try {
+          const token = localStorage.getItem("token") || "";
+          const payload = token.split(".")[1] || "";
+          return JSON.parse(atob(payload));
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function resolveDeptAccessLevelByName(targetName) {
+        // Returns a Promise resolving to { level: 'none'|'view'|'edit'|'head', can_edit: boolean }
+        const payload = getJwtPayload();
+        if (payload && payload.role === "admin") return Promise.resolve({ level: "head", can_edit: true });
+        const userId = payload && payload.user_id;
+        if (!userId) return Promise.resolve({ level: "none", can_edit: false });
+        return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+          .then((res) => (res.ok ? res.json() : { departments: [] }))
+          .then((data) => {
+            const list = Array.isArray(data.departments) ? data.departments : [];
+            const targetKey = normalizeDeptName(targetName);
+            const lookups = list.map((deptInfo) => {
+              const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+              if (!id) return Promise.resolve(null);
+              return authFetch(`/api/data/departments/${encodeURIComponent(id)}`)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((dept) => {
+                  if (!dept) return null;
+                  if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
+                  const raw = String((deptInfo && deptInfo.access_level) || "").trim().toLowerCase();
+                  let level = 'view';
+                  let canEdit = false;
+                  if (raw === 'head') { level = 'head'; canEdit = true; }
+                  else if (raw === 'edit') { level = 'edit'; canEdit = true; }
+                  else if (raw === 'view') { level = 'view'; canEdit = false; }
+                  else if (deptInfo && Object.prototype.hasOwnProperty.call(deptInfo, 'can_edit')) {
+                    canEdit = Boolean(deptInfo.can_edit);
+                    level = canEdit ? 'edit' : 'view';
+                  }
+                  return { level, can_edit: canEdit };
+                });
+            });
+            return Promise.all(lookups).then((results) => {
+              for (let i = 0; i < results.length; i++) {
+                if (results[i]) return results[i];
+              }
+              return { level: 'none', can_edit: false };
+            });
+          })
+          .catch(() => ({ level: 'none', can_edit: false }));
+      }
+
+      function applyOmAccessUi() {
+        const addLink = document.getElementById("addOmDataLink");
+        const uploadGroup = document.getElementById("uploadGroup");
+        const keyIssues = document.getElementById("keyIssues");
+        const actionPlan = document.getElementById("actionPlan");
+        const saveBtn = document.getElementById("saveIssuesBtn");
+
+        // Show Add/Edit Data button for head AND edit users; hide for view-only
+        if (addLink) addLink.style.display = canOmHead || canOmEdit ? "" : "none";
+        // Upload for head and edit users
+        if (uploadGroup) uploadGroup.style.display = canOmHead || canOmEdit ? "" : "none";
+
+        if (!canOmEdit) {
+          if (keyIssues) keyIssues.readOnly = true;
+          if (actionPlan) actionPlan.readOnly = true;
+          if (saveBtn) saveBtn.style.display = "none";
+        }
+      }
+
       document
         .getElementById("excelUpload")
         .addEventListener("change", async function (e) {
+          if (!canOmHead && !canOmEdit) {
+            alert("You do not have permission to upload.");
+            e.target.value = "";
+            return;
+          }
           const file = e.target.files[0];
           if (!file) return;
 
@@ -769,11 +857,14 @@
             }
 
             alert(alertMsg);
-
             const selectedDate = document.getElementById("dateFilter").value;
             if (selectedDate) {
               fetchDataForDate(selectedDate);
             }
+
+            // Update header to show the selected view date (avoid overwriting)
+            const sel = document.getElementById("dateFilter").value;
+            if (sel) document.getElementById("asOnDateHeader").textContent = formatHeaderDate(sel);
           } catch (err) {
             console.error("Excel upload error:", err);
             alert(err.message || "Failed to upload Excel file");
@@ -789,6 +880,8 @@
 
       dateInput.addEventListener("change", () => {
         if (!dateInput.value) return;
+        // Update header to show the selected view date
+        document.getElementById("asOnDateHeader").textContent = formatHeaderDate(dateInput.value);
         fetchDataForDate(dateInput.value);
       });
 
@@ -808,6 +901,31 @@
           document.getElementById("main-heading").innerHTML = projectName;
         } catch (err) {
           console.error("API Error:", err);
+        } finally {
+          GlobalLoader.hide();
+        }
+      }
+
+      // Fetch and display the latest available OM Solar date for this entity
+      async function fetchAndSetLatestDate() {
+        try {
+          GlobalLoader.show();
+          const res = await authFetch(
+            `/api/data/om/solar/last-date?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+            { method: "GET" },
+          );
+
+          if (res.status === 204) {
+            document.getElementById("asOnDateHeader").textContent = "No data";
+            return;
+          }
+
+          const json = await res.json();
+          if (json && json.date) {
+            document.getElementById("asOnDateHeader").textContent = formatHeaderDate(json.date);
+          }
+        } catch (err) {
+          console.error("Failed to fetch latest date:", err);
         } finally {
           GlobalLoader.hide();
         }
@@ -931,14 +1049,14 @@
               <td>${cur?.radiation ? cur.radiation.toFixed(2) : ""}</td>
               <td>${cur?.generation ?? ""}</td>
               <td>${cur ? cur.cuf.toFixed(2) + "%" : ""}</td>
-              <td>${cur?.peak_power ?? ""}</td>
+              <td>${cur?.peak_power != null ? (cur.peak_power / 1000).toFixed(3) : ""}</td>
               <td title="${cur?.remarks || ""}">${cur?.remarks ? cur.remarks.substring(0, 30) + (cur.remarks.length > 30 ? "..." : "") : ""}</td>
 
               <!-- Previous Year -->
               <td>${prev?.radiation ? prev.radiation.toFixed(2) : ""}</td>
               <td>${prev?.generation ?? ""}</td>
               <td>${prev ? prev.cuf.toFixed(2) + "%" : ""}</td>
-              <td>${prev?.peak_power ?? ""}</td>
+              <td>${prev?.peak_power != null ? (prev.peak_power / 1000).toFixed(3) : ""}</td>
             </tr>
           `;
         });
@@ -977,6 +1095,18 @@
           month: "short",
           year: "numeric",
         });
+      }
+
+      function formatHeaderDate(dateStr) {
+        try {
+          const d = new Date(dateStr + "T00:00:00");
+          const day = String(d.getDate()).padStart(2, "0");
+          const month = d.toLocaleString("en-GB", { month: "short" }).toUpperCase();
+          const year = d.getFullYear();
+          return `${day} ${month} ${year}`;
+        } catch (e) {
+          return dateStr;
+        }
       }
 
       function fileAuthFetch(url, options = {}) {
@@ -1223,6 +1353,10 @@
       }
 
       async function saveIssuesAction() {
+        if (!canOmEdit) {
+          alert("View access only. Editing issues is not allowed.");
+          return;
+        }
         const key_issues = document.getElementById("keyIssues").value;
 
         const action_plan = document.getElementById("actionPlan").value;
@@ -1257,35 +1391,46 @@
       }
 
       window.addEventListener("DOMContentLoaded", () => {
-        const from = document.getElementById("fromDate");
-        const to = document.getElementById("toDate");
+        resolveDeptAccessLevelByName("O&M").then((res) => {
+          // res is { level, can_edit }
+          const level = res && res.level ? res.level : 'none';
+          const canEditFlag = res && typeof res.can_edit !== 'undefined' ? Boolean(res.can_edit) : (level === 'edit' || level === 'head');
+          omAccessLevel = level;
+          canOmHead = level === "head";
+          canOmEdit = canEditFlag;
+          applyOmAccessUi();
 
-        // Formatter (avoids yyyy-mm-dd manual bugs)
-        const formatDate = (date) => date.toISOString().split("T")[0];
+          const from = document.getElementById("fromDate");
+          const to = document.getElementById("toDate");
 
-        // Base at midnight → prevents IST timezone shift
-        const base = new Date();
-        base.setHours(0, 0, 0, 0);
+          // Formatter (avoids yyyy-mm-dd manual bugs)
+          const formatDate = (date) => date.toISOString().split("T")[0];
 
-        // ✅ View Date → yesterday
-        const yesterday = new Date(base);
-        yesterday.setDate(yesterday.getDate());
+          // Base at midnight → prevents IST timezone shift
+          const base = new Date();
+          base.setHours(0, 0, 0, 0);
 
-        // ✅ Export Range → last 30 days from yesterday
-        const last30 = new Date(yesterday);
-        last30.setDate(last30.getDate() - 30);
+          // ✅ View Date → yesterday
+          const yesterday = new Date(base);
+          yesterday.setDate(yesterday.getDate());
 
-        const defaultDate = formatDate(yesterday);
+          // ✅ Export Range → last 30 days from yesterday
+          const last30 = new Date(yesterday);
+          last30.setDate(last30.getDate() - 30);
 
-        // Set inputs
-        dateInput.value = defaultDate;
-        from.value = formatDate(last30);
-        to.value = defaultDate;
+          const defaultDate = formatDate(yesterday);
 
-        // Load data
-        fetchDataForDate(defaultDate);
-        fetchProjectName();
-        fetchIssuesAction();
+          // Set inputs
+          dateInput.value = defaultDate;
+          from.value = formatDate(last30);
+          to.value = defaultDate;
+
+          // Load data and set header to the selected view date
+          fetchDataForDate(defaultDate);
+          fetchProjectName();
+          fetchIssuesAction();
+          document.getElementById("asOnDateHeader").textContent = formatDate(defaultDate);
+        });
       });
     </script>
     <script src="js/main.js"></script>

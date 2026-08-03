@@ -505,6 +505,7 @@
     const statistic_id = params.get("statistic_id");
     const entity_id = params.get("entity_id");
 
+    let canOmHead = false;
     let capacity = 0;
     let lastAddedRecord = {};
 
@@ -612,7 +613,7 @@
       // Generation & BESS
       generationInput.value = data.generation ?? "";
       radiationInput.value = data.radiation ?? "";
-      peakPowerInput.value = data.peak_power ?? "";
+      peakPowerInput.value = data.peak_power != null ? (data.peak_power / 1000) : "";
       bessExportInput.value = data.bess_export ?? "";
       bessImportInput.value = data.bess_import ?? "";
 
@@ -718,6 +719,64 @@
         });
     }
 
+    function normalizeDeptName(name) {
+      return String(name || "")
+        .toLowerCase()
+        .replace(/&/g, "and")
+        .replace(/[^a-z0-9]/g, "");
+    }
+
+    function getJwtPayload() {
+      try {
+        const token = localStorage.getItem("token") || "";
+        const payload = token.split(".")[1] || "";
+        return JSON.parse(atob(payload));
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function resolveDeptAccessLevelByName(targetName) {
+      const payload = getJwtPayload();
+      if (payload && payload.role === "admin") return Promise.resolve({ level: "head", can_edit: true });
+      const userId = payload && payload.user_id;
+      if (!userId) return Promise.resolve({ level: "none", can_edit: false });
+      return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+        .then((res) => (res.ok ? res.json() : { departments: [] }))
+        .then((data) => {
+          const list = Array.isArray(data.departments) ? data.departments : [];
+          const targetKey = normalizeDeptName(targetName);
+          const lookups = list.map((deptInfo) => {
+            const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+            if (!id) return Promise.resolve(null);
+            return authFetch(`/api/data/departments/${encodeURIComponent(id)}`)
+              .then((res) => (res.ok ? res.json() : null))
+              .then((dept) => {
+                if (!dept) return null;
+                if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
+                const raw = String((deptInfo && deptInfo.access_level) || "").trim().toLowerCase();
+                let level = 'view';
+                let canEdit = false;
+                if (raw === 'head') { level = 'head'; canEdit = true; }
+                else if (raw === 'edit') { level = 'edit'; canEdit = true; }
+                else if (raw === 'view') { level = 'view'; canEdit = false; }
+                else if (deptInfo && Object.prototype.hasOwnProperty.call(deptInfo, 'can_edit')) {
+                  canEdit = Boolean(deptInfo.can_edit);
+                  level = canEdit ? 'edit' : 'view';
+                }
+                return { level, can_edit: canEdit };
+              });
+          });
+          return Promise.all(lookups).then((results) => {
+            for (let i = 0; i < results.length; i++) {
+              if (results[i]) return results[i];
+            }
+            return { level: 'none', can_edit: false };
+          });
+        })
+        .catch(() => ({ level: 'none', can_edit: false }));
+    }
+
     function recalculateDerivedFields() {
       const generation = parseFloat(generationInput.value) || 0;
       const bessExport = parseFloat(bessExportInput.value) || 0;
@@ -763,13 +822,17 @@
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
+      if (!canOmHead) {
+        alert("Head access only. Editing is not allowed.");
+        return;
+      }
 
       const payload = {
         date: dateInput.value,
         days: daysInput.value,
         generation: generationInput.value,
         radiation: radiationInput.value,
-        peak_power: peakPowerInput.value,
+        peak_power: peakPowerInput.value !== "" ? Number(peakPowerInput.value) * 1000 : "",
         bess_export: bessExportInput.value,
         bess_import: bessImportInput.value,
         plant_availability: plantAvailabilityInput.value,
@@ -778,8 +841,8 @@
         cumulative_generation: cumulativeGenerationInput.value,
         cumulative_bess_export: cumulativeBessExportInput.value,
         cumulative_bess_import: cumulativeBessImportInput.value,
-        daily_cuf_worc: cufInput.value,
-        cuf_till_date: cufTillDateInput.value,
+        daily_cuf_worc: cufInput.value || null,
+        cuf_till_date: cufTillDateInput.value || null,
         remarks: remarksInput.value,
         action: actionInput.value,
       };
@@ -816,9 +879,22 @@
     });
 
     window.addEventListener("DOMContentLoaded", async () => {
+      const res = await resolveDeptAccessLevelByName("O&M");
+      const level = res && res.level ? res.level : 'none';
+      const canEditFlag = res && typeof res.can_edit !== 'undefined' ? Boolean(res.can_edit) : (level === 'edit' || level === 'head');
+      canOmHead = level === "head";
+      // Allow both head AND edit users to access the form page.
+      // - Head: full access (can submit)
+      // - Edit: can view/fill form but submit is blocked in the submit handler
+      // - View/None: blocked from accessing
+      if (level !== "head" && level !== "edit") {
+        alert("You do not have permission to access this page.");
+        window.location.href = "/home.html";
+        return;
+      }
+
       plantAvailabilityInput.value = 100;
       gridAvailabilityInput.value = 100;
-      bessAvailabilityInput.value = 100;
       try {
         let response = await authFetch(
           `/api/data/om/project/capacity?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,

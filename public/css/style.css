@@ -14,6 +14,33 @@ th.sortable[data-order="desc"]::after {
   content: " ↓";
 }
 
+.dashboard-card {
+  background: #ffffff;
+  border: 1px solid rgba(13, 110, 253, 0.12);
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px rgba(13, 110, 253, 0.06);
+}
+
+.summary-card {
+  background: #f8fbff;
+  border: 1px solid #dbe5ff;
+  border-radius: 0.85rem;
+}
+
+.summary-card-title {
+  font-size: 0.8rem;
+  color: #6c757d;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.45rem;
+}
+
+.summary-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0d6efd;
+}
+
 /* loader global css */
 
 .global-loader {
@@ -47,4 +74,84 @@ th.sortable[data-order="desc"]::after {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Milestone dropdown table adjustments: make Milestone and Invoice Status readable */
+.milestone-dropdown-container table {
+  table-layout: auto;
+  width: 100%;
+}
+.milestone-dropdown-container table tbody td:nth-child(2),
+.milestone-dropdown-container table tbody td:nth-child(8) {
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 520px;
+}
+.milestone-dropdown-container table tbody td:not(:nth-child(2)):not(:nth-child(8)) {
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Prevent milestone text from overlapping adjacent columns */
+.milestone-dropdown-container table tbody td {
+  vertical-align: top;
+  overflow: hidden;
+}
+.milestone-dropdown-container table tbody td:nth-child(2) {
+  min-width: 300px;
+  max-width: 520px;
+  padding-right: 12px;
+}
+/* Ensure inner wrapper divs expand vertically and allow wrapping */
+.milestone-text, .invoice-status {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+/* Reserve space for numeric columns so milestone doesn't collapse into them */
+.milestone-dropdown-container table tbody td:nth-child(3),
+.milestone-dropdown-container table tbody td:nth-child(4),
+.milestone-dropdown-container table tbody td:nth-child(5),
+.milestone-dropdown-container table tbody td:nth-child(6),
+.milestone-dropdown-container table tbody td:nth-child(7) {
+  min-width: 80px;
+}
+.milestone-dropdown-container table thead th:nth-child(2) { text-align:left; }
+.milestone-dropdown-container table thead th { white-space: normal; }
+
+/* Remove inner wrapper scrollbar and make milestone table responsive */
+.milestone-dropdown-container > div[style*="overflow-x"] {
+  overflow-x: visible !important;
+}
+.milestone-dropdown-container table {
+  table-layout: auto;
+  width: 100%;
+  max-width: 100%;
+  border-collapse: separate;
+  box-sizing: border-box;
+}
+.milestone-dropdown-container table thead th,
+.milestone-dropdown-container table tbody td {
+  box-sizing: border-box;
+  word-break: break-word;
+  white-space: normal;
+  padding: 8px;
+}
+/* Milestone and Invoice Status columns: left-align and wrap */
+.milestone-dropdown-container table tbody td:nth-child(2),
+.milestone-dropdown-container table tbody td:nth-child(8),
+.milestone-dropdown-container table thead th:nth-child(2),
+.milestone-dropdown-container table thead th:nth-child(8) {
+  text-align: left;
+  white-space: normal;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+}
+/* Keep other milestone columns compact */
+.milestone-dropdown-container table tbody td:not(:nth-child(2)):not(:nth-child(8)) {
+  text-align: center;
+  white-space: nowrap;
 }

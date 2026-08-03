@@ -499,7 +499,7 @@
             <div
               class="d-flex align-items-center justify-content-md-end flex-wrap gap-3"
             >
-              <div class="toolbar-group">
+              <div class="toolbar-group" id="uploadGroup">
                 <span class="toolbar-label"
                   ><i class="fas fa-file-upload"></i> Upload Excel:</span
                 >
@@ -514,6 +514,7 @@
 
               <a
                 href="add_om_solar_bess_entry.html"
+                id="addOmDataLink"
                 class="btn btn-success btn-sm"
                 onclick="
                   this.href =
@@ -538,7 +539,7 @@
           <table class="table table-bordered mb-0">
             <thead>
               <tr>
-                <th colspan="8">As on Date</th>
+                <th colspan="8" id="asOnDateHeader">As on Date</th>
                 <th colspan="5">Year Till Date</th>
                 <th colspan="4">Last FY Performance</th>
               </tr>
@@ -675,7 +676,7 @@
             placeholder="Enter action plan..."
           ></textarea>
 
-          <button class="btn btn-primary" onclick="saveIssuesAction()">
+          <button class="btn btn-primary" id="saveIssuesBtn" onclick="saveIssuesAction()">
             <i class="fas fa-save"></i> Save
           </button>
         </div>
@@ -688,6 +689,9 @@
       const statistic_id = params.get("statistic_id");
       const entity_id = params.get("entity_id");
       let dailyGenerationChart = null;
+      let omAccessLevel = "view";
+      let canOmEdit = false;
+      let canOmHead = false;
       let dateInput;
       let currentDateTbody;
       let last7DaysTbody;
@@ -715,6 +719,83 @@
           }
           return res;
         });
+      }
+
+      function normalizeDeptName(name) {
+        return String(name || "")
+          .toLowerCase()
+          .replace(/&/g, "and")
+          .replace(/[^a-z0-9]/g, "");
+      }
+
+      function getJwtPayload() {
+        try {
+          const token = localStorage.getItem("token") || "";
+          const payload = token.split(".")[1] || "";
+          return JSON.parse(atob(payload));
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function resolveDeptAccessLevelByName(targetName) {
+        const payload = getJwtPayload();
+        if (payload && payload.role === "admin") return Promise.resolve({ level: "head", can_edit: true });
+        const userId = payload && payload.user_id;
+        if (!userId) return Promise.resolve({ level: "none", can_edit: false });
+        return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+          .then((res) => (res.ok ? res.json() : { departments: [] }))
+          .then((data) => {
+            const list = Array.isArray(data.departments) ? data.departments : [];
+            const targetKey = normalizeDeptName(targetName);
+            const lookups = list.map((deptInfo) => {
+              const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+              if (!id) return Promise.resolve(null);
+              return authFetch(`/api/data/departments/${encodeURIComponent(id)}`)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((dept) => {
+                  if (!dept) return null;
+                  if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
+                  const raw = String((deptInfo && deptInfo.access_level) || "").trim().toLowerCase();
+                  let level = 'view';
+                  let canEdit = false;
+                  if (raw === 'head') { level = 'head'; canEdit = true; }
+                  else if (raw === 'edit') { level = 'edit'; canEdit = true; }
+                  else if (raw === 'view') { level = 'view'; canEdit = false; }
+                  else if (deptInfo && Object.prototype.hasOwnProperty.call(deptInfo, 'can_edit')) {
+                    canEdit = Boolean(deptInfo.can_edit);
+                    level = canEdit ? 'edit' : 'view';
+                  }
+                  return { level, can_edit: canEdit };
+                });
+            });
+            return Promise.all(lookups).then((results) => {
+              for (let i = 0; i < results.length; i++) {
+                if (results[i]) return results[i];
+              }
+              return { level: 'none', can_edit: false };
+            });
+          })
+          .catch(() => ({ level: 'none', can_edit: false }));
+      }
+
+      function applyOmAccessUi() {
+        const addLink = document.getElementById("addOmDataLink");
+        const uploadGroup = document.getElementById("uploadGroup");
+        const keyIssues = document.getElementById("keyIssues");
+        const actionPlan = document.getElementById("actionPlan");
+        const saveBtn = document.getElementById("saveIssuesBtn");
+
+        // Show Add/Edit Data button for head AND edit users; hide for view-only
+        if (addLink) addLink.style.display = canOmHead || canOmEdit ? "" : "none";
+        // Upload for head and edit users
+        if (uploadGroup) uploadGroup.style.display = canOmHead || canOmEdit ? "" : "none";
+
+        if (!canOmEdit) {
+          if (keyIssues) keyIssues.readOnly = true;
+          if (actionPlan) actionPlan.readOnly = true;
+          if (saveBtn) saveBtn.style.display = "none";
+        }
       }
 
       async function fetchProjectName() {
@@ -795,7 +876,7 @@
             <!-- As on Date – Solar -->
             <td>${d.radiation?.toFixed(2) ?? "-"}</td>
             <td>${d.generation ? (d.generation / 1e6).toFixed(6) : "-"}</td>
-            <td>${(d.generation - d.bess_import * 1000) / 1e6}</td>
+            <td>${d.generation ? (((d.generation - ((d.bess_import || 0) * 1000)) / 1e6).toFixed(6)) : "-"}</td>
             <td>${d.daily_cuf_worc?.toFixed(2) ?? "-"}%</td>
             <td>${d.peak_power?.toFixed(3) ?? "-"}</td>
 
@@ -806,18 +887,18 @@
 
             <!-- YTD -->
             <td>${d.cumulative_generation ? (d.cumulative_generation / 1e6).toFixed(6) : "-"}</td>
-            <td>${d.cumulative_generation - d.cumulative_bess_import * 1000}</td>
+            <td>${d.cumulative_generation ? (((d.cumulative_generation - ((d.cumulative_bess_import || 0) * 1000)) / 1e6).toFixed(6)) : "-"}</td>
             <td>${d.cuf_till_date?.toFixed(2) ?? "-"}%</td>
 
             <td>${d.cumulative_bess_import?.toFixed(3) ?? "-"}</td>
             <td>${d.cumulative_bess_export?.toFixed(3) ?? "-"}</td>
 
             <!-- Last FY -->
-            <td>${lastFY ? (lastFY.generation / 1e6).toFixed(6) : "-"}</td>
-            <td>${lastFY ? lastFY.daily_cuf_worc?.toFixed(2) + "%" : "-"}</td>
+            <td>${lastFY ? (lastFY.cumulative_generation / 1e6).toFixed(6) : "-"}</td>
+            <td>${lastFY ? lastFY.cuf_till_date?.toFixed(2) + "%" : "-"}</td>
 
-            <td>${lastFY ? lastFY.bess_import?.toFixed(3) : "-"}</td>
-            <td>${lastFY ? lastFY.bess_export?.toFixed(3) : "-"}</td>
+            <td>${lastFY ? lastFY.cumulative_bess_import?.toFixed(3) : "-"}</td>
+            <td>${lastFY ? lastFY.cumulative_bess_export?.toFixed(3) : "-"}</td>
           </tr>
         `;
       }
@@ -905,6 +986,18 @@
         });
       }
 
+      function formatHeaderDate(dateStr) {
+        try {
+          const d = new Date(dateStr + "T00:00:00");
+          const day = String(d.getDate()).padStart(2, "0");
+          const month = d.toLocaleString("en-GB", { month: "short" }).toUpperCase();
+          const year = d.getFullYear();
+          return `${day} ${month} ${year}`;
+        } catch (e) {
+          return dateStr;
+        }
+      }
+
       function fileAuthFetch(url, options = {}) {
         const token = localStorage.getItem("token");
         const defaultHeaders = {
@@ -926,6 +1019,31 @@
           }
           return res;
         });
+      }
+
+      // Fetch and display the latest available OM Solar+BESS date for this entity
+      async function fetchAndSetLatestDate() {
+        try {
+          GlobalLoader.show();
+          const res = await authFetch(
+            `/api/data/om/solar_bess/last-date?dept_id=${dept_id}&statistic_id=${statistic_id}&entity_id=${entity_id}`,
+            { method: "GET" },
+          );
+
+          if (res.status === 204) {
+            document.getElementById("asOnDateHeader").textContent = "No data";
+            return;
+          }
+
+          const json = await res.json();
+          if (json && json.date) {
+            document.getElementById("asOnDateHeader").textContent = formatHeaderDate(json.date);
+          }
+        } catch (err) {
+          console.error("Failed to fetch latest Solar+BESS date:", err);
+        } finally {
+          GlobalLoader.hide();
+        }
       }
 
       function bindDailyGenerationChart(last7Days = []) {
@@ -1076,6 +1194,11 @@
       document
         .getElementById("excelUpload")
         .addEventListener("change", async function (e) {
+          if (!canOmHead && !canOmEdit) {
+            alert("You do not have permission to upload.");
+            e.target.value = "";
+            return;
+          }
           const file = e.target.files[0];
           if (!file) return;
 
@@ -1120,6 +1243,9 @@
             if (selectedDate) {
               fetchDataForDate(selectedDate);
             }
+            // Update header to show selected view date (avoid overwriting)
+            const sel = document.getElementById("dateFilter").value;
+            if (sel) document.getElementById("asOnDateHeader").textContent = formatDate(sel);
           } catch (err) {
             console.error("Excel upload error:", err);
             alert(err.message || "Failed to upload Excel file");
@@ -1205,6 +1331,10 @@
       }
 
       async function saveIssuesAction() {
+        if (!canOmEdit) {
+          alert("View access only. Editing issues is not allowed.");
+          return;
+        }
         const key_issues = document.getElementById("keyIssues").value;
 
         const action_plan = document.getElementById("actionPlan").value;
@@ -1239,42 +1369,54 @@
       }
 
       window.addEventListener("DOMContentLoaded", () => {
-        dateInput = document.getElementById("dateFilter");
-        currentDateTbody = document.getElementById("currentDateTableBody");
-        last7DaysTbody = document.getElementById("last7DaysTableBody");
+        resolveDeptAccessLevelByName("O&M").then((res) => {
+          const level = res && res.level ? res.level : 'none';
+          const canEditFlag = res && typeof res.can_edit !== 'undefined' ? Boolean(res.can_edit) : (level === 'edit' || level === 'head');
+          omAccessLevel = level;
+          canOmHead = level === "head";
+          canOmEdit = canEditFlag;
+          applyOmAccessUi();
 
-        const from = document.getElementById("fromDate");
-        const to = document.getElementById("toDate");
+          dateInput = document.getElementById("dateFilter");
+          currentDateTbody = document.getElementById("currentDateTableBody");
+          last7DaysTbody = document.getElementById("last7DaysTableBody");
 
-        dateInput.addEventListener("change", () => {
-          if (!dateInput.value) return;
-          fetchDataForDate(dateInput.value);
+          const from = document.getElementById("fromDate");
+          const to = document.getElementById("toDate");
+
+          dateInput.addEventListener("change", () => {
+            if (!dateInput.value) return;
+              // Update header to show the selected view date
+            document.getElementById("asOnDateHeader").textContent = formatHeaderDate(dateInput.value);
+            fetchDataForDate(dateInput.value);
+          });
+
+          const formatLocalDate = (date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+          };
+
+          const base = new Date();
+
+          const yesterday = new Date(base);
+          yesterday.setDate(yesterday.getDate() - 1);
+
+          const last30 = new Date(yesterday);
+          last30.setDate(last30.getDate() - 30);
+
+          const defaultDate = formatLocalDate(yesterday);
+
+          dateInput.value = defaultDate;
+          from.value = formatLocalDate(last30);
+          to.value = defaultDate;
+
+          fetchDataForDate(defaultDate);
+          fetchProjectName();
+          fetchIssuesAction();
+          document.getElementById("asOnDateHeader").textContent = formatHeaderDate(defaultDate);
         });
-
-        const formatLocalDate = (date) => {
-          const y = date.getFullYear();
-          const m = String(date.getMonth() + 1).padStart(2, "0");
-          const d = String(date.getDate()).padStart(2, "0");
-          return `${y}-${m}-${d}`;
-        };
-
-        const base = new Date();
-
-        const yesterday = new Date(base);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const last30 = new Date(yesterday);
-        last30.setDate(last30.getDate() - 30);
-
-        const defaultDate = formatLocalDate(yesterday);
-
-        dateInput.value = defaultDate;
-        from.value = formatLocalDate(last30);
-        to.value = defaultDate;
-
-        fetchDataForDate(defaultDate);
-        fetchProjectName();
-        fetchIssuesAction();
       });
     </script>
     <script src="js/main.js"></script>

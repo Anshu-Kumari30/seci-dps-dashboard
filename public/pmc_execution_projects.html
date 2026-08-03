@@ -20,6 +20,28 @@
       }
       /*In tariff petition add two placeholders */
       #executionMilestoneTable { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+      /* Let table auto-size to container to avoid horizontal scrollbar */
+      #executionMilestoneTable { table-layout: auto; width: 100%; }
+      /* Project Details (col 4): left-align and wrap */
+      #executionMilestoneTable tbody td:nth-child(4) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        max-width: 380px;
+        overflow-wrap: anywhere;
+      }
+      /* Center other columns */
+      #executionMilestoneTable tbody td:not(:nth-child(4)) {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Status column: left-align and allow wrapping for long status text (col 12) */
+      #executionMilestoneTable tbody td:nth-child(12) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
       #executionMilestoneTable thead tr:first-child th {
         background: linear-gradient(135deg, #1f4e79, #0b5ed7);
         color: #ffffff;
@@ -37,9 +59,27 @@
         background: #fff;
         color: #333;
         font-size: 13px;
-        text-align: center;
+        text-align: left;
         vertical-align: middle;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
+      /* Center date/amount columns (5-11) */
+      #executionMilestoneTable tbody td:nth-child(5),
+      #executionMilestoneTable tbody td:nth-child(6),
+      #executionMilestoneTable tbody td:nth-child(7),
+      #executionMilestoneTable tbody td:nth-child(8),
+      #executionMilestoneTable tbody td:nth-child(9),
+      #executionMilestoneTable tbody td:nth-child(10),
+      #executionMilestoneTable tbody td:nth-child(11) {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Actions cell */
+      #executionMilestoneTable tbody td.actions-cell { text-align:center; white-space:nowrap; }
+      /* Ensure last column (actions) is centered and doesn't wrap */
+      #executionMilestoneTable tbody tr td:last-child { text-align:center; white-space:nowrap; }
       #executionMilestoneTable tbody tr:nth-child(even) td { background: #f8fafc; }
       #executionMilestoneTable tbody tr:hover td { background: #f0f8ff; }
 
@@ -270,6 +310,8 @@
         pmcEntryId = null;
       }
       var openMilestoneDropdown = null;
+      window.USER_PMC_ACCESS_LEVEL = 'none';
+      window.USER_PMC_ALLOW_EDIT = false;
 
       function matchesSliceEntryId(sliceItem) {
         if (!sliceEntryIdParam) return true;
@@ -359,6 +401,39 @@
         return a ? a.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
       }
 
+      function getJwtPayload() {
+        try { const token = localStorage.getItem('token') || ''; const payload = token.split('.')[1] || ''; return JSON.parse(atob(payload)); } catch (e) { return {}; }
+      }
+
+      function normalizeDeptName(name) { return String(name || '').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]/g,''); }
+
+      function resolveDeptAccessLevelByName(targetName) {
+        const payload = getJwtPayload();
+        if (payload && payload.role === 'admin') return Promise.resolve('head');
+        const userId = payload && payload.user_id;
+        if (!userId) return Promise.resolve('none');
+        return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+          .then(res => res.ok ? res.json() : { departments: [] })
+          .then(data => {
+            const list = Array.isArray(data.departments) ? data.departments : [];
+            const targetKey = normalizeDeptName(targetName);
+            const lookups = list.map(deptInfo => {
+              const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+              if (!id) return Promise.resolve(null);
+              return authFetch(`/api/data/departments/${encodeURIComponent(id)}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(dept => {
+                  if (!dept) return null;
+                  if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
+                  const raw = String((deptInfo && deptInfo.access_level) || '').trim().toLowerCase();
+                  if (raw === 'view' || raw === 'edit' || raw === 'head') return raw;
+                  return (deptInfo && deptInfo.can_edit === true) ? 'edit' : 'view';
+                }).catch(() => null);
+            });
+            return Promise.all(lookups).then(levels => { for (let i=0;i<levels.length;i++) if (levels[i]) return levels[i]; return 'none'; });
+          }).catch(() => 'none');
+      }
+
       function toInputDate(v) {
         if (!v) return '';
         var d = new Date(v);
@@ -424,14 +499,16 @@
               var viewLink = docHref
                 ? '<a href="' + docHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
                 : '-';
+              var editHtml = window.USER_PMC_ALLOW_EDIT ? (' <button class="btn btn-sm btn-secondary ms-1" onclick="editExecutionDoc(' + d.id + ')">Edit</button>') : '';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteExecutionDoc(' + d.id + ')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
                 '<td>' + (d.description || d.original_name || '') + '</td>' +
                 '<td>' + formatDate(d.doc_date) + '</td>' +
-                '<td>' + viewLink + ' <button class="btn btn-sm btn-secondary ms-1" onclick="editExecutionDoc(' + d.id + ')">Edit</button></td>' +
+                '<td>' + viewLink + editHtml + '</td>' +
                 '<td>' + formatDateTime(d.createdAt) + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteExecutionDoc(' + d.id + ')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
           })
@@ -502,6 +579,7 @@
               var viewLink = corrHref
                 ? '<a href="' + corrHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
                 : '-';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteExecutionCorr(' + c.id + ')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
@@ -511,7 +589,7 @@
                 '<td>' + toVal + '</td>' +
                 '<td>' + formatDateTime(c.createdAt) + '</td>' +
                 '<td>' + viewLink + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteExecutionCorr(' + c.id + ')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
           })
@@ -590,13 +668,13 @@
         var rows = ms.map(function (m, i) {
           return '<tr>' +
             '<td>' + (i + 1) + '</td>' +
-            '<td>' + (m.milestone || '') + '</td>' +
+            '<td><div class="milestone-text">' + (m.milestone || '') + '</div></td>' +
             '<td>' + (m.stage_payment != null ? m.stage_payment : '') + '</td>' +
             '<td>' + formatCurrency(m.invoice_amount) + '</td>' +
             '<td>' + formatCurrency(m.invoice_raised) + '</td>' +
             '<td>' + formatDate(m.invoice_date) + '</td>' +
             '<td>' + (m.invoice_number || '') + '</td>' +
-            '<td>' + (m.status || '') + '</td>' +
+            '<td><div class="invoice-status">' + (m.status || '') + '</div></td>' +
             '<td>' + getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status) + '</td>' +
             '</tr>';
         }).join('');
@@ -724,6 +802,8 @@
             tbody.innerHTML = '';
             visible.forEach(function (project, i) {
               var tr = document.createElement('tr');
+              var allowEdit = window.USER_PMC_ALLOW_EDIT;
+              var actionsHtml = allowEdit ? ('<button class="btn btn-sm btn-secondary me-1" onclick="editEntry(\'' + project.pmc_entry_id + '\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEntry(\'' + project.pmc_entry_id + '\')">Delete</button>') : '<span class="text-muted">No action</span>';
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
                 '<td>' + (project.serviceType || '') + '</td>' +
@@ -739,7 +819,7 @@
                 '<td>' + (project.status || '') + '</td>' +
                 '<td>' + renderSummaryBar(project) + '</td>' +
                 '<td><button class="btn btn-sm btn-primary" onclick="toggleMilestones(this,\'' + project.pmc_entry_id + '\')">View</button></td>' +
-                '<td><button class="btn btn-sm btn-secondary me-1" onclick="editEntry(\'' + project.pmc_entry_id + '\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEntry(\'' + project.pmc_entry_id + '\')">Delete</button></td>';
+                '<td>' + actionsHtml + '</td>';
               tbody.appendChild(tr);
             });
 
@@ -816,6 +896,7 @@
               var viewLink = dprHref
                 ? '<a href="' + dprHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
                 : '-';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteExecutionDpr(' + d.id + ')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
@@ -823,7 +904,7 @@
                 '<td>' + formatDate(d.doc_date) + '</td>' +
                 '<td>' + viewLink + '</td>' +
                 '<td>' + formatDateTime(d.createdAt) + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteExecutionDpr(' + d.id + ')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
           })
@@ -874,6 +955,7 @@
               var viewLink = mprHref
                 ? '<a href="' + mprHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
                 : '-';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteExecutionMpr(' + d.id + ')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
@@ -881,7 +963,7 @@
                 '<td>' + formatDate(d.doc_date) + '</td>' +
                 '<td>' + viewLink + '</td>' +
                 '<td>' + formatDateTime(d.createdAt) + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteExecutionMpr(' + d.id + ')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
           })
@@ -940,6 +1022,7 @@
               var viewLink = contractorHref
                 ? '<a href="' + contractorHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
                 : '-';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteExecutionCorrContractor(' + c.id + ')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
@@ -949,7 +1032,7 @@
                 '<td>' + toVal + '</td>' +
                 '<td>' + formatDateTime(c.createdAt) + '</td>' +
                 '<td>' + viewLink + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteExecutionCorrContractor(' + c.id + ')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
           })
@@ -1001,15 +1084,17 @@
               var viewLink = issueHref
                 ? '<a href="' + issueHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
                 : '-';
+              var editHtml = window.USER_PMC_ALLOW_EDIT ? (' <button class="btn btn-sm btn-secondary ms-1" onclick="editExecutionIssue(\'' + (issue.issue_id || issue.id || '') + '\')">Edit</button>') : '';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteExecutionIssue(\'' + (issue.issue_id || issue.id || '') + '\')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
                 '<td>' + (issue.issue_description || '') + '</td>' +
                 '<td>' + (issue.issue_pertaining_to || '') + '</td>' +
                 '<td>' + formatDate(issue.issue_date) + '</td>' +
-                '<td>' + viewLink + ' <button class="btn btn-sm btn-secondary ms-1" onclick="editExecutionIssue(\'' + (issue.issue_id || issue.id || '') + '\')">Edit</button></td>' +
+                '<td>' + viewLink + editHtml + '</td>' +
                 '<td>' + formatDateTime(issue.createdAt) + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteExecutionIssue(\'' + (issue.issue_id || issue.id || '') + '\')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
           })
@@ -1051,15 +1136,48 @@
         initSortableTable('executionCorrContractorTable');
         initSortableTable('executionCorrOtherTable');
         initSortableTable('executionIssuesTable');
-        Promise.resolve(fetchExecutionData())
-          .finally(function () {
-            fetchContractDocs();
-            fetchCorrespondences();
-            fetchDprData();
-            fetchMprData();
-            fetchContractorCorrespondences();
-            fetchIssuesData();
-          });
+
+        // Resolve user's access level for PMC before rendering interactive UI
+        resolveDeptAccessLevelByName('PMC').then(function(level) {
+          window.USER_PMC_ACCESS_LEVEL = level || 'none';
+          window.USER_PMC_ALLOW_EDIT = (window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head');
+          var allowEdit = window.USER_PMC_ALLOW_EDIT;
+          // Hide add buttons for view/none users
+          try { document.getElementById('execution-addMilestoneBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+          try { document.getElementById('execution-addContractDocBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+          try { document.getElementById('execution-addDprBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+          try { document.getElementById('execution-addMprBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+          try { document.getElementById('execution-addCorrContractorBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+          try { document.getElementById('execution-addCorrOtherBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+          try { document.getElementById('execution-addIssueBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+
+          // If user has no access at all, hide interactive controls
+          if (window.USER_PMC_ACCESS_LEVEL === 'none') {
+            try { document.querySelectorAll('button').forEach(b => b.style.display = 'none'); } catch(e){}
+          }
+
+          // Now fetch data and render UI
+          Promise.resolve(fetchExecutionData())
+            .finally(function () {
+              fetchContractDocs();
+              fetchCorrespondences();
+              fetchDprData();
+              fetchMprData();
+              fetchContractorCorrespondences();
+              fetchIssuesData();
+            });
+        }).catch(function(){
+          // fallback: still fetch data but assume no edit privileges
+          Promise.resolve(fetchExecutionData())
+            .finally(function () {
+              fetchContractDocs();
+              fetchCorrespondences();
+              fetchDprData();
+              fetchMprData();
+              fetchContractorCorrespondences();
+              fetchIssuesData();
+            });
+        });
 
         document.getElementById('execution-addContractDocBtn').addEventListener('click', function () {
           var href = '/add_contract_document_execution.html';

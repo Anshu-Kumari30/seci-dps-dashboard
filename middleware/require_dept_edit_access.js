@@ -73,10 +73,13 @@ async function requireDeptEditAccess(req, res, next) {
 
   try {
     const access = await UserEditAccess.findOne({
-      where: { user_id: user.user_id, dept_id: deptId, can_edit: true },
+      where: { user_id: user.user_id, dept_id: deptId },
     });
 
-    if (!access) {
+    const level = String(access?.access_level || "").trim().toLowerCase();
+    const allowEdit = level === "edit" || level === "head" || access?.can_edit === true;
+
+    if (!allowEdit) {
       return res.status(403).json({ error: "Access denied: edit not allowed" });
     }
 

@@ -58,6 +58,39 @@
         });
       })();
 
+      let externalAccessLevel = "none";
+      let externalAllowEdit = false;
+
+      function getJwtPayload() {
+        try {
+          const token = localStorage.getItem("token") || "";
+          const payload = token.split(".")[1] || "";
+          return JSON.parse(atob(payload));
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function resolveDeptAccessLevelById(deptId) {
+        const payload = getJwtPayload();
+        if (payload && payload.role === "admin") return Promise.resolve("head");
+
+        const userId = payload && payload.user_id;
+        if (!userId || !deptId) return Promise.resolve("none");
+
+        return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+          .then((res) => (res.ok ? res.json() : { departments: [] }))
+          .then((data) => {
+            const list = Array.isArray(data.departments) ? data.departments : [];
+            const match = list.find((item) => String(item.dept_id) === String(deptId));
+            if (!match) return "none";
+            const level = String(match.access_level || "").trim().toLowerCase();
+            if (level === "view" || level === "edit" || level === "head") return level;
+            return match.can_edit === true ? "edit" : "view";
+          })
+          .catch(() => "none");
+      }
+
       document.addEventListener("DOMContentLoaded", function () {
         const params = new URLSearchParams(window.location.search);
         const dept_id = params.get("dept_id");
@@ -65,14 +98,22 @@
         const entity_id = params.get("entity_id");
         const statisticDropdown = document.getElementById("statisticDropdown");
 
+        const accessPromise = resolveDeptAccessLevelById(dept_id).then((level) => {
+          externalAccessLevel = level || "none";
+          externalAllowEdit = externalAccessLevel === "edit" || externalAccessLevel === "head";
+          window.__externalAllowEdit = externalAllowEdit;
+          return externalAccessLevel;
+        });
+
         Promise.all([
+          accessPromise,
           authFetch(`/api/data/statistics/${dept_id}`),
           authFetch(`/api/data/entities/${dept_id}/${statistic_id}`),
         ])
-          .then(([statsRes, entitiesRes]) =>
-            Promise.all([statsRes.json(), entitiesRes.json()])
+          .then(([accessLevel, statsRes, entitiesRes]) =>
+            Promise.all([Promise.resolve(accessLevel), statsRes.json(), entitiesRes.json()])
           )
-          .then(([stats, entities]) => {
+          .then(([accessLevel, stats, entities]) => {
             const stat = stats.find((s) => s.statistic_id == statistic_id);
             const entity = entities.find((e) => e.entity_id == entity_id);
 
@@ -81,22 +122,22 @@
             document.getElementById("entityTitle").innerText =
               entity?.entity_name || "Entity";
 
-            loadTabsForStatistic(statistic_id);
+            loadTabsForStatistic(statistic_id, accessLevel);
           });
 
         if (statisticDropdown) {
           statisticDropdown.addEventListener("change", (e) => {
-            loadTabsForStatistic(e.target.value);
+            loadTabsForStatistic(e.target.value, externalAccessLevel);
           });
         }
 
-        function loadTabsForStatistic(statistic_id) {
+        function loadTabsForStatistic(statistic_id, accessLevel) {
           authFetch(
             `/api/data/documents/grouped/${dept_id}/${statistic_id}/${entity_id}`
           )
             .then((res) => res.json())
             .then((data) => {
-              populateTabs(data, dept_id, statistic_id, entity_id);
+              populateTabs(data, dept_id, statistic_id, entity_id, accessLevel);
             });
         }
 
@@ -192,7 +233,7 @@
           };
         }
 
-        function populateTabs(data, dept_id, statistic_id, entity_id) {
+        function populateTabs(data, dept_id, statistic_id, entity_id, accessLevel) {
           const tabList = document.getElementById("dynamicTabs");
           const tabContent = document.getElementById("dynamicTabContent");
 
@@ -210,7 +251,7 @@
             { id: "tp", label: "Tariff Petition", source: "documents" },
             {
               id: "cc",
-              label: "Correspondences with Contractors",
+              label: "Correspondence with Contractors",
               source: "correspondences",
               filter: "contractor",
             },
@@ -268,6 +309,8 @@
               );
             }
 
+            const allowEdit = accessLevel === "edit" || accessLevel === "head";
+
             // Add "+ Add ..." button
             const addButton = document.createElement("button");
             addButton.className = "btn btn-sm btn-success mb-2";
@@ -307,7 +350,9 @@
               approvedWrap.style.minWidth = '220px';
               approvedWrap.innerHTML = '<label class="form-label mb-1">Approved Tariff (Rs/KWh)</label><input id="approvedTariffInput" type="number" step="0.0001" class="form-control form-control-sm" placeholder="Approved Tariff (Rs/KWh)" />';
 
-              toolbar.appendChild(addButton);
+              if (allowEdit) {
+                toolbar.appendChild(addButton);
+              }
               toolbar.appendChild(requestedWrap);
               toolbar.appendChild(approvedWrap);
               pane.appendChild(toolbar);
@@ -321,30 +366,37 @@
                 approvedEl.value = values.approved_tariff || '';
               }).catch(() => { requestedEl.value=''; approvedEl.value=''; });
 
-              function persistTariffInputs() {
-                saveTariffValuesForContext(dept_id, statistic_id, entity_id, {
-                  requested_tariff: requestedEl.value,
-                  approved_tariff: approvedEl.value,
-                });
-              }
+              if (allowEdit) {
+                function persistTariffInputs() {
+                  saveTariffValuesForContext(dept_id, statistic_id, entity_id, {
+                    requested_tariff: requestedEl.value,
+                    approved_tariff: approvedEl.value,
+                  });
+                }
 
-              requestedEl.addEventListener('input', persistTariffInputs);
-              approvedEl.addEventListener('input', persistTariffInputs);
-              requestedEl.addEventListener('change', persistTariffInputs);
-              approvedEl.addEventListener('change', persistTariffInputs);
+                requestedEl.addEventListener('input', persistTariffInputs);
+                approvedEl.addEventListener('input', persistTariffInputs);
+                requestedEl.addEventListener('change', persistTariffInputs);
+                approvedEl.addEventListener('change', persistTariffInputs);
+              } else {
+                requestedEl.setAttribute('disabled', 'disabled');
+                approvedEl.setAttribute('disabled', 'disabled');
+              }
             } else {
-              pane.appendChild(addButton);
+              if (allowEdit) {
+                pane.appendChild(addButton);
+              }
             }
 
             // Add the data table
-            const table = buildDocumentTable(items, type.id);
+            const table = buildDocumentTable(items, type.id, allowEdit);
             table.className = "table table-bordered";
             pane.appendChild(table);
             tabContent.appendChild(pane);
           });
         }
 
-        function buildDocumentTable(items, type) {
+        function buildDocumentTable(items, type, allowEdit) {
           const table = document.createElement("table");
           table.className = "table table-bordered";
           const thead = document.createElement("thead");
@@ -420,9 +472,13 @@
               </td>
 <td data-sort-value="${item.createdAt}">
   ${formatToISTDate(item.createdAt)}
-</td>              <td><button class="btn btn-danger btn-sm" data-is-id="${
-                item.issue_id
-              }" onclick="deleteIssue(event)">Delete</button></td>`;
+</td>              <td>${
+                allowEdit
+                  ? `<button class="btn btn-danger btn-sm" data-is-id="${
+                      item.issue_id
+                    }" onclick="deleteIssue(event)">Delete</button>`
+                  : `<span class="text-muted">-</span>`
+              }</td>`;
             } else if (type === "tp") {
               const docPath = item.doc_path || "";
               tr.innerHTML = `
@@ -438,9 +494,13 @@
               }</td>
 <td data-sort-value="${item.createdAt}">
   ${formatToISTDate(item.createdAt)}
-</td>              <td><button class="btn btn-danger btn-sm" data-doc-id="${
-                item.doc_id
-              }" onclick="deleteDocument(event)">Delete</button></td>`;
+              </td>              <td>${
+                              allowEdit
+                                ? `<button class="btn btn-danger btn-sm" data-doc-id="${
+                                    item.doc_id
+                                  }" onclick="deleteDocument(event)">Delete</button>`
+                                : `<span class="text-muted">-</span>`
+                            }</td>`;
             } else if (["dpr", "mpr", "cdoc"].includes(type)) {
               const docPath = item.doc_path || item.document_path || "";
               const fileNameFromPath = docPath
@@ -462,9 +522,13 @@
                 }
               </td>
               <td data-sort-value="${uploadedOn}">${formatToISTDate(uploadedOn)}</td>
-              <td><button class="btn btn-danger btn-sm" data-doc-id="${
-                item.doc_id
-              }" onclick="deleteDocument(event)">Delete</button></td>`;
+              <td>${
+                allowEdit
+                  ? `<button class="btn btn-danger btn-sm" data-doc-id="${
+                      item.doc_id
+                    }" onclick="deleteDocument(event)">Delete</button>`
+                  : `<span class="text-muted">-</span>`
+              }</td>`;
             } else {
               const corrDocPath = item.doc_path || "";
               tr.innerHTML = `
@@ -481,9 +545,13 @@
                   ? `<button class="btn btn-sm btn-outline-primary" data-doc-path="${encodeURIComponent(corrDocPath)}" onclick="openDocFromBtn(event)">View</button>`
                   : `<button class="btn btn-sm btn-secondary" disabled>No Document</button>`
               }</td>
-        <td><button class="btn btn-danger btn-sm" data-corr-id="${
-          item.correspondence_id
-        }" onclick="deleteCorrespondence(event)">Delete</button></td>`;
+        <td>${
+          allowEdit
+            ? `<button class="btn btn-danger btn-sm" data-corr-id="${
+                item.correspondence_id
+              }" onclick="deleteCorrespondence(event)">Delete</button>`
+            : `<span class="text-muted">-</span>`
+        }</td>`;
             }
 
             tbody.appendChild(tr);
@@ -608,6 +676,10 @@
       window.openDocFromBtn = openDocFromBtn;
 
       function deleteIssue(event) {
+        if (!window.__externalAllowEdit) {
+          alert("View access only. Editing is not allowed for this department.");
+          return;
+        }
         const button = event.target;
         const issue_id = button.getAttribute("data-is-id");
 
@@ -627,6 +699,10 @@
       }
 
       function deleteCorrespondence(event) {
+        if (!window.__externalAllowEdit) {
+          alert("View access only. Editing is not allowed for this department.");
+          return;
+        }
         const button = event.target;
         const correspondence_id = button.getAttribute("data-corr-id");
 
@@ -649,6 +725,10 @@
       }
 
       function deleteDocument(event) {
+        if (!window.__externalAllowEdit) {
+          alert("View access only. Editing is not allowed for this department.");
+          return;
+        }
         const button = event.target;
         const doc_id = button.getAttribute("data-doc-id");
 

@@ -7,11 +7,53 @@ const crypto = require("crypto");
 
 require("dotenv").config(); // Load environment variables from .env file
 
+// ─── Per-account login throttling (in-memory) ───
+// Tracks failed attempts per email address. Blocks only THAT account.
+const MAX_FAILED_ATTEMPTS = 20;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+const loginAttempts = new Map(); // email -> { count, lockedUntil }
+
+function checkLoginLock(email) {
+  const entry = loginAttempts.get(String(email || "").toLowerCase());
+  if (!entry) return null;
+  if (entry.lockedUntil && entry.lockedUntil > Date.now()) {
+    const minsLeft = Math.ceil((entry.lockedUntil - Date.now()) / 60000);
+    return minsLeft;
+  }
+  if (entry.lockedUntil && entry.lockedUntil <= Date.now()) {
+    loginAttempts.delete(String(email || "").toLowerCase());
+  }
+  return null;
+}
+
+function recordFailedAttempt(email) {
+  const key = String(email || "").toLowerCase();
+  const entry = loginAttempts.get(key) || { count: 0, lockedUntil: null };
+  entry.count += 1;
+  if (entry.count >= MAX_FAILED_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOCKOUT_MS;
+    entry.count = 0;
+  }
+  loginAttempts.set(key, entry);
+}
+
+function clearLoginAttempts(email) {
+  loginAttempts.delete(String(email || "").toLowerCase());
+}
+
 // Get all active users (excluding passwords)
 async function login_user(req, res) {
   const { email, password } = req.body;
 
   const bcrypt = require("bcrypt");
+
+  // Block this account if it was locked due to repeated failures
+  const lockMinsLeft = checkLoginLock(email);
+  if (lockMinsLeft !== null) {
+    return res.status(429).json({
+      error: `Too many failed attempts for this account. Try again in ${lockMinsLeft} minute(s).`,
+    });
+  }
 
   try {
     await User.findOne({
@@ -24,6 +66,7 @@ async function login_user(req, res) {
       }
       const match = await bcrypt.compare(password, user.password);
       if (match) {
+        clearLoginAttempts(email);
         const token = jwt.sign(
           {
             user_id: user.user_id,
@@ -42,6 +85,7 @@ async function login_user(req, res) {
         });
         return;
       }
+      recordFailedAttempt(email);
       return res.status(401).json({ error: "Invalid credentials" });
     });
   } catch (err) {
@@ -52,7 +96,9 @@ async function login_user(req, res) {
 
 async function getAllUsers(req, res) {
   try {
-    const foundUsers = await User.findAll();
+    const foundUsers = await User.findAll({
+      attributes: { exclude: ["password"] },
+    });
     res.json(foundUsers);
   } catch (err) {
     console.error(err);
@@ -91,7 +137,7 @@ async function createUser(req, res) {
     // Determine default password based on role
     let defaultPassword;
     if (role === "admin") {
-      defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin1234";
+      defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || "Admin@123_";
     } else if (role === "user") {
       defaultPassword = process.env.DEFAULT_USER_PASSWORD || "user1234";
     } else if (role === "viewer") {
@@ -107,8 +153,6 @@ async function createUser(req, res) {
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-
-    logger.info("Hashed password generated", { hashedPassword });
 
     // Create the user
     const newUser = await User.create({
@@ -169,7 +213,12 @@ async function editUserDepartmentMapping(req, res) {
     try {
       for (const mapping of mappings) {
         const { user_id, dept_id, action } = mapping;
-        const canEdit = mapping.can_edit !== false;
+        const rawAccess = mapping.access_level || mapping.access || mapping.level || "";
+        let accessLevel = String(rawAccess || "").trim().toLowerCase();
+        if (accessLevel !== "view" && accessLevel !== "edit" && accessLevel !== "head") {
+          accessLevel = mapping.can_edit === false ? "view" : "edit";
+        }
+        const canEdit = accessLevel === "edit" || accessLevel === "head";
 
         // Validate payload
         if (!user_id || !dept_id || !action) continue;
@@ -206,12 +255,12 @@ async function editUserDepartmentMapping(req, res) {
 
           if (!exists) {
             await UserEditAccess.create(
-              { user_id, dept_id, can_edit: canEdit },
+              { user_id, dept_id, can_edit: canEdit, access_level: accessLevel },
               { transaction }
             );
           } else {
             await UserEditAccess.update(
-              { can_edit: canEdit },
+              { can_edit: canEdit, access_level: accessLevel },
               { where: { user_id, dept_id }, transaction }
             );
           }
@@ -228,12 +277,12 @@ async function editUserDepartmentMapping(req, res) {
 
           if (!exists) {
             await UserEditAccess.create(
-              { user_id, dept_id, can_edit: canEdit },
+              { user_id, dept_id, can_edit: canEdit, access_level: accessLevel },
               { transaction }
             );
           } else {
             await UserEditAccess.update(
-              { can_edit: canEdit },
+              { can_edit: canEdit, access_level: accessLevel },
               { where: { user_id, dept_id }, transaction }
             );
           }
@@ -298,19 +347,13 @@ async function forgotPassword(req, res) {
       // ensure 'from' uses EMAIL_FROM when provided
       const from = process.env.EMAIL_FROM || process.env.EMAIL_HOST_USER;
       mailInfo = await sendMail({ to: email, subject, text, from });
-      console.log('Password reset mail sent', {
-        to: email,
-        accepted: mailInfo && mailInfo.accepted,
-        rejected: mailInfo && mailInfo.rejected,
-        messageId: mailInfo && mailInfo.messageId,
-        response: mailInfo && mailInfo.response,
-      });
+      logger.info('Password reset mail sent', { to: email });
     } catch (mailErr) {
-      console.warn('Failed to send reset mail', mailErr && mailErr.message ? mailErr.message : mailErr);
-      if (mailErr && mailErr.response) console.warn('SMTP response', mailErr.response);
+      logger.warn('Failed to send reset email');
     }
 
-    // persist messageId/response on user for tracing (if possible)
+    // Persist delivery metadata for tracing (stored in DB, not returned to user)
+
     try {
       if (mailInfo && mailInfo.messageId) {
         await user.update({
@@ -322,17 +365,8 @@ async function forgotPassword(req, res) {
       console.warn('Failed to persist reset mail metadata', updErr && updErr.message ? updErr.message : updErr);
     }
 
-    const responsePayload = { message: 'If an account exists, a reset email will be sent.' };
-    if (mailInfo) {
-      responsePayload.mail_debug = {
-        accepted: mailInfo.accepted,
-        rejected: mailInfo.rejected,
-        messageId: mailInfo.messageId,
-        response: mailInfo.response,
-      };
-    }
-
-    return res.json(responsePayload);
+    // Security: Only return a generic message — never leak email delivery details
+    return res.json({ message: 'If an account exists, a reset email will be sent.' });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Internal server error' });

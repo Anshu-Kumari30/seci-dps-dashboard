@@ -26,6 +26,28 @@
         border: 1px solid #e0e6ef;
       }
       #milestonesTable { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+      /* Let table auto-size to container to avoid horizontal scrollbar */
+      #milestonesTable { table-layout: auto; width: 100%; }
+      /* Left-align and wrap Project Details (col 4) */
+      #milestonesTable tbody td:nth-child(4) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        max-width: 380px;
+        overflow-wrap: anywhere;
+      }
+      /* Center other columns */
+      #milestonesTable tbody td:not(:nth-child(4)) {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Status column: left-align and allow wrapping for long status text (col 12) */
+      #milestonesTable tbody td:nth-child(12) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
       #milestonesTable thead tr:first-child th {
         background: linear-gradient(135deg, #1f4e79, #0b5ed7);
         color: #ffffff;
@@ -43,9 +65,27 @@
         background: #fff;
         color: #333;
         font-size: 13px;
-        text-align: center;
+        text-align: left;
         vertical-align: middle;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
+      /* Center date/amount columns (5-11) */
+      #milestonesTable tbody td:nth-child(5),
+      #milestonesTable tbody td:nth-child(6),
+      #milestonesTable tbody td:nth-child(7),
+      #milestonesTable tbody td:nth-child(8),
+      #milestonesTable tbody td:nth-child(9),
+      #milestonesTable tbody td:nth-child(10),
+      #milestonesTable tbody td:nth-child(11) {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Actions cell */
+      #milestonesTable tbody td.actions-cell { text-align:center; white-space:nowrap; }
+      /* Ensure last column (actions) is centered and doesn't wrap */
+      #milestonesTable tbody tr td:last-child { text-align:center; white-space:nowrap; }
       #milestonesTable tbody tr:nth-child(even) td { background: #f8fafc; }
       #milestonesTable tbody tr:hover td { background: #f0f8ff; }
 

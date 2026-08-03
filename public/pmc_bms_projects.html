@@ -18,7 +18,7 @@
         margin-bottom: 24px;
         border: 1px solid #e0e6ef;
       }
-      #bmsMilestoneTable { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+      #bmsMilestoneTable { margin-bottom: 0; border-collapse: separate; border-spacing: 0; table-layout: auto; width: 100%; }
       #bmsMilestoneTable thead tr:first-child th {
         background: linear-gradient(135deg, #1f4e79, #0b5ed7);
         color: #ffffff;
@@ -36,8 +36,27 @@
         background: #fff;
         color: #333;
         font-size: 13px;
-        text-align: center;
         vertical-align: middle;
+      }
+      /* Left-align and wrap project details */
+      #bmsMilestoneTable tbody td:nth-child(4) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        max-width: 380px;
+        overflow-wrap: anywhere;
+      }
+      /* Center other columns */
+      #bmsMilestoneTable tbody td:not(:nth-child(4)) {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Status column: left-align and allow wrapping for long status text (col 12) */
+      #bmsMilestoneTable tbody td:nth-child(12) {
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       #bmsMilestoneTable tbody tr:nth-child(even) td { background: #f8fafc; }
       #bmsMilestoneTable tbody tr:hover td { background: #f0f8ff; }
@@ -193,6 +212,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       var bmsProjects = [];
+      window.USER_PMC_ACCESS_LEVEL = 'none';
       var currentVisibleProjects = [];
       var bmsContractDocsItems = [];
       var bmsCorrItems = [];
@@ -364,6 +384,7 @@
               var viewLink = docHref
                 ? '<a href="' + docHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
                 : '-';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteBmsDoc(' + d.id + ')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
@@ -371,7 +392,7 @@
                 '<td>' + formatDate(d.doc_date) + '</td>' +
                 '<td>' + viewLink + '</td>' +
                 '<td>' + formatDateTime(d.createdAt) + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteBmsDoc(' + d.id + ')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
           })
@@ -442,6 +463,7 @@
               var viewLink = corrHref
                 ? '<a href="' + corrHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>'
                 : '-';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteBmsCorr(' + c.id + ')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
@@ -451,7 +473,7 @@
                 '<td>' + toVal + '</td>' +
                 '<td>' + formatDateTime(c.createdAt) + '</td>' +
                 '<td>' + viewLink + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteBmsCorr(' + c.id + ')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
             // fetch BMS issues after correspondences
@@ -512,14 +534,16 @@
             items.forEach(function (it, i) {
               var issueHref = getPublicFileHref(it.storage_path);
               var viewLink = issueHref ? '<a href="' + issueHref + '" target="_blank" class="btn btn-sm btn-outline-primary">View</a>' : '-';
+              var editHtml = window.USER_PMC_ALLOW_EDIT ? (' <button class="btn btn-sm btn-secondary ms-1" onclick="editBmsIssue(\'' + (it.issue_id || it.id || '') + '\')">Edit</button>') : '';
+              var deleteHtml = window.USER_PMC_ALLOW_EDIT ? ('<button class="btn btn-danger btn-sm" onclick="deleteBmsIssue(\'' + (it.issue_id || it.id || '') + '\')">Delete</button>') : '<span class="text-muted">-</span>';
               var tr = document.createElement('tr');
               tr.innerHTML = '<td>' + (i+1) + '</td>' +
                 '<td>' + (it.issue_description || '') + '</td>' +
                 '<td>' + (it.issue_pertaining_to || '') + '</td>' +
                 '<td>' + (it.issue_date ? new Date(it.issue_date).toLocaleDateString('en-IN') : '') + '</td>' +
-                '<td>' + viewLink + ' <button class="btn btn-sm btn-secondary ms-1" onclick="editBmsIssue(\'' + (it.issue_id || it.id || '') + '\')">Edit</button></td>' +
+                '<td>' + viewLink + editHtml + '</td>' +
                 '<td>' + (it.createdAt ? new Date(it.createdAt).toLocaleString('en-IN') : '') + '</td>' +
-                '<td><button class="btn btn-danger btn-sm" onclick="deleteBmsIssue(\'' + (it.issue_id || it.id || '') + '\')">Delete</button></td>';
+                '<td>' + deleteHtml + '</td>';
               tbody.appendChild(tr);
             });
           })
@@ -592,13 +616,13 @@
         var rows = ms.map(function (m, i) {
           return '<tr>' +
             '<td>' + (i + 1) + '</td>' +
-            '<td>' + (m.milestone || '') + '</td>' +
+            '<td><div class="milestone-text">' + (m.milestone || '') + '</div></td>' +
             '<td>' + (m.stage_payment != null ? m.stage_payment : '') + '</td>' +
             '<td>' + formatCurrency(m.invoice_amount) + '</td>' +
             '<td>' + formatCurrency(m.invoice_raised) + '</td>' +
             '<td>' + formatDate(m.invoice_date) + '</td>' +
             '<td>' + (m.invoice_number || '') + '</td>' +
-            '<td>' + (m.status || '') + '</td>' +
+            '<td><div class="invoice-status">' + (m.status || '') + '</div></td>' +
             '<td>' + getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status) + '</td>' +
             '</tr>';
         }).join('');
@@ -623,7 +647,30 @@
         var dr = document.createElement('tr');
         dr.className = 'milestone-dropdown-row';
         dr.innerHTML = '<td colspan="15"><div class="milestone-dropdown-container"><div class="milestone-dropdown-title">Milestones - ' + (project.serviceType || '') + ' / ' + (project.client || '') + '</div>' + buildMilestoneDropdownTable(project) + '</div></td>';
+              tr.innerHTML =
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (d.description || d.original_name || '') + '</td>' +
+                '<td>' + formatDate(d.doc_date) + '</td>' +
+                '<td>' + viewLink + '</td>' +
+                '<td>' + formatDateTime(d.createdAt) + '</td>' +
+                '<td>' + deleteHtml + '</td>';
+              tr.innerHTML =
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (c.subject || '') + '</td>' +
+                '<td>' + (c.dated || '') + '</td>' +
+                '<td>' + (c.from || '') + '</td>' +
+                '<td>' + (c.to || '') + '</td>' +
+                '<td>' + formatDateTime(c.createdAt) + '</td>' +
+                '<td>' + viewLink + '</td>' +
+                '<td>' + delHtml + '</td>';
         parentRow.parentNode.insertBefore(dr, parentRow.nextSibling);
+          tr.innerHTML =
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + (it.description || '') + '</td>' +
+            '<td>' + formatDate(it.issue_date) + '</td>' +
+            '<td>' + (it.pertaining_to || '') + '</td>' +
+            '<td>' + viewLink + editHtml + '</td>' +
+            '<td>' + delHtml + '</td>';
         openMilestoneDropdown = { row: dr, projectId: projectId };
       }
 
@@ -727,6 +774,13 @@
             tbody.innerHTML = '';
             visible.forEach(function (project, i) {
               var tr = document.createElement('tr');
+              var allowEdit = (window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head');
+              var actionsHtml = '';
+              if (allowEdit) {
+                actionsHtml = '<button class="btn btn-sm btn-secondary me-1" onclick="editEntry(\'' + project.pmc_entry_id + '\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEntry(\'' + project.pmc_entry_id + '\')">Delete</button>';
+              } else {
+                actionsHtml = '<span class="text-muted">No action</span>';
+              }
               tr.innerHTML =
                 '<td>' + (i + 1) + '</td>' +
                 '<td>' + (project.serviceType || '') + '</td>' +
@@ -742,7 +796,7 @@
                 '<td>' + (project.status || '') + '</td>' +
                 '<td>' + renderSummaryBar(project) + '</td>' +
                 '<td><button class="btn btn-sm btn-primary" onclick="toggleMilestones(this,\'' + project.pmc_entry_id + '\')">View</button></td>' +
-                '<td><button class="btn btn-sm btn-secondary me-1" onclick="editEntry(\'' + project.pmc_entry_id + '\')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteEntry(\'' + project.pmc_entry_id + '\')">Delete</button></td>';
+                '<td>' + actionsHtml + '</td>';
               tbody.appendChild(tr);
             });
 
@@ -793,11 +847,63 @@
         initSortableTable('bmsContractDocsTable');
         initSortableTable('bmsCorrOtherTable');
         initSortableTable('bmsIssuesTable');
-        Promise.resolve(fetchBMSData())
-          .finally(function () {
-            fetchContractDocs();
-            fetchCorrespondences();
-            fetchBmsIssues();
+          // Resolve user's access level for PMC before rendering interactive UI
+          var USER_PMC_ACCESS_LEVEL = 'none';
+          function getJwtPayload() {
+            try { const token = localStorage.getItem('token') || ''; const payload = token.split('.')[1] || ''; return JSON.parse(atob(payload)); } catch (e) { return {}; }
+          }
+          function normalizeDeptName(name) { return String(name || '').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]/g,''); }
+          function resolveDeptAccessLevelByName(targetName) {
+            const payload = getJwtPayload();
+            if (payload && payload.role === 'admin') return Promise.resolve('head');
+            const userId = payload && payload.user_id;
+            if (!userId) return Promise.resolve('none');
+            return authFetch(`/api/data/departments/user/${encodeURIComponent(userId)}`)
+              .then(res => res.ok ? res.json() : { departments: [] })
+              .then(data => {
+                const list = Array.isArray(data.departments) ? data.departments : [];
+                const targetKey = normalizeDeptName(targetName);
+                const lookups = list.map(deptInfo => {
+                  const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+                  if (!id) return Promise.resolve(null);
+                  return authFetch(`/api/data/departments/${encodeURIComponent(id)}`)
+                    .then(r => r.ok ? r.json() : null)
+                    .then(dept => {
+                      if (!dept) return null;
+                      if (normalizeDeptName(dept.dept_name) !== targetKey) return null;
+                      const raw = String((deptInfo && deptInfo.access_level) || '').trim().toLowerCase();
+                      if (raw === 'view' || raw === 'edit' || raw === 'head') return raw;
+                      return (deptInfo && deptInfo.can_edit === true) ? 'edit' : 'view';
+                    }).catch(() => null);
+                });
+                return Promise.all(lookups).then(levels => { for (let i=0;i<levels.length;i++) if (levels[i]) return levels[i]; return 'none'; });
+              }).catch(() => 'none');
+          }
+
+          resolveDeptAccessLevelByName('PMC').then(function(level) {
+            USER_PMC_ACCESS_LEVEL = level || 'none';
+            var allowEdit = (USER_PMC_ACCESS_LEVEL === 'edit' || USER_PMC_ACCESS_LEVEL === 'head');
+            window.USER_PMC_ALLOW_EDIT = allowEdit;
+            var allowHead = (USER_PMC_ACCESS_LEVEL === 'head');
+            // Hide add buttons for view/none users
+            try { document.getElementById('bms-addMilestoneBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+            try { document.getElementById('bms-addContractDocBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+            try { document.getElementById('bms-addCorrOtherBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+            try { document.getElementById('bms-addIssueBtn').style.display = allowEdit ? '' : 'none'; } catch(e){}
+
+            // If user has no access at all, redirect to home
+            if (USER_PMC_ACCESS_LEVEL === 'none') {
+              // For security, allow the page to load but remove interactive controls
+              try { document.querySelectorAll('button').forEach(b => b.style.display = 'none'); } catch(e){}
+            }
+
+            // Now fetch data and render UI
+            Promise.resolve(fetchBMSData())
+              .finally(function () {
+                fetchContractDocs();
+                fetchCorrespondences();
+                fetchBmsIssues();
+              });
           });
 
         document.getElementById('bms-addContractDocBtn').addEventListener('click', function () {

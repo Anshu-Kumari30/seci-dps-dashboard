@@ -10,6 +10,40 @@
   const pmc_ce_entity_id = qs('entity_id'); // This is the pmc_ce_entity_id from the URL
   let dept_entity_id = qs('dept_entity_id') || ''; // The DeptEntity entity_id for documents
   const token = localStorage.getItem('token');
+  window.USER_PMC_ACCESS_LEVEL = 'none';
+
+  function getJwtPayload() {
+    try { const token = localStorage.getItem('token') || ''; const payload = token.split('.')[1] || ''; return JSON.parse(atob(payload)); } catch (e) { return {}; }
+  }
+  function normalizeDeptName(name) { return String(name || '').toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]/g,''); }
+  async function resolveDeptAccessLevelByName(targetName) {
+    const payload = getJwtPayload();
+    if (payload && payload.role === 'admin') return 'head';
+    const userId = payload && payload.user_id;
+    if (!userId) return 'none';
+    try {
+      const res = await fetch(`/api/data/departments/user/${encodeURIComponent(userId)}`, { headers: authHeaders() });
+      if (!res.ok) return 'none';
+      const data = await res.json();
+      const list = Array.isArray(data.departments) ? data.departments : [];
+      const targetKey = normalizeDeptName(targetName);
+      for (const deptInfo of list) {
+        const id = (deptInfo && (deptInfo.dept_id || deptInfo)) || null;
+        if (!id) continue;
+        try {
+          const dres = await fetch(`/api/data/departments/${encodeURIComponent(id)}`, { headers: authHeaders() });
+          if (!dres.ok) continue;
+          const dept = await dres.json();
+          if (!dept) continue;
+          if (normalizeDeptName(dept.dept_name) !== targetKey) continue;
+          const raw = String((deptInfo && deptInfo.access_level) || '').trim().toLowerCase();
+          if (raw === 'view' || raw === 'edit' || raw === 'head') return raw;
+          return (deptInfo && deptInfo.can_edit === true) ? 'edit' : 'view';
+        } catch (e) { continue; }
+      }
+      return 'none';
+    } catch (e) { return 'none'; }
+  }
 
   function authHeaders() {
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -165,13 +199,15 @@
     }
     docs.forEach((d, i) => {
       const tr = document.createElement('tr');
+      const allowEditDocs = (window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head');
+      const delHtml = allowEditDocs ? `<button class="btn btn-danger btn-sm" data-doc-id="${d.doc_id}" onclick="deleteDocument('${d.doc_id}')">Delete</button>` : '<span class="text-muted">-</span>';
       tr.innerHTML = `
         <td>${i + 1}</td>
         <td>${d.doc_name || ''}</td>
         <td data-sort-value="${d.doc_date || ''}">${formatDate(d.doc_date)}</td>
         <td>${d.doc_path ? `<a href="${d.doc_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>` : '-'}</td>
         <td data-sort-value="${d.createdAt || ''}">${formatDateTime(d.createdAt)}</td>
-        <td><button class="btn btn-danger btn-sm" data-doc-id="${d.doc_id}" onclick="deleteDocument('${d.doc_id}')">Delete</button></td>
+        <td>${delHtml}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -179,6 +215,7 @@
 
   // Delete document
   window.deleteDocument = async function(docId) {
+    if (!(window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head')) { alert('You do not have permission to delete documents'); return; }
     if (!confirm('Are you sure you want to delete this document?')) return;
     try {
       const res = await fetch(`/api/data/documents/${docId}`, {
@@ -231,6 +268,8 @@
     }
     items.forEach((c, i) => {
       const tr = document.createElement('tr');
+      const allowEditCorr = (window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head');
+      const delHtml = allowEditCorr ? `<button class="btn btn-danger btn-sm" onclick="deleteCorrespondence('${c.correspondence_id}')">Delete</button>` : '<span class="text-muted">-</span>';
       tr.innerHTML = `
         <td>${i + 1}</td>
         <td>${c.subject || ''}</td>
@@ -239,7 +278,7 @@
         <td>${c.recipient || c.to || ''}</td>
         <td data-sort-value="${c.createdAt || ''}">${formatDateTime(c.createdAt)}</td>
         <td>${c.doc_path ? `<a href="${c.doc_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>` : '-'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteCorrespondence('${c.correspondence_id}')">Delete</button></td>
+        <td>${delHtml}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -247,6 +286,7 @@
 
   // Delete correspondence
   window.deleteCorrespondence = async function(corrId) {
+    if (!(window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head')) { alert('You do not have permission to delete correspondences'); return; }
     if (!confirm('Are you sure you want to delete this correspondence?')) return;
     try {
       const res = await fetch(`/api/data/correspondences/${corrId}`, {
@@ -294,6 +334,8 @@
     }
     issues.forEach((issue, i) => {
       const tr = document.createElement('tr');
+      const allowEditIssues = (window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head');
+      const delHtml = allowEditIssues ? `<button class="btn btn-danger btn-sm" onclick="deleteIssue('${issue.issue_id}')">Delete</button>` : '<span class="text-muted">-</span>';
       tr.innerHTML = `
         <td>${i + 1}</td>
         <td>${issue.issue_description || ''}</td>
@@ -301,7 +343,7 @@
         <td data-sort-value="${issue.issue_date || ''}">${formatDate(issue.issue_date)}</td>
         <td>${issue.issue_doc_path ? `<a href="${issue.issue_doc_path}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>` : '-'}</td>
         <td data-sort-value="${issue.createdAt || ''}">${formatDateTime(issue.createdAt)}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteIssue('${issue.issue_id}')">Delete</button></td>
+        <td>${delHtml}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -309,6 +351,7 @@
 
   // Delete issue
   window.deleteIssue = async function(issueId) {
+    if (!(window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head')) { alert('You do not have permission to delete issues'); return; }
     if (!confirm('Are you sure you want to delete this issue?')) return;
     try {
       const res = await fetch(`/api/data/issues/${issueId}`, {
@@ -367,13 +410,13 @@
     var rows = ms.map(function (m, i) {
       return '<tr>' +
         '<td>' + (i + 1) + '</td>' +
-        '<td>' + (m.milestone || '') + '</td>' +
+        '<td><div class="milestone-text">' + (m.milestone || '') + '</div></td>' +
         '<td>' + (m.stage_payment != null ? m.stage_payment : '') + '</td>' +
         '<td>' + formatCurrency(m.invoice_amount) + '</td>' +
         '<td>' + formatCurrency(m.invoice_raised) + '</td>' +
         '<td>' + formatDate(m.invoice_date) + '</td>' +
         '<td>' + (m.invoice_number || '') + '</td>' +
-        '<td>' + (m.status || '') + '</td>' +
+        '<td><div class="invoice-status">' + (m.status || '') + '</div></td>' +
         '<td>' + getProgressBarMarkup(m.invoice_amount, m.invoice_raised, m.status) + '</td>' +
         '</tr>';
     }).join('');
@@ -466,22 +509,24 @@
       tbody.innerHTML = '';
       visible.forEach(function (project, i) {
         var tr = document.createElement('tr');
-        tr.innerHTML =
-          '<td>' + (i + 1) + '</td>' +
-          '<td>' + (project.serviceType || '') + '</td>' +
-          '<td>' + (project.client || '') + '</td>' +
-          '<td>' + (project.projectDetails || '') + '</td>' +
-          '<td>' + (project.loaDate || '') + '</td>' +
-          '<td>' + (project.startDate || '') + '</td>' +
-          '<td>' + (project.endDate || '') + '</td>' +
-          '<td>' + (project.targetDate || '') + '</td>' +
-          '<td>' + formatCurrency(project.totalAmount) + '</td>' +
-          '<td>' + formatCurrency(project.amountReceived) + '</td>' +
-          '<td>' + formatCurrency(project.amountPending) + '</td>' +
-          '<td>' + (project.status || '') + '</td>' +
-          '<td>' + renderSummaryBar(project) + '</td>' +
-          '<td><button class="btn btn-sm btn-primary" onclick="toggleMilestones(this,\'' + project.pmc_entry_id + '\')">View</button></td>' +
-          '<td><button class="btn btn-sm btn-secondary" onclick="editPmcProject(\'' + project.pmc_entry_id + '\')">Edit</button></td>';
+          var allowEdit = (window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head');
+          var actionsHtml = allowEdit ? '<button class="btn btn-sm btn-secondary" onclick="editPmcProject(\'' + project.pmc_entry_id + '\')">Edit</button>' : '<span class="text-muted">-</span>';
+          tr.innerHTML =
+            '<td>' + (i + 1) + '</td>' +
+            '<td>' + (project.serviceType || '') + '</td>' +
+            '<td>' + (project.client || '') + '</td>' +
+            '<td>' + (project.projectDetails || '') + '</td>' +
+            '<td>' + (project.loaDate || '') + '</td>' +
+            '<td>' + (project.startDate || '') + '</td>' +
+            '<td>' + (project.endDate || '') + '</td>' +
+            '<td>' + (project.targetDate || '') + '</td>' +
+            '<td>' + formatCurrency(project.totalAmount) + '</td>' +
+            '<td>' + formatCurrency(project.amountReceived) + '</td>' +
+            '<td>' + formatCurrency(project.amountPending) + '</td>' +
+            '<td>' + (project.status || '') + '</td>' +
+            '<td>' + renderSummaryBar(project) + '</td>' +
+            '<td><button class="btn btn-sm btn-primary" onclick="toggleMilestones(this,\'' + project.pmc_entry_id + '\')">View</button></td>' +
+            '<td>' + actionsHtml + '</td>';
         tbody.appendChild(tr);
       });
     } catch (err) {
@@ -499,15 +544,22 @@
   }
 
   function wire() {
-    document.getElementById('addContractDocBtn').addEventListener('click', () => openAddPage('/add_contract_document.html'));
-    document.getElementById('addDprBtn').addEventListener('click', () => openAddPage('/add_dpr.html'));
-    document.getElementById('addMprBtn').addEventListener('click', () => openAddPage('/add_mpr.html'));
-    document.getElementById('addCorrContractorBtn').addEventListener('click', () => openAddPage('/add_correspondence_contractor.html'));
-    document.getElementById('addCorrOtherBtn').addEventListener('click', () => openAddPage('/add_correspondence_other.html'));
-    document.getElementById('addIssueBtn').addEventListener('click', () => openAddPage('/add_issues.html'));
+    const allowAdd = (window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head');
+    const safeAdd = (page) => {
+      if (!allowAdd) { alert('You do not have permission to add'); return; }
+      openAddPage(page);
+    };
+    const byId = id => document.getElementById(id);
+    if (byId('addContractDocBtn')) byId('addContractDocBtn').addEventListener('click', () => safeAdd('/add_contract_document.html'));
+    if (byId('addDprBtn')) byId('addDprBtn').addEventListener('click', () => safeAdd('/add_dpr.html'));
+    if (byId('addMprBtn')) byId('addMprBtn').addEventListener('click', () => safeAdd('/add_mpr.html'));
+    if (byId('addCorrContractorBtn')) byId('addCorrContractorBtn').addEventListener('click', () => safeAdd('/add_correspondence_contractor.html'));
+    if (byId('addCorrOtherBtn')) byId('addCorrOtherBtn').addEventListener('click', () => safeAdd('/add_correspondence_other.html'));
+    if (byId('addIssueBtn')) byId('addIssueBtn').addEventListener('click', () => safeAdd('/add_issues.html'));
     
     // Add milestone button - open project entry form for PMC C&E
-    document.getElementById('addMilestoneBtn').addEventListener('click', () => {
+    if (byId('addMilestoneBtn')) byId('addMilestoneBtn').addEventListener('click', () => {
+      if (!allowAdd) { alert('You do not have permission to add'); return; }
       const url = new URL('/add_pmc_entry.html', window.location.origin);
       url.searchParams.set('from', 'pmc_ce');
       if (pmc_ce_entity_id) url.searchParams.set('pmc_ce_entity_id', pmc_ce_entity_id);
@@ -518,6 +570,7 @@
   // Expose helpers for actions
   window.editPmcProject = function(id) {
     if (!id) return;
+    if (!(window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head')) { alert('You do not have permission to edit this project'); return; }
     const url = new URL('/add_pmc_entry.html', window.location.origin);
     url.searchParams.set('edit', id);
     url.searchParams.set('from', 'pmc_ce');
@@ -529,6 +582,20 @@
   document.addEventListener('DOMContentLoaded', async () => {
     // First resolve context (get dept_id and statistic_id from entity_id)
     await resolveContext();
+    // Resolve user's PMC access level and update UI
+    try {
+      const lvl = await resolveDeptAccessLevelByName('PMC');
+      window.USER_PMC_ACCESS_LEVEL = lvl || 'none';
+    } catch (e) {
+      window.USER_PMC_ACCESS_LEVEL = 'none';
+    }
+    // Hide add buttons if user doesn't have edit/head
+    const allowAdd = (window.USER_PMC_ACCESS_LEVEL === 'edit' || window.USER_PMC_ACCESS_LEVEL === 'head');
+    ['addMilestoneBtn','addContractDocBtn','addDprBtn','addMprBtn','addCorrContractorBtn','addCorrOtherBtn','addIssueBtn'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!allowAdd) el.style.display = 'none';
+    });
     // Fetch and display titles
     await fetchTitles();
     wire();

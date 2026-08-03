@@ -118,6 +118,24 @@ function normalizeProjectKey(value) {
   return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+async function resolveUserDeptAccessLevel(user, deptId) {
+  if (!user || !deptId) return 'none';
+  if (user.role === 'admin') return 'head';
+
+  try {
+    const access = await models.UserEditAccess.findOne({
+      where: { user_id: user.user_id, dept_id: deptId },
+      attributes: ['can_edit', 'access_level'],
+    });
+
+    const level = String(access?.access_level || '').trim().toLowerCase();
+    if (level === 'view' || level === 'edit' || level === 'head') return level;
+    return access?.can_edit === true ? 'edit' : 'view';
+  } catch (err) {
+    return 'none';
+  }
+}
+
 function buildExecutionEntityId(projectName) {
   const normalized = normalizeProjectKey(projectName);
   if (!normalized) return null;
@@ -877,6 +895,7 @@ const {
   EntityIssues,
   User,
   ContractsTable,
+  TenderRegister,
   BusinessDevelopmentTable,
   BusinessDevelopmentMilestones,
   OMDGR,
@@ -892,6 +911,7 @@ const {
   PmcCeDocument,
   PmcCeCorrespondence,
   PmcSliceMeta,
+  OwnProject,
 } = require("../models").models;
 
 const { sequelize } = require("../models");
@@ -942,6 +962,9 @@ exports.editBusinessDevelopmentEntry = async (req, res) => {
       action_pending_with,
       anticipated_capacity,
       target,
+      connectivity,
+      technology,
+      buyer,
     } = req.body;
 
     // Check if the entry exists
@@ -962,6 +985,9 @@ exports.editBusinessDevelopmentEntry = async (req, res) => {
       action_pending_with,
       anticipated_capacity,
       target,
+      connectivity,
+      technology,
+      buyer,
     });
 
     return res.status(200).json({
@@ -984,7 +1010,7 @@ exports.editBusinessDevelopmentMilestone = async (req, res) => {
     const { milestone_id } = req.params;
 
     // Extract fields from request body
-    const { milestone_name, milestone_date, is_active } = req.body;
+    const { milestone_name, milestone_date, milestone_status, is_active } = req.body;
 
     // Find milestone by primary key (milestone_id)
     const milestone = await BusinessDevelopmentMilestones.findOne({
@@ -1002,6 +1028,7 @@ exports.editBusinessDevelopmentMilestone = async (req, res) => {
     await milestone.update({
       milestone_name,
       milestone_date,
+      milestone_status,
       is_active,
     });
 
@@ -1045,6 +1072,7 @@ exports.createBusinessDevelopmentMilestone = async (req, res) => {
       bd_entry_id,
       milestone_name,
       milestone_date,
+      milestone_status = "in-progress",
       is_active = true, // default true if not provided
     } = req.body;
 
@@ -1072,6 +1100,7 @@ exports.createBusinessDevelopmentMilestone = async (req, res) => {
       bd_entry_id,
       milestone_name,
       milestone_date,
+      milestone_status,
       is_active,
     });
 
@@ -1103,6 +1132,9 @@ exports.createBusinessDevelopmentEntry = async (req, res) => {
       action_pending_with,
       anticipated_capacity,
       target,
+      connectivity,
+      technology,
+      buyer,
     } = req.body;
 
     // Basic validation
@@ -1111,12 +1143,22 @@ exports.createBusinessDevelopmentEntry = async (req, res) => {
       !location ||
       !action_plan ||
       !action_pending_with ||
-      !anticipated_capacity ||
+      anticipated_capacity === null ||
+      anticipated_capacity === undefined ||
       !target
     ) {
       return res.status(400).json({
         success: false,
         message: "All fields are required.",
+      });
+    }
+
+    // Validate and convert anticipated_capacity to number
+    const capacity = parseFloat(anticipated_capacity);
+    if (isNaN(capacity)) {
+      return res.status(400).json({
+        success: false,
+        message: "Anticipated capacity must be a valid number.",
       });
     }
 
@@ -1126,8 +1168,11 @@ exports.createBusinessDevelopmentEntry = async (req, res) => {
       location,
       action_plan,
       action_pending_with,
-      anticipated_capacity,
+      anticipated_capacity: capacity,
       target,
+      connectivity: connectivity || null,
+      technology: technology || null,
+      buyer: buyer || null,
     });
 
     return res.status(201).json({
@@ -1157,24 +1202,37 @@ exports.deleteBusinessDevelopmentEntry = async (req, res) => {
       });
     }
 
-    // Find and delete the entry
-    const deletedEntry = await BusinessDevelopmentTable.destroy({
-      where: { bd_entry_id },
-    });
-
-    // Check if an entry was deleted
-    if (!deletedEntry) {
-      return res.status(404).json({
-        success: false,
-        message: "Business development entry not found.",
+    // Use a transaction to ensure atomicity
+    await sequelize.transaction(async (t) => {
+      // Delete associated milestones first to avoid FK constraint violation
+      await BusinessDevelopmentMilestones.destroy({
+        where: { bd_entry_id },
+        transaction: t,
       });
-    }
+
+      // Now delete the entry
+      const deletedEntry = await BusinessDevelopmentTable.destroy({
+        where: { bd_entry_id },
+        transaction: t,
+      });
+
+      // Check if an entry was deleted
+      if (!deletedEntry) {
+        throw new Error("EntryNotFound");
+      }
+    });
 
     return res.status(200).json({
       success: true,
       message: "Business development entry deleted successfully.",
     });
   } catch (error) {
+    if (error.message === "EntryNotFound") {
+      return res.status(404).json({
+        success: false,
+        message: "Business development entry not found.",
+      });
+    }
     console.error("Error deleting BD entry:", error);
     return res.status(500).json({
       success: false,
@@ -1215,6 +1273,200 @@ exports.deleteBusinessDevelopmentMilestone = async (req, res) => {
   }
 };
 
+// ──────────────────────────────────────────────
+// C&P Own Projects Controllers
+// ──────────────────────────────────────────────
+
+/**
+ * Get all C&P Own Projects entries
+ */
+exports.getAllCpOwnProjects = async (req, res) => {
+  try {
+    const entries = await OwnProject.findAll({
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "C&P own projects fetched successfully.",
+      data: entries,
+    });
+  } catch (error) {
+    console.error("Error fetching C&P own projects:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching entries.",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get a single C&P Own Project by ID
+ */
+exports.getOneCpOwnProject = async (req, res) => {
+  try {
+    const { cp_entry_id } = req.params;
+
+    const entry = await OwnProject.findByPk(cp_entry_id);
+    if (!entry) {
+      return res.status(404).json({
+        success: false,
+        message: "C&P own project entry not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "C&P own project fetched successfully.",
+      data: entry,
+    });
+  } catch (error) {
+    console.error("Error fetching C&P own project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching entry.",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Create a new C&P Own Project entry
+ */
+exports.createCpOwnProject = async (req, res) => {
+  try {
+    const {
+      project_name,
+      capacity_mw,
+      estimated_cost,
+      awarded_cost,
+      agreement_no,
+      agency,
+      date_of_start,
+      completion_time,
+      remarks,
+    } = req.body;
+
+    if (!project_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Project name is required.",
+      });
+    }
+
+    const newEntry = await OwnProject.create({
+      project_name,
+      capacity_mw: capacity_mw ? parseFloat(capacity_mw) : null,
+      estimated_cost: estimated_cost || null,
+      awarded_cost: awarded_cost || null,
+      agreement_no: agreement_no || null,
+      agency: agency || null,
+      date_of_start: date_of_start || null,
+      completion_time: completion_time || null,
+      remarks: remarks || null,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "C&P own project created successfully.",
+      data: newEntry,
+    });
+  } catch (error) {
+    console.error("Error creating C&P own project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while creating the entry.",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Edit a C&P Own Project entry
+ */
+exports.editCpOwnProject = async (req, res) => {
+  try {
+    const { cp_entry_id } = req.params;
+    const {
+      project_name,
+      capacity_mw,
+      estimated_cost,
+      awarded_cost,
+      agreement_no,
+      agency,
+      date_of_start,
+      completion_time,
+      remarks,
+    } = req.body;
+
+    const entry = await OwnProject.findByPk(cp_entry_id);
+    if (!entry) {
+      return res.status(404).json({
+        success: false,
+        message: "C&P own project entry not found.",
+      });
+    }
+
+    await entry.update({
+      project_name: project_name ?? entry.project_name,
+      capacity_mw: capacity_mw !== undefined ? parseFloat(capacity_mw) : entry.capacity_mw,
+      estimated_cost: estimated_cost ?? entry.estimated_cost,
+      awarded_cost: awarded_cost ?? entry.awarded_cost,
+      agreement_no: agreement_no ?? entry.agreement_no,
+      agency: agency ?? entry.agency,
+      date_of_start: date_of_start ?? entry.date_of_start,
+      completion_time: completion_time ?? entry.completion_time,
+      remarks: remarks ?? entry.remarks,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "C&P own project updated successfully.",
+      data: entry,
+    });
+  } catch (error) {
+    console.error("Error updating C&P own project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while updating the entry.",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Delete a C&P Own Project entry
+ */
+exports.deleteCpOwnProject = async (req, res) => {
+  try {
+    const { cp_entry_id } = req.params;
+
+    const deletedEntry = await OwnProject.destroy({
+      where: { cp_entry_id },
+    });
+
+    if (!deletedEntry) {
+      return res.status(404).json({
+        success: false,
+        message: "C&P own project entry not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "C&P own project deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting C&P own project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while deleting the entry.",
+      error: error.message,
+    });
+  }
+};
+
 /**
  * Controller to get user-to-department access mappings.
  *
@@ -1228,9 +1480,27 @@ exports.deleteBusinessDevelopmentMilestone = async (req, res) => {
  */
 exports.getUserDepartmentMappings = async (req, res) => {
   try {
-    const userDepartmentMappings = await UserEditAccess.findAll({
-      attributes: ["user_id", "dept_id", "can_edit"],
-    });
+    // Try to fetch with access_level column (may not exist in production if migration
+    // 20260528090000 hasn't been run). Fall back gracefully if column is missing.
+    let userDepartmentMappings;
+    let hasAccessLevel = true;
+
+    try {
+      userDepartmentMappings = await UserEditAccess.findAll({
+        attributes: ["user_id", "dept_id", "can_edit", "access_level"],
+      });
+    } catch (colErr) {
+      // Column access_level missing — retry without it
+      hasAccessLevel = false;
+      userDepartmentMappings = await UserEditAccess.findAll({
+        attributes: ["user_id", "dept_id", "can_edit"],
+      });
+    }
+
+    // If no mappings exist, return empty immediately — avoids IN () SQL error
+    if (!userDepartmentMappings || userDepartmentMappings.length === 0) {
+      return res.json({ mappings: [] });
+    }
 
     const userIds = Array.from(
       new Set(userDepartmentMappings.map((m) => m.user_id))
@@ -1238,6 +1508,11 @@ exports.getUserDepartmentMappings = async (req, res) => {
     const deptIds = Array.from(
       new Set(userDepartmentMappings.map((m) => m.dept_id))
     );
+
+    // Guard: empty arrays cause invalid WHERE user_id IN () SQL in MySQL/PostgreSQL
+    if (userIds.length === 0 || deptIds.length === 0) {
+      return res.json({ mappings: [] });
+    }
 
     const [users, departments] = await Promise.all([
       User.findAll({
@@ -1256,13 +1531,22 @@ exports.getUserDepartmentMappings = async (req, res) => {
     );
 
     const result = userDepartmentMappings
-      .map((mapping) => ({
+      .map((mapping) => {
+        const rawLevel = hasAccessLevel
+          ? String(mapping.access_level || "").trim().toLowerCase()
+          : "";
+        const accessLevel = (rawLevel === "view" || rawLevel === "edit" || rawLevel === "head")
+          ? rawLevel
+          : (mapping.can_edit !== false ? "edit" : "view");
+        return {
         user_id: mapping.user_id,
         user_name: userMap.get(mapping.user_id) || "Unknown",
         dept_id: mapping.dept_id,
         dept_name: deptMap.get(mapping.dept_id) || "Unknown",
-        can_edit: mapping.can_edit !== false,
-      }))
+        can_edit: accessLevel === "edit" || accessLevel === "head",
+        access_level: accessLevel,
+      };
+      })
       .filter((row) => row.user_name !== "Unknown" && row.dept_name !== "Unknown");
 
     res.json({ mappings: result });
@@ -1559,14 +1843,19 @@ exports.deletePmcCeCorrespondence = async (req, res) => {
 exports.deleteIssue = async (req, res) => {
   try {
     const { issue_id } = req.params;
+    const issue = await EntityIssues.findOne({ where: { issue_id } });
+    if (!issue) {
+      return res.status(404).json({ error: 'Issue not found' });
+    }
+
+    const accessLevel = await resolveUserDeptAccessLevel(req.user, issue.dept_id);
+    if (accessLevel !== 'edit' && accessLevel !== 'head') {
+      return res.status(403).json({ error: 'Access denied: edit not allowed' });
+    }
 
     await EntityIssues.update(
       { is_active: false },
-      {
-        where: {
-          issue_id: issue_id,
-        },
-      },
+      { where: { issue_id } },
     );
     res.json({ message: "Issue deleted" });
   } catch (err) {
@@ -1676,6 +1965,7 @@ exports.getDepartmentsForUser = async (req, res) => {
         departments: departments.map((item) => ({
           dept_id: item.dept_id,
           can_edit: true,
+          access_level: "head",
         })),
       });
     }
@@ -1684,7 +1974,7 @@ exports.getDepartmentsForUser = async (req, res) => {
       where: {
         user_id: requesterUserId,
       },
-      attributes: ["dept_id", "can_edit"],
+      attributes: ["dept_id", "can_edit", "access_level"],
     });
 
     const mappedDeptIds = userDepartmentMappings.map((item) => item.dept_id);
@@ -1701,18 +1991,26 @@ exports.getDepartmentsForUser = async (req, res) => {
       order: [["dept_name", "ASC"]],
     });
 
-    const canEditMap = new Map(
-      userDepartmentMappings.map((item) => [item.dept_id, item.can_edit !== false])
+    const accessLevelMap = new Map(
+      userDepartmentMappings.map((item) => {
+        const level = String(item.access_level || "").trim().toLowerCase();
+        const accessLevel = (level === "view" || level === "edit" || level === "head")
+          ? level
+          : (item.can_edit !== false ? "edit" : "view");
+        return [item.dept_id, accessLevel];
+      })
     );
 
     res.json({
       departments: departments.map((item) => ({
         dept_id: item.dept_id,
-        can_edit: canEditMap.get(item.dept_id) === true,
+        can_edit: accessLevelMap.get(item.dept_id) === "edit" || accessLevelMap.get(item.dept_id) === "head",
+        access_level: accessLevelMap.get(item.dept_id) || "view",
       })),
     });
   } catch (err) {
     console.error("Error fetching departments:", err);
+      logger.error("Failed to fetch departments for user", err);   
     res.status(500).json({ error: "Failed to fetch departments for user" });
   }
 };
@@ -2036,13 +2334,45 @@ exports.editDocument = async (req, res) => {
 exports.deleteDocument = async (req, res) => {
   try {
     const { doc_id } = req.params;
-    await EntityDocs.update(
-      { is_active: false },
-      {
-        where: { doc_id: doc_id },
-      },
-    );
-    res.json({ message: "Document deleted" });
+    const entityDoc = await EntityDocs.findOne({ where: { doc_id } });
+    if (entityDoc) {
+      const accessLevel = await resolveUserDeptAccessLevel(req.user, entityDoc.dept_id);
+      if (accessLevel !== 'edit' && accessLevel !== 'head') {
+        return res.status(403).json({ error: 'Access denied: edit not allowed' });
+      }
+
+      await EntityDocs.update(
+        { is_active: false },
+        { where: { doc_id } },
+      );
+      return res.json({ message: "Document deleted" });
+    }
+
+    // If no EntityDocs row was updated, this might be a TariffPetition record.
+    try {
+      const { TariffPetition } = require('../models').models;
+      if (TariffPetition) {
+        const tariffDoc = await TariffPetition.findOne({ where: { id: doc_id } });
+        if (tariffDoc) {
+          const accessLevel = await resolveUserDeptAccessLevel(req.user, tariffDoc.dept_id);
+          if (accessLevel !== 'edit' && accessLevel !== 'head') {
+            return res.status(403).json({ error: 'Access denied: edit not allowed' });
+          }
+
+          await TariffPetition.update(
+            { is_active: false },
+            { where: { id: doc_id } },
+          );
+          return res.json({ message: 'Tariff petition deleted' });
+        }
+      }
+    } catch (e) {
+      // Continue to fallback response
+      console.warn('TariffPetition delete check failed:', e && e.message);
+    }
+
+    // If nothing matched, respond with not found
+    res.status(404).json({ error: 'Document not found' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to delete document" });
@@ -2112,11 +2442,19 @@ exports.editCorrespondence = async (req, res) => {
 exports.deleteCorrespondence = async (req, res) => {
   try {
     const { correspondence_id } = req.params;
+    const correspondence = await EntityCorrespondence.findOne({ where: { correspondence_id } });
+    if (!correspondence) {
+      return res.status(404).json({ error: 'Correspondence not found' });
+    }
+
+    const accessLevel = await resolveUserDeptAccessLevel(req.user, correspondence.dept_id);
+    if (accessLevel !== 'edit' && accessLevel !== 'head') {
+      return res.status(403).json({ error: 'Access denied: edit not allowed' });
+    }
+
     await EntityCorrespondence.update(
       { is_active: false },
-      {
-        where: { correspondence_id: correspondence_id },
-      },
+      { where: { correspondence_id } },
     );
     res.json({ message: "Correspondence deleted" });
   } catch (err) {
@@ -2565,7 +2903,7 @@ exports.editNewStatisticWithDepartmentEntityFields = async (req, res) => {
 
     await transaction.commit();
 
-    return res.status(200).json({
+     return res.status(200).json({
       message: "Statistic and related entities updated successfully",
     });
   } catch (err) {
@@ -2577,6 +2915,7 @@ exports.editNewStatisticWithDepartmentEntityFields = async (req, res) => {
     });
   }
 };
+
 
 //create a new statistic with entities and fields
 exports.createNewStatisticWithDepartmentEntityFields = async (req, res) => {
@@ -2667,6 +3006,537 @@ exports.deleteEntryFromContractsTable = async (req, res) => {
   } catch (err) {
     console.error("Error deleting contract:", err);
     res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+function parseTenderValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const cleaned = String(value).replace(/,/g, "").trim();
+  const num = Number(cleaned);
+  return Number.isNaN(num) ? null : num;
+}
+
+const CANONICAL_TECHNOLOGIES = ["Solar", "Wind", "Hybrid", "RTC", "FDRE"];
+
+function normalizeTechnologyType(value) {
+  const tech = String(value || "").trim().toLowerCase();
+  if (!tech) return null;
+  if (tech.includes("solar")) return "Solar";
+  if (tech.includes("wind")) return "Wind";
+  if (tech.includes("hybrid")) return "Hybrid";
+  if (tech.includes("rtc")) return "RTC";
+  if (tech.includes("fdre")) return "FDRE";
+  return null;
+}
+
+function isValidTenderRow(row, mapped) {
+  const normalizedTech = normalizeTechnologyType(mapped?.technology_type || row?.technology_type);
+  if (!normalizedTech || !CANONICAL_TECHNOLOGIES.includes(normalizedTech)) {
+    return false;
+  }
+
+  // Accept rows that have at least one positive numeric value in any key field.
+  // This matches the business rule: exclude rows that are completely empty/invalid,
+  // but keep rows that have data in any field (ERA, PPA, PSA, Commissioned, Tariff).
+  const capacity = parseTenderValue(mapped?.tendered_capacity_mw ?? row?.tendered_capacity_mw);
+  const era = parseTenderValue(mapped?.era_awarded_capacity_mw ?? row?.era_awarded_capacity_mw);
+  const ppa = parseTenderValue(mapped?.ppa_capacity_mw ?? row?.ppa_capacity_mw);
+  const psa = parseTenderValue(mapped?.psa_capacity_mw ?? row?.psa_capacity_mw);
+  const commissioned = parseTenderValue(mapped?.commissioned_capacity_mw ?? row?.commissioned_capacity_mw);
+  const tariff = parseTenderValue(mapped?.tariff ?? row?.tariff);
+
+  const hasAnyPositiveValue = [capacity, era, ppa, psa, commissioned, tariff]
+    .some(v => typeof v === "number" && v > 0);
+
+  if (!hasAnyPositiveValue) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildTenderLookupWhere(tender) {
+  if (!tender) return {};
+
+  if (tender.rfs_number) {
+    return { rfs_number: tender.rfs_number };
+  }
+
+  const where = {};
+  if (tender.tender_title) {
+    where.tender_title = tender.tender_title;
+  }
+  if (tender.year != null) {
+    where.year = tender.year;
+  }
+  if (tender.technology_type) {
+    where.technology_type = tender.technology_type;
+  }
+  if (tender.tendering_agency) {
+    where.tendering_agency = tender.tendering_agency;
+  }
+  if (tender.stage) {
+    where.stage = tender.stage;
+  }
+  return where;
+}
+
+exports.buildTenderLookupWhere = buildTenderLookupWhere;
+
+/**
+ * Build a normalized column name mapping from row keys.
+ * Normalizes by lowercasing, collapsing whitespace, and removing
+ * duplicate disambiguation suffixes like "(Col N)".
+ * Returns: { normalizedName: [actualKey1, actualKey2, ...] }
+ * This is more robust than fuzzy string matching because it:
+ * - Preserves meaningful characters like / in "PSA/PPA"
+ * - Handles extra whitespace (e.g. "Type of   Technology")
+ * - Handles duplicate column suffixes "(Col N)"
+ * - Returns ALL matching keys so callers can try each value
+ */
+function buildColumnMapping(rowKeys) {
+  const normMap = {};
+  for (const key of rowKeys) {
+    const str = String(key || '').trim();
+    if (!str) continue;
+    // Normalize: lowercase, collapse whitespace, remove (Col N) suffix
+    const norm = str.toLowerCase().replace(/\s+/g, ' ').replace(/\(col\s+\d+\)$/i, '').trim();
+    if (!norm) continue;
+    if (!normMap[norm]) normMap[norm] = [];
+    // Store actual key (not normalized) for looking up in row objects
+    normMap[norm].push(str);
+  }
+  return normMap;
+}
+
+function mapTenderRow(row, normMap) {
+  // Helper: get first non-empty value by trying multiple normalized column names.
+  // Tries each normalized name, then each actual column key within that name.
+  function getValue(...normalizedNames) {
+    for (const name of normalizedNames) {
+      const keys = normMap[name];
+      if (!keys) continue;
+      for (const key of keys) {
+        const val = row[key];
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          return val;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  // Helper: get parsed positive numeric value, skipping 0 so fallback columns are tried.
+  // A cell containing 0 means "no value" for this field — we continue searching other
+  // column name variants (e.g. "Commissioning Capacity (MW)" after "Capacity Commissioned (MW)"=0).
+  function getNumeric(...normalizedNames) {
+    for (const name of normalizedNames) {
+      const keys = normMap[name];
+      if (!keys) continue;
+      for (const key of keys) {
+        const val = row[key];
+        const parsed = parseTenderValue(val);
+        if (parsed !== null && parsed > 0) return parsed;
+      }
+    }
+    return null;
+  }
+
+  return {
+    tender_title: getValue('tender title', 'name of tender', 'tender') || null,
+    tendering_agency: getValue('tendering agency', 'agency') || null,
+    developer_name: getValue('project developer name', 'developer name', 'developer') || null,
+    technology_type: (function() {
+        // Priority: Type of Technology (Tender Details) > Type of Technology LOA (LOA/LOI) > Technology Type > Technology/Tech
+        // Previously both columns were named "Type of Technology" so the same
+        // normalized key handled both. Now the LOA/LOI column is renamed to
+        // "Type of Technology LOA", requiring a separate fallback.
+        let v = getValue('type of technology');
+        if (v && String(v).trim()) return String(v).trim();
+        v = getValue('type of technology loa');
+        if (v && String(v).trim()) return String(v).trim();
+        v = getValue('technology type');
+        if (v && String(v).trim()) return String(v).trim();
+        v = getValue('technology', 'tech');
+        if (v && String(v).trim()) return String(v).trim();
+        return null;
+      })(),
+    mode: getValue('mode', 'mode of tender') || null,
+    year: (function() {
+        const yearVal = getNumeric('year', 'fy');
+        if (yearVal !== null && yearVal >= 1900 && yearVal <= 2100) return yearVal;
+        // Extract year from date columns
+        const dateVal = getValue('date of issue of rfs', 'rfs date', 'rfs issue date', 'date of issue of nit', 'date of issue of loa');
+        if (dateVal) {
+          const ds = String(dateVal).trim();
+          let m = ds.match(/(\d{4})[-/]\d{2}[-/]\d{2}/);
+          if (m) return Number(m[1]);
+          m = ds.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
+          if (m) return Number(m[3]);
+        }
+        return null;
+      })(),
+    rfs_number: getValue('rfs number', 'rfs', 'rfs no', 'nit number', 'nit', 'nit no') || null,
+    rfs_date: getValue('date of issue of rfs', 'rfs date', 'rfs issue date', 'date of issue of nit', 'date of issue of loa') || null,
+    tariff: getNumeric('tariff (rs/kwhr) loa', 'tariff (rs/kwhr)', 'tariff (rs)', 'tariff') || null,
+    tendered_capacity_mw: getNumeric('tendered capacity (mw)', 'tendered capacity', 'capacity (mw)', 'capacity') || null,
+    era_awarded_capacity_mw: getNumeric('capacity awarded by era (mw)', 'capacity awarded by era', 'era awarded capacity (mw)', 'era awarded capacity') || null,
+    loa_loi_capacity_mw: getNumeric('loa/loi capacity', 'loa capacity (mw)', 'loa capacity', 'loi capacity (mw)', 'loi capacity', 'awarded capacity (mw)', 'awarded capacity') || null,
+    commissioned_capacity_mw: getNumeric('capacity commissioned (mw)', 'capacity commissioned', 'commissioned capacity (mw)', 'commissioned capacity', 'commissioned', 'commissioned capacity signed (mw)', 'commissioned signed') || null,
+    psa_capacity_mw: getNumeric('psa capacity (mw)', 'psa capacity', 'psa', 'psa signed capacity (mw)', 'psa signed (mw)', 'psa signed', 'psa capacity signed (mw)') || null,
+    ppa_capacity_mw: getNumeric('ppa capacity (mw)', 'ppa capacity', 'ppa', 'ppa signed capacity (mw)', 'ppa signed (mw)', 'ppa signed', 'ppa capacity signed (mw)') || null,
+    psa_ppa_capacity_mw: getNumeric('psa/ppa signed (mw)', 'psa/ppa signed', 'ppa/psa signed (mw)', 'ppa/psa signed') || null,
+    storage_capacity_mw: getNumeric('storage capacity (mw)', 'storage capacity') || null,
+    stage: getValue('status of connectivity', 'tender stage', 'stage', 'status') || null,
+  };
+}
+
+/**
+ * Helper: return the parsed numeric value if it is a positive number, else 0.
+ * Used for per-KPI inclusion — a row contributes to a KPI only if that field > 0.
+ */
+function positiveValue(value) {
+  const n = parseTenderValue(value);
+  return (typeof n === "number" && n > 0) ? n : 0;
+}
+
+function summarizeTenderRows(rows) {
+  const techMap = {};
+  const stageMap = {};
+  const yearMap = {};
+
+  // Unique tender tracking — use rfs_number first, fall back to tender_title
+  const globalTenderKeys = new Set();
+  const techTenderKeys = {};
+  const yearTenderKeys = {};
+  const stageTenderKeys = {};
+
+  let totalTendered = 0;
+  let totalEraAwarded = 0;
+  let totalLoaLoi = 0;
+  let totalCommissioned = 0;
+  let totalPsa = 0;
+  let totalPpa = 0;
+
+  for (const row of rows) {
+    // ── Commissioned: count ALL rows regardless of technology ───
+    // The Excel's Grand Total = sum of col71 for all data rows.
+    // Developer sub-rows (no technology) also contribute actual commissioned
+    // capacity. Skipping them loses ~19,565 MW. So we sum commissioned
+    // BEFORE the technology filter, using only columns representing actual
+    // commissioned capacity (col71), not planned commissioning (col58).
+    totalCommissioned += positiveValue(row.commissioned_capacity_mw);
+
+    // Base validation: only include rows with a recognized technology
+    // for all other KPIs (tendered, ERA, PPA, PSA, tariff, etc.)
+    const tech = normalizeTechnologyType(row.technology_type);
+    if (!tech || !CANONICAL_TECHNOLOGIES.includes(tech)) continue;
+
+    const tenderKey = String(row.rfs_number || row.tender_title || "").trim();
+    if (tenderKey) {
+      globalTenderKeys.add(tenderKey);
+      if (!techTenderKeys[tech]) techTenderKeys[tech] = new Set();
+      techTenderKeys[tech].add(tenderKey);
+    }
+
+    const stage = row.stage || "Unknown";
+    const year = String(row.year || "Unknown").trim();
+
+    // ── Per-KPI inclusion ──────────────────────────────────────
+    // Each field contributes to its KPI only when its value is positive (> 0).
+    const tc = positiveValue(row.tendered_capacity_mw);
+    const ec = positiveValue(row.era_awarded_capacity_mw);
+    const lc = positiveValue(row.loa_loi_capacity_mw);
+    const cc = positiveValue(row.commissioned_capacity_mw);
+    const psc = positiveValue(row.psa_capacity_mw);
+    const ppc = positiveValue(row.ppa_capacity_mw);
+
+    totalTendered += tc;
+    totalEraAwarded += ec;
+    totalLoaLoi += lc;
+    totalPsa += psc;
+    totalPpa += ppc;
+
+    // ── Technology breakdown ───────────────────────────────────
+    if (!techMap[tech]) {
+      techMap[tech] = { capacity: 0, era_capacity: 0, ppa_capacity: 0, psa_capacity: 0, commissioned_capacity: 0 };
+    }
+    techMap[tech].capacity += tc;
+    techMap[tech].era_capacity += ec;
+    techMap[tech].ppa_capacity += ppc;
+    techMap[tech].psa_capacity += psc;
+    techMap[tech].commissioned_capacity += cc;
+
+    // ── Year breakdown (tendered capacity only) ────────────────
+    if (!yearMap[year]) yearMap[year] = { capacity: 0 };
+    yearMap[year].capacity += tc;
+    if (tenderKey) {
+      if (!yearTenderKeys[year]) yearTenderKeys[year] = new Set();
+      yearTenderKeys[year].add(tenderKey);
+    }
+
+    // ── Stage breakdown (tendered capacity only) ───────────────
+    if (!stageMap[stage]) stageMap[stage] = { capacity: 0 };
+    stageMap[stage].capacity += tc;
+    if (tenderKey) {
+      if (!stageTenderKeys[stage]) stageTenderKeys[stage] = new Set();
+      stageTenderKeys[stage].add(tenderKey);
+    }
+  }
+
+  // Build final response with unique-tender counts
+  const byTechnology = Object.entries(techMap).map(([technology_type, values]) => {
+    const keys = techTenderKeys[technology_type];
+    return { technology_type, count: keys ? keys.size : 0, ...values };
+  });
+
+  const byYear = Object.entries(yearMap).map(([year, values]) => {
+    const keys = yearTenderKeys[year];
+    return { year, count: keys ? keys.size : 0, capacity: values.capacity };
+  });
+
+  const byStage = Object.entries(stageMap).map(([stage, values]) => {
+    const keys = stageTenderKeys[stage];
+    return { stage, count: keys ? keys.size : 0, capacity: values.capacity };
+  });
+
+  return {
+    total_tenders: globalTenderKeys.size,
+    tendered_capacity_mw: totalTendered,
+    era_awarded_capacity_mw: totalEraAwarded,
+    loa_loi_capacity_mw: totalLoaLoi,
+    commissioned_capacity_mw: totalCommissioned,
+    psa_capacity_mw: totalPsa,
+    ppa_capacity_mw: totalPpa,
+    psa_ppa_capacity_mw: totalPsa + totalPpa,
+    by_technology: byTechnology,
+    by_stage: byStage,
+    by_year: byYear,
+  };
+}
+
+exports.summarizeTenderRows = summarizeTenderRows;
+
+/**
+ * Read rows from a tender register Excel, handling merged/two-row headers.
+ * If the first row of data contains sub-header labels (SI. No, etc.), the
+ * second row is used as column names and data starts from row 3.
+ */
+function readTenderExcelRows(filePath) {
+  const xlsx = require("xlsx");
+  const workbook = xlsx.readFile(filePath);
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const raw = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+  if (!raw || raw.length === 0) return [];
+
+  // Detect two-row header: row0 has merged category names, row1 has real column names
+  const firstVal = String(raw[0]?.[0] || "").trim();
+  const secondVal = String(raw[1]?.[0] || "").trim();
+  const headerRowIndex = (/^(si\s*\.?\s*no|sno|sl\s*\.?\s*no|#)$/i.test(secondVal) && /[a-z]/i.test(firstVal))
+    ? 1
+    : 0;
+
+  const headerRow = raw[headerRowIndex];
+  const colCount = headerRow.length;
+
+  // Build column name mapping: use header row values as keys
+  // Handle duplicate column names by keeping the first occurrence
+  const colMap = {};
+  const seenKeys = {};
+  for (let i = 0; i < colCount; i++) {
+    let key = String(headerRow[i] || "").trim();
+    if (key) {
+      if (seenKeys[key]) {
+        // Append column index to disambiguate duplicates (e.g. two "Storage Capacity (MW)" columns)
+        key = key + " (Col " + i + ")";
+      }
+      seenKeys[key] = true;
+    }
+    colMap[i] = key;
+  }
+
+  // Build data rows
+  const result = [];
+  for (let r = headerRowIndex + 1; r < raw.length; r++) {
+    const rowArr = raw[r];
+    // Skip completely empty rows
+    const hasVal = rowArr.some((v) => String(v || "").trim() !== "");
+    if (!hasVal) continue;
+
+    const rowObj = {};
+    for (let i = 0; i < colCount; i++) {
+      const key = colMap[i];
+      if (key) {
+        rowObj[key] = rowArr[i] !== undefined ? rowArr[i] : "";
+      }
+    }
+    result.push(rowObj);
+  }
+
+  return result;
+}
+
+exports.uploadTenderRegisterExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Excel file is required" });
+    }
+
+    const rows = readTenderExcelRows(req.file.path);
+
+    if (!rows.length) {
+      return res.status(400).json({ error: "Excel file is empty" });
+    }
+
+    const rowKeys = Object.keys(rows[0]);
+    // Build a normalized column mapping once, used by mapTenderRow for all rows.
+    const normMap = buildColumnMapping(rowKeys);
+    const persistedRows = [];
+    let inserted = 0;
+
+    // ── Deactivate ALL previously active rows BEFORE processing ──────────
+    // This eliminates the overwrite risk: each Excel row becomes its own
+    // independent DB row.  No upsert means a developer sub-row can never
+    // overwrite a main tender row's values.
+    await TenderRegister.update(
+      { is_active: false },
+      { where: { is_active: true } }
+    );
+
+    // ── Process each Excel row → INSERT as a new record ───────────────────
+    async function saveTender(tender) {
+      if (!tender) return null;
+      const payload = {
+        tender_title: tender.tender_title,
+        tendering_agency: tender.tendering_agency,
+        technology_type: tender.technology_type,
+        mode: tender.mode,
+        year: tender.year,
+        rfs_number: tender.rfs_number,
+        rfs_date: tender.rfs_date,
+        tariff: tender.tariff,
+        tendered_capacity_mw: tender.tendered_capacity_mw,
+        era_awarded_capacity_mw: tender.era_awarded_capacity_mw,
+        loa_loi_capacity_mw: tender.loa_loi_capacity_mw,
+        commissioned_capacity_mw: tender.commissioned_capacity_mw,
+        psa_capacity_mw: tender.psa_capacity_mw,
+        ppa_capacity_mw: tender.ppa_capacity_mw,
+        psa_ppa_capacity_mw: (tender.psa_capacity_mw || 0) + (tender.ppa_capacity_mw || 0),
+        storage_capacity_mw: tender.storage_capacity_mw,
+        stage: tender.stage,
+        excel_file_path: req.file.path,
+        original_file_name: req.file.originalname,
+        uploaded_at: new Date(),
+        is_active: true,
+      };
+      const saved = await TenderRegister.create(payload);
+      inserted += 1;
+      const json = saved.toJSON();
+      persistedRows.push(json);
+      return json;
+    }
+
+    for (const row of rows) {
+      // Skip rows where first cell looks like a sub-header label
+      const firstCell = String(row[rowKeys[0]] || "").trim();
+      if (/^(si\s*\.?\s*no|sno|sl\s*\.?\s*no|#)$/i.test(firstCell)) continue;
+
+      const mapped = mapTenderRow(row, normMap);
+      const normalizedTech = normalizeTechnologyType(mapped.technology_type);
+      const normalizedTender = {
+        ...mapped,
+        technology_type: normalizedTech,
+      };
+
+      if (!isValidTenderRow(row, normalizedTender)) {
+        // Still insert rows that have commissioned capacity > 0 even if they
+        // have no recognized technology. These are developer sub-rows under a
+        // main tender — they lack tender-level fields (tech, title, RFS) but
+        // contain actual commissioned capacity (col71) that must be counted.
+        // CRITICAL: Only insert if commissioned is the ONLY positive field.
+        // The Grand Total summary row also has no tech and commissioned > 0,
+        // but it contains ALL summary values — inserting it would double-count.
+        const hasOtherFields = (normalizedTender.commissioned_capacity_mw > 0) && (
+          parseTenderValue(normalizedTender.tendered_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.era_awarded_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.loa_loi_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.psa_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.ppa_capacity_mw) > 0 ||
+          parseTenderValue(normalizedTender.tariff) > 0
+        );
+        if (hasOtherFields || !normalizedTender.commissioned_capacity_mw || normalizedTender.commissioned_capacity_mw <= 0) continue;
+      }
+
+      await saveTender(normalizedTender);
+    }
+
+    const summary = summarizeTenderRows(persistedRows);
+
+    return res.status(200).json({
+      message: "Tender register uploaded successfully",
+      inserted,
+      total: persistedRows.length,
+      summary,
+      rows: persistedRows,
+    });
+  } catch (err) {
+    console.error("Error uploading tender register Excel:", err);
+    return res.status(500).json({ error: "Failed to process tender register Excel", detail: err.message });
+  }
+};
+
+exports.getTenderRegisters = async (req, res) => {
+  try {
+    const { technology_type, year, stage } = req.query;
+    const where = { is_active: true };
+    if (technology_type) where.technology_type = technology_type;
+    if (year) where.year = Number(year);
+    if (stage) where.stage = stage;
+
+    const rows = await TenderRegister.findAll({
+      where,
+      order: [["year", "DESC"], ["tender_title", "ASC"]],
+    });
+
+    return res.status(200).json({ message: "Tender register entries fetched successfully", data: rows });
+  } catch (err) {
+    console.error("Error fetching tender register entries:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.getTenderRegisterSummary = async (req, res) => {
+  try {
+    const rows = await TenderRegister.findAll({ where: { is_active: true } });
+    const summary = summarizeTenderRows(rows.map((r) => r.toJSON()));
+    return res.status(200).json({ message: "Tender register summary fetched successfully", data: summary });
+  } catch (err) {
+    console.error("Error fetching tender register summary:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.downloadTenderRegisterExcel = async (req, res) => {
+  try {
+    const row = await TenderRegister.findOne({
+      where: { is_active: true },
+      order: [["uploaded_at", "DESC"]],
+      attributes: ["excel_file_path", "original_file_name"],
+    });
+    if (!row || !row.excel_file_path) {
+      return res.status(404).json({ error: "No uploaded Excel file found" });
+    }
+    const filePath = row.excel_file_path;
+    const fileName = row.original_file_name || "tender_register.xlsx";
+    if (require("fs").existsSync(filePath)) {
+      return res.download(filePath, fileName);
+    } else {
+      return res.status(404).json({ error: "Excel file not found on server" });
+    }
+  } catch (err) {
+    console.error("Error downloading tender register Excel:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -3112,8 +3982,11 @@ exports.getOMSolarBESSDataForDate = async (req, res) => {
     });
 
     /* ---------- Last year March 31 ---------- */
-    const reqYear = new Date(requestedDate + "T00:00:00").getFullYear();
-    const lastYearMarch31 = `${reqYear - 1}-03-31`;
+    const reqDateObj = new Date(requestedDate + "T00:00:00");
+    const reqYear = reqDateObj.getFullYear();
+    const reqMonth = reqDateObj.getMonth() + 1; // 1-12
+    const lastFYEndYear = reqMonth >= 4 ? reqYear : reqYear - 1;
+    const lastYearMarch31 = `${lastFYEndYear}-03-31`;
 
     const lastYearMarch31Data = await OMDGRSolarBESS.findOne({
       where: {
@@ -3141,6 +4014,34 @@ exports.getOMSolarBESSDataForDate = async (req, res) => {
     });
   }
 };
+
+// Return the most recent date for which OM Solar+BESS data exists for an entity
+exports.getOMSolarBESSLatestDate = async (req, res) => {
+  try {
+    const { dept_id, statistic_id, entity_id } = req.query;
+
+    if (!dept_id || !statistic_id || !entity_id) {
+      return res.status(400).json({ message: "dept_id, statistic_id and entity_id are required" });
+    }
+
+    const latest = await OMDGRSolarBESS.findOne({
+      where: { dept_id, statistic_id, entity_id },
+      order: [["date", "DESC"]],
+      attributes: ["date"],
+      raw: true,
+    });
+
+    if (!latest) {
+      return res.status(204).json({ message: "No data found" });
+    }
+
+    return res.status(200).json({ date: latest.date });
+  } catch (error) {
+    console.error("Fetch latest OM Solar+BESS date error:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
 
 exports.downloadOMSolarBESSExcel = async (req, res) => {
   try {
@@ -3382,8 +4283,11 @@ exports.getOMSolarDataForDate = async (req, res) => {
       order: [["date", "ASC"]],
     });
 
-    const reqYear = new Date(requestedDate + "T00:00:00").getFullYear();
-    const lastYearMarch31 = `${reqYear - 1}-03-31`;
+    const reqDateObj = new Date(requestedDate + "T00:00:00");
+    const reqYear = reqDateObj.getFullYear();
+    const reqMonth = reqDateObj.getMonth() + 1; // 1-12
+    const lastFYEndYear = reqMonth >= 4 ? reqYear : reqYear - 1;
+    const lastYearMarch31 = `${lastFYEndYear}-03-31`;
 
     const lastYearMarch31Data = await OMDGRSolar.findOne({
       where: {
@@ -3409,6 +4313,33 @@ exports.getOMSolarDataForDate = async (req, res) => {
       message: "Internal server error",
       error: error.message,
     });
+  }
+};
+
+// Return the most recent date for which OM Solar data exists for an entity
+exports.getOMSolarLatestDate = async (req, res) => {
+  try {
+    const { dept_id, statistic_id, entity_id } = req.query;
+
+    if (!dept_id || !statistic_id || !entity_id) {
+      return res.status(400).json({ message: "dept_id, statistic_id and entity_id are required" });
+    }
+
+    const latest = await OMDGRSolar.findOne({
+      where: { dept_id, statistic_id, entity_id },
+      order: [["date", "DESC"]],
+      attributes: ["date"],
+      raw: true,
+    });
+
+    if (!latest) {
+      return res.status(204).json({ message: "No data found" });
+    }
+
+    return res.status(200).json({ date: latest.date });
+  } catch (error) {
+    console.error("Fetch latest OM Solar date error:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
@@ -3606,10 +4537,14 @@ exports.getOMProjectsByDate = async (req, res) => {
       return res.status(400).json({ message: "date is required" });
     }
 
-    // 🔹 Calculate last year's 31 March
-    const inputDate = new Date(date);
-    const lastYear = inputDate.getFullYear() - 1;
-    const lastYearMarch31 = `${lastYear}-03-31`;
+    // 🔹 Calculate financial-year end (31 March) for the selected date
+    // If selected month is Apr(4) to Dec(12) -> FY end is same year March 31
+    // If selected month is Jan(1) to Mar(3) -> FY end is previous year's March 31
+    const inputDate = new Date(date + "T00:00:00");
+    const inputYear = inputDate.getFullYear();
+    const inputMonth = inputDate.getMonth() + 1; // 1-12
+    const fyEndYear = inputMonth >= 4 ? inputYear : inputYear - 1;
+    const lastYearMarch31 = `${fyEndYear}-03-31`;
 
     // 1️⃣ Fetch project mappings
     const projectMappings = await OMProjectTypeMapping.findAll({
@@ -4031,6 +4966,28 @@ exports.createPmcEntry = async (req, res) => {
               pmc_entry_id: stableExecutionId,
               ...entryPayload,
             });
+          }
+        }
+      }
+
+      if (!entry) {
+        // For DPR/PFR, try to reuse an existing entry by project name/client/details
+        // so adding milestones does not create a new UUID for the same project.
+        if (!isExecutionService) {
+          const lookupName = String(projectName || client || projectDetails || '').trim().toLowerCase();
+          if (lookupName) {
+            const candidates = await PmcProject.findAll({
+              where: { service_type: 'DPR' },
+              order: [["createdAt", "DESC"]],
+            });
+            const match = candidates.find(e => {
+              const enName = String(e.project_name || e.client || e.project_details || '').trim().toLowerCase();
+              return enName && enName === lookupName;
+            });
+            if (match) {
+              await match.update(entryPayload);
+              entry = match;
+            }
           }
         }
       }

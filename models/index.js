@@ -46,6 +46,7 @@ const models = {
   UserEditAccess: require("./user_edit_access")(sequelize, DataTypes),
   UserLogs: require("./user_logs")(sequelize, DataTypes),
   ContractsTable: require("./contracts_table")(sequelize, DataTypes),
+  TenderRegister: require("./tender_register")(sequelize, DataTypes),
   BusinessDevelopmentTable: require("./bd_table")(sequelize, DataTypes),
   BusinessDevelopmentMilestones: require("./bd_milestones")(
     sequelize,
@@ -93,6 +94,7 @@ const models = {
   DiscomPayments: require("./discom_payment")(sequelize, DataTypes),
   StateWiseDetail: require("./state_wise_details")(sequelize, DataTypes),
   DiscomPayments: require("./discom_payment")(sequelize, DataTypes),
+  OwnProject: require("./own_project")(sequelize, DataTypes),
 };
 
 Object.values(models).forEach((model) => {

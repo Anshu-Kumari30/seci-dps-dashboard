@@ -23,7 +23,7 @@ async function insertTestData() {
 
   const excludedDepartments = ["Business Development"];
 
-  const hashedPassword = await bcrypt.hash("admin1234", 10);
+  const hashedPassword = await bcrypt.hash("Admin@123_", 10);
   const adminUsers = await User.bulkCreate([
     {
       name: "Director Power Systems",
@@ -397,7 +397,7 @@ async function testAllApis() {
   const BASE_URL = "http://localhost:3000"; // change if needed
   const credentials = {
     email: "admin@seci.co.in",
-    password: "admin1234",
+    password: "Admin@123_",
   };
 
   console.log("🔐 Attempting to login as admin@seci.co.in...");
