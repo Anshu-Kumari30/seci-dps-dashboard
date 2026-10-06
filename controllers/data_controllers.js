@@ -3800,6 +3800,7 @@ exports.editOMDGR = async (req, res) => {
   }
 };
 
+
 exports.getREIAData = async (req, res) => {
   try {
     const foundREIAData = await REIADocuments.findAll();
@@ -4922,78 +4923,69 @@ exports.createPmcEntry = async (req, res) => {
   try {
     // Accept both camelCase and snake_case keys from client for robustness
     const body = req.body || {};
-    const sno = body.sno || body.SNO || body.sr_no || body.srno || null;
-    const serviceType = body.serviceType || body.service_type || body.service || null;
-    const client = body.client || body.client_name || null;
-    const projectDetails = body.projectDetails || body.project_details || body.project_details_text || null;
+    const sno = Number(body.sno || body.SNO || body.sr_no || body.srno) || 1;
+    const serviceType = body.serviceType || body.service_type || body.service || 'BMS';
+    const client = body.client || body.client_name || 'N/A';
+    const projectDetails = body.projectDetails || body.project_details || body.project_details_text || 'N/A';
     const projectName = body.projectName || body.project_name || null;
-    const loaDate = body.loaDate || body.loa_date || null;
-    const startDate = body.startDate || body.start_date || null;
-    const endDate = body.endDate || body.end_date || null;
-    const targetDate = body.targetDate || body.target_date || null;
-    const totalAmount = body.totalAmount || body.total_amount || Number(body.poValue) || 0;
-    const amountReceived = body.amountReceived || body.amount_received || Number(body.amountReceived) || 0;
-    const amountPending = body.amountPending || body.amount_pending || Number(body.amount_pending) || 0;
+    const loaDate = (body.loaDate || body.loa_date) ? (body.loaDate || body.loa_date) : new Date();
+    const startDate = (body.startDate || body.start_date) ? (body.startDate || body.start_date) : new Date();
+    const endDate = (body.endDate || body.end_date) ? (body.endDate || body.end_date) : new Date();
+    const targetDate = (body.targetDate || body.target_date) ? (body.targetDate || body.target_date) : new Date();
+    const totalAmount = Number(body.totalAmount || body.total_amount || body.poValue) || 0;
+    const amountReceived = Number(body.amountReceived || body.amount_received) || 0;
+    const amountPending = Number(body.amountPending || body.amount_pending) || 0;
     const status = body.status || body.current_status || 'Pending';
     const milestones = Array.isArray(body.milestones) ? body.milestones : (body.milestoneRows || []);
-    
-      
-      // Fetch the existing entry
-      const entry = await PmcProject.findByPk(pmc_entry_id);
-      if (!entry) {
-        return res.status(404).json({
-          success: false,
-          message: "PMC entry not found.",
-        });
-      }
 
-      // Compute display status from milestones (same logic as on frontend):
-      let displayStatus = status || 'Pending';
-      try {
-        if (Array.isArray(milestones) && milestones.length) {
-          const raised = milestones.filter(m => Number(m.invoice_raised || m.invoiceRaised || 0) > 0);
-          if (raised.length) {
-            const last = raised[raised.length - 1];
-            displayStatus = last.milestone || displayStatus;
-          } else {
-            const pending = milestones.filter(m => String(m.status || '').toLowerCase() === 'pending');
-            if (pending.length) {
-              const last = pending[pending.length - 1];
-              displayStatus = last.milestone || last.status || displayStatus;
-            }
+    // Compute display status from milestones (same logic as on frontend):
+    let displayStatus = status || 'Pending';
+    try {
+      if (Array.isArray(milestones) && milestones.length) {
+        const raised = milestones.filter(m => Number(m.invoice_raised || m.invoiceRaised || 0) > 0);
+        if (raised.length) {
+          const last = raised[raised.length - 1];
+          displayStatus = last.milestone || displayStatus;
+        } else {
+          const pending = milestones.filter(m => String(m.status || '').toLowerCase() === 'pending');
+          if (pending.length) {
+            const last = pending[pending.length - 1];
+            displayStatus = last.milestone || last.status || displayStatus;
           }
         }
-      } catch (e) {
-        console.warn('Error computing displayStatus from milestones', e);
       }
+    } catch (e) {
+      console.warn('Error computing displayStatus from milestones', e);
+    }
 
-      await entry.update({
-        sno,
-        service_type: serviceType,
-        client,
-        project_details: projectDetails,
-        project_name: projectName,
-        loa_date: loaDate,
-        start_date: startDate,
-        end_date: endDate,
-        target_date: targetDate,
-        total_amount: totalAmount,
-        amount_received: amountReceived,
-        amount_pending: amountPending,
-        status: displayStatus,
-      });
+    const entry = await PmcProject.create({
+      sno,
+      service_type: serviceType,
+      client,
+      project_details: projectDetails,
+      project_name: projectName,
+      loa_date: loaDate,
+      start_date: startDate,
+      end_date: endDate,
+      target_date: targetDate,
+      total_amount: totalAmount,
+      amount_received: amountReceived,
+      amount_pending: amountPending,
+      status: displayStatus,
+    });
 
-    await PmcMilestone.destroy({ where: { pmc_entry_id } });
+    const pmc_entry_id = entry.pmc_entry_id;
+
     if (Array.isArray(milestones) && milestones.length) {
       const milestoneRows = milestones.map((m, idx) => ({
         pmc_entry_id,
         sr_no: idx + 1,
         milestone: m.milestone || "",
-        stage_payment: Number(m.stagePayment) || 0,
-        invoice_amount: Number(m.invoiceAmount) || 0,
-        invoice_raised: Number(m.invoiceRaised) || 0,
-        invoice_date: m.invoiceDate || null,
-        invoice_number: m.invoiceNumber || null,
+        stage_payment: Number(m.stagePayment || m.stage_payment) || 0,
+        invoice_amount: Number(m.invoiceAmount || m.invoice_amount) || 0,
+        invoice_raised: Number(m.invoiceRaised || m.invoice_raised) || 0,
+        invoice_date: (m.invoiceDate || m.invoice_date) ? (m.invoiceDate || m.invoice_date) : null,
+        invoice_number: m.invoiceNumber || m.invoice_number || null,
         status: m.status || "Pending",
       }));
       await PmcMilestone.bulkCreate(milestoneRows);
@@ -5102,11 +5094,11 @@ exports.editPmcEntry = async (req, res) => {
         pmc_entry_id,
         sr_no: idx + 1,
         milestone: m.milestone || "",
-        stage_payment: Number(m.stagePayment) || 0,
-        invoice_amount: Number(m.invoiceAmount) || 0,
-        invoice_raised: Number(m.invoiceRaised) || 0,
-        invoice_date: m.invoiceDate || null,
-        invoice_number: m.invoiceNumber || null,
+        stage_payment: Number(m.stagePayment || m.stage_payment) || 0,
+        invoice_amount: Number(m.invoiceAmount || m.invoice_amount) || 0,
+        invoice_raised: Number(m.invoiceRaised || m.invoice_raised) || 0,
+        invoice_date: (m.invoiceDate || m.invoice_date) ? (m.invoiceDate || m.invoice_date) : null,
+        invoice_number: m.invoiceNumber || m.invoice_number || null,
         status: m.status || "Pending",
       }));
       await PmcMilestone.bulkCreate(milestoneRows);

@@ -683,8 +683,9 @@
             <td style="padding: 10px; text-align: right; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">₹${totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td style="padding: 10px; text-align: right; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">₹${totalInvoiceRaised.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td style="padding: 10px; text-align: right; border-right: 1px solid #f0f0f0; font-family: Arial, Helvetica, sans-serif; font-size: 0.95rem;">₹${amountPending.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-            <td style="padding: 10px; text-align: center;">
+            <td style="padding: 10px; text-align: center; white-space: nowrap;">
               <button class="btn btn-sm btn-info view-btn-milestone" data-dropdown-id="${milestonesDropdownId}" style="white-space: nowrap;">View ▼</button>
+              <button class="btn btn-sm btn-danger ms-1" onclick="deletePmcEntry('${item.pmc_entry_id}')" style="white-space: nowrap;">Delete</button>
             </td>
           </tr>
           <tr id="${milestonesDropdownId}" style="display: none; background: #f8f9fa;">

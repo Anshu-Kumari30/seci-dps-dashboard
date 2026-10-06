@@ -8,6 +8,7 @@
     <script src="./js/main.js"></script>
 <title>Add PMC Project Entry</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
     <style>
@@ -401,12 +402,14 @@
         Milestone & Payment Schedule
       </div>
       <div class="form-content">
-        <div class="form-row">
-          <div class="form-group">
-            <button type="button" class="btn-sm btn-success" onclick="addNewMilestone()" style="margin-top: 0;">
-              <i class="fas fa-plus"></i> Add New Milestone
-            </button>
-          </div>
+        <div class="d-flex align-items-center mb-3" style="display: flex; flex-direction: row; align-items: center; width: 100%;">
+          <button type="button" class="btn-sm btn-success justify-content-center" onclick="addNewMilestone()" style="margin-top: 0; margin-left: 5%; width: 55%; margin-right: 5%;">
+            <i class="fas fa-plus"></i> Add New Milestone
+          </button>
+          <button type="button" class="btn-sm btn-success justify-content-center" onclick="document.getElementById('excelUploadInput').click()" style="margin-top: 0; width: 25%;">
+            <i class="fas fa-file-excel"></i> Upload Excel
+          </button>
+          <input type="file" id="excelUploadInput" accept=".xlsx,.xls" style="display:none;" onchange="handleExcelUpload(this)" />
         </div>
 
         <!-- Milestone Table -->
@@ -712,6 +715,89 @@
       } else {
         document.getElementById('status').value = '';
       }
+    }
+
+    function handleExcelUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+          if (!jsonData || jsonData.length < 2) {
+            alert('Excel file is empty or missing header row.');
+            return;
+          }
+          const headers = jsonData[0].map(h => String(h || '').trim());
+          const findCol = (names) => {
+            for (let i = 0; i < headers.length; i++) {
+              const h = String(headers[i] || '').toLowerCase();
+              for (const n of names) {
+                if (h.includes(n.toLowerCase())) return i;
+              }
+            }
+            return -1;
+          };
+          const colSNo = findCol(['s.no', 'sno', 'serial', 'sr no']);
+          const colMilestone = findCol(['milestone', 'description', 'stage']);
+          const colStagePayment = findCol(['stage payment', 'stage_payment', 'stage%']);
+          const colInvoiceAmount = findCol(['invoice amount', 'invoice_amount', 'amount']);
+          const colInvoiceRaised = findCol(['invoice raised', 'invoice_raised', 'raised']);
+          const colInvoiceDate = findCol(['invoice date', 'invoice_date', 'date']);
+          const colInvoiceNumber = findCol(['invoice number', 'invoice_number', 'invoice no', 'number']);
+          const colStatus = findCol(['invoice status', 'status', 'invoice_status']);
+
+          let addedCount = 0;
+          milestoneCount = milestones.length;
+          for (let r = 1; r < jsonData.length; r++) {
+            const row = jsonData[r];
+            if (!row || row.every(cell => String(cell || '').trim() === '')) continue;
+            milestoneCount++;
+            addedCount++;
+            const milestoneText = colMilestone >= 0 ? String(row[colMilestone] || '').trim() : '';
+            const milestoneVal = milestoneText || (colSNo >= 0 ? String(row[colSNo] || '').trim() : '');
+            const stagePaymentRaw = colStagePayment >= 0 ? row[colStagePayment] : '';
+            const stagePayment = parseFloat(stagePaymentRaw) || 0;
+            const invoiceAmountRaw = colInvoiceAmount >= 0 ? row[colInvoiceAmount] : '';
+            const invoiceAmount = parseFloat(invoiceAmountRaw) || 0;
+            const invoiceRaisedRaw = colInvoiceRaised >= 0 ? row[colInvoiceRaised] : '';
+            const invoiceRaised = parseFloat(invoiceRaisedRaw) || 0;
+            const invoiceDateRaw = colInvoiceDate >= 0 ? row[colInvoiceDate] : '';
+            let invoiceDate = '';
+            if (invoiceDateRaw) {
+              const d = new Date(invoiceDateRaw);
+              if (!isNaN(d.getTime())) {
+                invoiceDate = d.toISOString().split('T')[0];
+              } else {
+                invoiceDate = String(invoiceDateRaw).trim();
+              }
+            }
+            const invoiceNumber = colInvoiceNumber >= 0 ? String(row[colInvoiceNumber] || '').trim() : '';
+            const statusRaw = colStatus >= 0 ? String(row[colStatus] || '').trim() : 'Pending';
+            const status = (statusRaw === 'Received' || statusRaw === 'Delayed') ? statusRaw : 'Pending';
+            milestones.push({
+              id: milestoneCount,
+              milestone: milestoneVal,
+              stagePayment: stagePayment,
+              invoiceAmount: invoiceAmount,
+              invoiceRaised: invoiceRaised,
+              invoiceDate: invoiceDate,
+              invoiceNumber: invoiceNumber,
+              status: status
+            });
+          }
+          renderMilestones();
+          alert('Excel uploaded successfully. ' + addedCount + ' milestone(s) added (Total: ' + milestones.length + ').');
+        } catch (err) {
+          console.error('Excel parse error:', err);
+          alert('Failed to parse Excel file. Please check the format.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      input.value = '';
     }
 
     function addNewMilestone() {

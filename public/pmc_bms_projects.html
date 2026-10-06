@@ -647,30 +647,7 @@
         var dr = document.createElement('tr');
         dr.className = 'milestone-dropdown-row';
         dr.innerHTML = '<td colspan="15"><div class="milestone-dropdown-container"><div class="milestone-dropdown-title">Milestones - ' + (project.serviceType || '') + ' / ' + (project.client || '') + '</div>' + buildMilestoneDropdownTable(project) + '</div></td>';
-              tr.innerHTML =
-                '<td>' + (i + 1) + '</td>' +
-                '<td>' + (d.description || d.original_name || '') + '</td>' +
-                '<td>' + formatDate(d.doc_date) + '</td>' +
-                '<td>' + viewLink + '</td>' +
-                '<td>' + formatDateTime(d.createdAt) + '</td>' +
-                '<td>' + deleteHtml + '</td>';
-              tr.innerHTML =
-                '<td>' + (i + 1) + '</td>' +
-                '<td>' + (c.subject || '') + '</td>' +
-                '<td>' + (c.dated || '') + '</td>' +
-                '<td>' + (c.from || '') + '</td>' +
-                '<td>' + (c.to || '') + '</td>' +
-                '<td>' + formatDateTime(c.createdAt) + '</td>' +
-                '<td>' + viewLink + '</td>' +
-                '<td>' + delHtml + '</td>';
         parentRow.parentNode.insertBefore(dr, parentRow.nextSibling);
-          tr.innerHTML =
-            '<td>' + (i + 1) + '</td>' +
-            '<td>' + (it.description || '') + '</td>' +
-            '<td>' + formatDate(it.issue_date) + '</td>' +
-            '<td>' + (it.pertaining_to || '') + '</td>' +
-            '<td>' + viewLink + editHtml + '</td>' +
-            '<td>' + delHtml + '</td>';
         openMilestoneDropdown = { row: dr, projectId: projectId };
       }
 
@@ -882,6 +859,7 @@
 
           resolveDeptAccessLevelByName('PMC').then(function(level) {
             USER_PMC_ACCESS_LEVEL = level || 'none';
+            window.USER_PMC_ACCESS_LEVEL = USER_PMC_ACCESS_LEVEL;
             var allowEdit = (USER_PMC_ACCESS_LEVEL === 'edit' || USER_PMC_ACCESS_LEVEL === 'head');
             window.USER_PMC_ALLOW_EDIT = allowEdit;
             var allowHead = (USER_PMC_ACCESS_LEVEL === 'head');
